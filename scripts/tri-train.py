@@ -13,22 +13,22 @@
 
 from __future__ import print_function
 
+import hashlib
+import os
+import sys
+
 def print_usage():
-    print('Usage: ls data-ichec/*.tsv | %s [options]' %(sys.argv[0].split('/')[-1]))
-    print()
-    print('Writes to folders tbweights, te-parse, te-worker and te-combine')
+    print('Usage: %s [options]' %(os.path.split(sys.argv[0])[-1]))
     print("""
 Options:
 
-    --test-type  STRING     whether to test on the dev or test section of each
-                            treebank (default: dev)
+    --test-type  STRING     whether to test on the dev or test section
+                            (default: dev)
 
-    --collection  STRING    append data set collection STRING to the list of
-                            collections; STRING must be a space- or
-                            colon-separated list of data set IDs (if the list
-                            is empty, the UD v2.3 Czech, English and French
-                            collections with non-pud treebanks that do not
-                            withhold surface tokens will be used)
+    --labelled  STRING
+    --unlabelled  STRING    append data sets to the list of labelled or
+                            unlablled data sets; STRING must be a space- or
+                            colon-separated list of data set IDs
 
     --seed  STRING          initialise random number generator with STRING;
                             (default or empty string: use system seed)
@@ -43,10 +43,18 @@ Options:
                                         or digits)
                                 str24 = 2x str12
                                 compose = concatenation of our seed (--seed),
-                                    trainer rank (1-3) and training round
-                                )
+                                    trainer rank (1-3) and training round,
+                                    i.e. adding unique additional digits to the
+                                    main seed
                             (default: do not provide the models with a seed,
                             usually meaning that they use a system seed)
+
+    --model-module  NAME    train models using the module NAME
+                            #(default: model_from_script)
+                            (default: model_from_script)
+
+    --model-script  FILE    training script to use with model_from_script
+                            (default: train-
 
 """)
 
@@ -55,7 +63,6 @@ test_type = 'dev'
 opt_debug = False
 opt_seed  = None
 
-import sys
 while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
     option = sys.argv[1]
     del sys.argv[1]
@@ -79,8 +86,8 @@ if opt_help:
     print_usage()
     sys.exit(0)
 
-import hashlib
 if opt_seed:
     random.seed(int(hashlib.sha512(opt_seed).hexdigest(), 16))
+
 
 
