@@ -10,6 +10,25 @@
 
 import collections
 
+
+class Sentence(collections.Sequence):
+
+    def __init__(self):
+        pass
+
+    def __getitem__(self, index):
+        raise NotImplementedError
+
+    def __len__(self):
+        raise NotImplementedError
+
+    def append(self, line):
+        raise NotImplementedError
+
+    def clone(self):
+        raise NotImplementedError
+
+
 class Dataset(collections.Sequence):
 
     """ Abstract base class for data sets. 

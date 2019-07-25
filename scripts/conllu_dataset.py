@@ -19,6 +19,7 @@ pos_column = 3
 class ConlluSentence(basic_dataset.Sentence):
 
     def __init__(self):
+        basic_dataset.Sentence.__init__(self)
         self.rows = []
         self.token2row = []
 
@@ -53,10 +54,10 @@ class ConlluSentence(basic_dataset.Sentence):
         return copy
 
 
-class Conllu(basic_dataset.Dataset):
+class ConlluDataset(basic_dataset.Dataset):
 
     def __init__(self):
-        Dataset.__init__(self)
+        basic_dataset.Dataset.__init__(self)
 
     def read_sentence(self, f_in):
         sentence = None
@@ -74,8 +75,21 @@ class Conllu(basic_dataset.Dataset):
         return sentence
 
     def write_sentence(self, f_out, sentence):
-        for row in sentence.rows():
+        for row in sentence.rows:
             # TODO: when to populate unlabelled target features with random labels?
             f_out.write('\t'.join(row))
             f_out.write('\n')
+        f_out.write('\n')
+
+
+def main():
+    import sys
+    max_sentences = int(sys.argv[1])
+    mode = sys.argv[2]
+    dataset = ConlluDataset()
+    dataset.load_or_map_file(sys.stdin, max_sentences, mode)
+    dataset.save_to_file(sys.stdout)
+
+if __name__ == "__main__":
+    main()
 
