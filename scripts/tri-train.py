@@ -80,6 +80,9 @@ def main():
         elif option == '--test-type':
             test_type = sys.argv[1]
             del sys.argv[1]
+        elif option == '--seed':
+            opt_seed = sys.argv[1]
+            del sys.argv[1]
         elif option == '--model-seed':
             opt_model_seed = sys.argv[1]
             del sys.argv[1]
