@@ -28,6 +28,15 @@ class Sentence(collections.Sequence):
     def clone(self):
         raise NotImplementedError
 
+    def is_missing(self, index, column):
+        return False
+
+    def set_label(self, index, column, new_label):
+        raise NotImplementedError
+
+    def possible_labels(self, index, column):
+        raise NotImplementedError
+
 
 class Dataset(collections.Sequence):
 
@@ -96,7 +105,8 @@ class Dataset(collections.Sequence):
         sentence_completer = None
     ):
         for sentence in self:
-            if sentence_filter is not None and sentence_filter(sentence):
+            if sentence_filter is not None \
+            and sentence_filter(sentence):
                 # skip this sentence
                 continue
             if sentence_completer is not None:
@@ -108,6 +118,35 @@ class Dataset(collections.Sequence):
 
     def write_sentence(self, f_out, sentence):
         raise NotImplementedError
+
+
+class SentenceCompleter:
+
+    def __init__(self, rng, target_columns, target_labelsets):
+        self.rng = rng
+        self.target_columns = target_columns
+        self.target_labelsets = target_labelsets
+
+    def pick_label(self, sentence, item_index, tc_index, column):
+        labelset = self.target_labelsets[tc_index]
+        if not labelset:
+            labelset = sentence.possible_labels(item_index, column)
+        return self.rng.choice(labelset)
+
+    def __call__(self, sentence):
+        retval = None
+        for item_index in range(len(sentence)):
+            for tc_index, column in enumerate(self.target_columns):
+                if sentence.is_missing(item_index, column):
+                    if not retval:
+                        retval = sentence.clone()
+                    new_label = self.pick_label(
+                        sentence, item_index, tc_index, column
+                    )
+                    retval.set_label(item_index, column, new_label)
+        if not retval:
+            return sentence
+        return retval
 
 
 class Sample(Dataset):
