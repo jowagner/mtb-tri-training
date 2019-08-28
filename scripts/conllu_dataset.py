@@ -59,7 +59,7 @@ class ConlluSentence(basic_dataset.Sentence):
         return self[index][column] == '_'
 
     def set_label(self, index, column, new_label):
-        return self[index][column] = new_label
+        self[index][column] = new_label
 
     def possible_labels(self, index, column):
         if column != head_column:
@@ -69,6 +69,9 @@ class ConlluSentence(basic_dataset.Sentence):
         retval = list(range(len(self)+1))
         del retval[index+1]
         return map(lambda x: '%d' %x, retval)
+
+    def unset_label(self, index, column):
+        self[index][column] = '_'
 
 
 class ConlluDataset(basic_dataset.Dataset):
@@ -94,7 +97,7 @@ class ConlluDataset(basic_dataset.Dataset):
     def write_sentence(self, f_out, sentence):
         for row in sentence.rows:
             # incomplete sentences should be completed by the caller,
-            # e.g. save_to_file(), see helper functions below
+            # e.g. save_to_file(), see basic_dataset.SentenceCompleter
             f_out.write('\t'.join(row))
             f_out.write('\n')
         f_out.write('\n')

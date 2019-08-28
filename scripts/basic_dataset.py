@@ -37,6 +37,9 @@ class Sentence(collections.Sequence):
     def possible_labels(self, index, column):
         raise NotImplementedError
 
+    def unset_label(self, index, column):
+        raise NotImplementedError
+
 
 class Dataset(collections.Sequence):
 
