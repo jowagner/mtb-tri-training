@@ -16,6 +16,7 @@ id_column = 0
 token_column = 1
 pos_column = 3
 head_column = 6
+label_column = 7
 
 
 class ConlluSentence(basic_dataset.Sentence):
@@ -26,10 +27,16 @@ class ConlluSentence(basic_dataset.Sentence):
         self.token2row = []
 
     def __getitem__(self, index):
-        self.rows[self.token2row[index]]
+        return self.rows[self.token2row[index]]
 
     def __len__(self):
         return len(self.token2row)
+
+    def __repr__(self):
+        return '<ConlluSentence %r %r>' %(
+            self.token2row,
+            self.rows,
+        )
 
     def append(self, line):
         fields = line.split('\t')
@@ -51,7 +58,7 @@ class ConlluSentence(basic_dataset.Sentence):
 
     def clone(self):
         copy = ConlluSentence()
-        for row in self.rows():
+        for row in self.rows:
             copy.append('\t'.join(row))
         return copy
 
@@ -104,12 +111,21 @@ class ConlluDataset(basic_dataset.Dataset):
 
 
 def main():
+    import random
     import sys
+    if len(sys.argv) < 2 or sys.argv[1][:3] in ('-h', '--h'):
+        print('usage: $0 $NUMBER_SENTENCES {load|map} < in.conllu > out.conllu')
+        sys.exit(1)
     max_sentences = int(sys.argv[1])
     mode = sys.argv[2]
     dataset = ConlluDataset()
     dataset.load_or_map_file(sys.stdin, max_sentences, mode)
-    dataset.save_to_file(sys.stdout)
+    dropout = basic_dataset.SentenceDropout(random,
+            [pos_column, head_column, label_column],
+            [0.2,        0.8,         0.5]
+    )
+    sample = basic_dataset.Sample(dataset, random, sentence_modifier = dropout)
+    sample.save_to_file(sys.stdout)
 
 if __name__ == "__main__":
     main()

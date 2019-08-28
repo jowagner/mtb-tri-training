@@ -43,7 +43,7 @@ class Sentence(collections.Sequence):
 
 class Dataset(collections.Sequence):
 
-    """ Abstract base class for data sets. 
+    """ Abstract base class for data sets.
     """
 
     def __init__(self):
@@ -102,6 +102,8 @@ class Dataset(collections.Sequence):
             if mode == 'load':
                 info = sentence
             self.sentences.append((f_index, info))
+            added += 1
+        return added
 
     def save_to_file(self, f_out,
         sentence_filter    = None,
@@ -114,7 +116,7 @@ class Dataset(collections.Sequence):
                 continue
             if sentence_completer is not None:
                 sentence = sentence_completer(sentence)
-            self.write_sentence(f_out, sentence) 
+            self.write_sentence(f_out, sentence)
 
     def read_sentence(self, f_in):
         raise NotImplementedError
@@ -210,17 +212,20 @@ class SentenceFilter:
 
 class Sample(Dataset):
 
-    def __init__(self, dataset, rng, size = None, percentage = None):
+    def __init__(self, dataset, rng, size = None, percentage = None,
+        sentence_modifier = None
+    ):
         if size and percentage:
             raise ValueError('Must not specify both size and percentage.')
         if percentage:
             size = int(0.5+percentage*len(dataset)/100.0)
         self.dataset = dataset
+        self.sentence_modifier = sentence_modifier
         self.reset_sample(rng, size)
 
     def reset_sample(self, rng, size = None):
         if not size:
-            size = len(dataset)
+            size = len(self.dataset)
         self.sentences = []
         remaining = size
         while remaining:
@@ -230,7 +235,10 @@ class Sample(Dataset):
 
     def __getitem__(self, index):
         d_index = self.sentences[index]
-        return self.dataset[d_index]
+        sentence = self.dataset[d_index]
+        if self.sentence_modifier is not None:
+            sentence = self.sentence_modifier(sentence)
+        return sentence
 
     def append(self, sentence):
         self.dataset.append(sentence)
@@ -247,4 +255,7 @@ class Sample(Dataset):
             for _ in count:
                 self.sentences.append(d_index)
         self.shuffle(rng)
+
+    def write_sentence(self, f_out, sentence):
+        self.dataset.write_sentence(f_out, sentence)
 
