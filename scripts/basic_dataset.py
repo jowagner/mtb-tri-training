@@ -152,6 +152,23 @@ class SentenceCompleter:
         return retval
 
 
+class SentenceDropout:
+
+    def __init__(self, rng, target_columns, dropout_probabilities):
+        self.rng = rng
+        self.target_columns = target_columns
+        self.dropout_probabilities = dropout_probabilities
+
+    def __call__(self, sentence):
+        retval = sentence.clone()
+        for item_index in range(len(sentence)):
+            for tc_index, column in enumerate(self.target_columns):
+                dropout_probability = self.dropout_probabilities[tc_index]
+                if self.rng.random() < dropout_probability:
+                    retval.unset_label(item_index, column)
+        return retval
+
+
 class SentenceFilter:
 
     def __init__(self, target_columns,
