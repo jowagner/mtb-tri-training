@@ -135,7 +135,7 @@ class SentenceCompleter:
 
     def __call__(self, sentence):
         retval = None
-        for item_index, sentence in enumerate(sentence):
+        for item_index in range(len(sentence)):
             for tc_index, column in enumerate(self.target_columns):
                 if sentence.is_missing(item_index, column):
                     if not retval:
