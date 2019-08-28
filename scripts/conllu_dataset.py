@@ -15,6 +15,8 @@ import basic_dataset
 id_column = 0
 token_column = 1
 pos_column = 3
+head_column = 6
+
 
 class ConlluSentence(basic_dataset.Sentence):
 
@@ -38,13 +40,13 @@ class ConlluSentence(basic_dataset.Sentence):
         #
         r_index = len(self.rows)
         self.rows.append(fields)
-        # check whether this is a token
+        # check whether this is a UD token
         token_id = fields[id_column]
         if token_id.startswith('#') \
         or '-' in token_id \
         or '.' in token_id:
             return
-        #
+        # record UD token
         self.token2row.append(r_index)
 
     def clone(self):
@@ -52,6 +54,21 @@ class ConlluSentence(basic_dataset.Sentence):
         for row in self.rows():
             copy.append('\t'.join(row))
         return copy
+
+    def is_missing(self, index, column):
+        return self[index][column] == '_'
+
+    def set_label(self, index, column, new_label):
+        return self[index][column] = new_label
+
+    def possible_labels(self, index, column):
+        if column != head_column:
+            # See SentenceCompleter for the normal way
+            # to supply possible labels.
+            raise ValueError('Sentence does not know labels for column %d.' %column)
+        retval = list(range(len(self)+1))
+        del retval[index+1]
+        return map(lambda x: '%d' %x, retval)
 
 
 class ConlluDataset(basic_dataset.Dataset):
@@ -76,7 +93,8 @@ class ConlluDataset(basic_dataset.Dataset):
 
     def write_sentence(self, f_out, sentence):
         for row in sentence.rows:
-            # TODO: when to populate unlabelled target features with random labels?
+            # incomplete sentences should be completed by the caller,
+            # e.g. save_to_file(), see helper functions below
             f_out.write('\t'.join(row))
             f_out.write('\n')
         f_out.write('\n')
