@@ -35,7 +35,7 @@ class Dataset(collections.Sequence):
     """
 
     def __init__(self):
-        self.sentences = []
+        self.sentences = []    # see __getitem__() below for format
         self.files = []
 
     def __getitem__(self, index):
@@ -53,8 +53,8 @@ class Dataset(collections.Sequence):
     def append(self, sentence):
         self.sentences.append((-1, sentence))
 
-    def shuffle(self, random):
-        random.shuffle(self.sentences)
+    def shuffle(self, rng):
+        rng.shuffle(self.sentences)
 
     def load_file(self, f_in, max_sentences = None):
         """ Append up to `max_sentences` sentences from file `f_in`
@@ -91,8 +91,16 @@ class Dataset(collections.Sequence):
                 info = sentence
             self.sentences.append((f_index, info))
 
-    def save_to_file(self, f_out):
+    def save_to_file(self, f_out,
+        sentence_filter    = None,
+        sentence_completer = None
+    ):
         for sentence in self:
+            if sentence_filter is not None and sentence_filter(sentence):
+                # skip this sentence
+                continue
+            if sentence_completer is not None:
+                sentence = sentence_completer(sentence)
             self.write_sentence(f_out, sentence) 
 
     def read_sentence(self, f_in):
@@ -100,4 +108,45 @@ class Dataset(collections.Sequence):
 
     def write_sentence(self, f_out, sentence):
         raise NotImplementedError
+
+
+class Sample(Dataset):
+
+    def __init__(self, dataset, rng, size = None, percentage = None):
+        if size and percentage:
+            raise ValueError('Must not specify both size and percentage.')
+        if percentage:
+            size = int(0.5+percentage*len(dataset)/100.0)
+        self.dataset = dataset
+        self.reset_sample(rng, size)
+
+    def reset_sample(self, rng, size = None):
+        if not size:
+            size = len(dataset)
+        self.sentences = []
+        remaining = size
+        while remaining:
+            d_index = rng.randrange(size)
+            self.sentences.append(d_index)
+            remaining -= 1
+
+    def __getitem__(self, index):
+        d_index = self.sentences[index]
+        return self.dataset[d_index]
+
+    def append(self, sentence):
+        self.dataset.append(sentence)
+
+    def get_counts(self):
+        retval = len(self.dataset) * [0]
+        for d_index in self.sentences:
+            retval[d_index] += 1
+        return retval
+
+    def set_counts(self, rng, counts):
+        self.sentences = []
+        for d_index, count in enumerate(counts):
+            for _ in count:
+                self.sentences.append(d_index)
+        self.shuffle(rng)
 
