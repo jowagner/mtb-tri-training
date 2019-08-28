@@ -149,6 +149,45 @@ class SentenceCompleter:
         return retval
 
 
+class SentenceFilter:
+
+    def __init__(self, target_columns,
+        min_labelled = None, max_unlabelled = None,
+        min_percentage_labelled = None,
+        max_percentage_unlabelled = None
+    ):
+        self.target_columns = target_columns
+        self.min_labelled   = min_labelled
+        self.max_unlabelled = max_unlabelled
+        self.min_percentage = min_percentage_labelled
+        self.max_percentage = max_percentage_unlabelled
+
+    def __call__(self, sentence):
+        ''' returns True if the sentence should be skipped '''
+        num_items = len(sentence)
+        for tc_index, column in enumerate(self.target_columns):
+            num_labelled = 0
+            for item_index in range(num_items):
+                if not sentence.is_missing(item_index, column):
+                    num_labelled += 1
+            if self.min_labelled \
+            and num_labelled < self.min_labelled[tc_index]:
+                return True
+            num_unlabelled = num_items - num_labelled
+            if self.max_unlabelled \
+            and num_unlabelled > self.max_unlabelled[tc_index]:
+                return True
+            percentage = 100.0 * num_labelled / float(num_items)
+            if self.min_percentage \
+            and percentage < self.min_percentage[tc_index]:
+                return True
+            percentage = 100.0 * num_unlabelled / float(num_items)
+            if self.max_percentage \
+            and percentage > self.max_percentage[tc_index]:
+                return True
+        return False
+
+
 class Sample(Dataset):
 
     def __init__(self, dataset, rng, size = None, percentage = None):
