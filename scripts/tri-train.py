@@ -30,7 +30,9 @@ Options:
     --labelled  STRING
     --unlabelled  STRING    append data sets to the list of labelled or
                             unlabelled data sets; STRING must be a space- or
-                            colon-separated list of data set IDs
+                            colon-separated list of data set IDs;
+                            the module specified with --dataset-module
+                            interprets these IDs to load the data
 
     --seed  STRING          initialise random number generator with STRING;
                             (default or empty string: use system seed)
@@ -56,8 +58,91 @@ Options:
                             (default: conllu_dataset)
 
     --model-module  NAME    train models using the module NAME;
-                            combine with --help to see module-specific options
+                            combine with --help to see module-specific options;
+                            specify 3 times to mix different models in
+                            tri-training
                             (default: uuparser_model)
+
+    --seed-size  NUMBER     How many tokens to sample (with replacement) from
+                            the labelled data for each learner.
+                            As full sentences are selected the actual number
+                            of selected tokens can deviate from the requested
+                            number.
+                            If NUMBER end with % it is relative to the size
+                            of the labelled data.
+                            (Default: 100.0%)
+
+    --seed-attempts  NUMBER  Create NUMBER samples and pick, for each learner,
+                            the one that is closest to the desired seed size.
+                            (Default: 5)
+
+    --subset-size  NUMBER   How many items to select from the unlabelled
+                            data in each tri-training iteration
+                            As full sentences are selected the actual number
+                            of selected tokens can deviate from the requested
+                            number.
+                            If NUMBER end with % it is relative to the size
+                            of the labelled data.
+                            (Default: 20k)
+
+    --subset-attempts  NUMBER  Create NUMBER subsets and pick the one that is
+                            closest to the desired subset size
+                            (default: 5)
+
+    --augment-size  NUMBER  How many items to add to each learner in each
+                            tri-training iteration.
+                            If the subset size is too small, e.g. less than 3x
+                            augment size, the augment size may not be reached.
+                            As full sentences are selected the actual number
+                            of selected tokens can deviate from the requested
+                            number.
+                            (default: 4k)
+
+    --augment-attempts  NUMBER  Create NUMBER augmentation sets and pick the
+                            one that is closest to the desired set size
+                            (default: 5)
+
+    --diversify-attempts  NUMBER  Iteratively grow the subset picking the
+                            sentence which the largest distance to the
+                            sentences selected so far among NUMBER randomly
+                            picked sentences.
+                            The same procedure is applied to the augmentation
+                            set if the candidate augmentation set exceeds the
+                            augment size.
+                            (Default: 1 = pick subset at random)
+
+    --oversample            Oversample seed data to match size of 
+
+    --last-k  NUMBER        Only use the automatically labelled data of the
+                            last k tri-training iterations
+
+    --iteration-selection   Use development data to select strongest model for
+                            each learner.
+                            (Default: Use model of the last tri-training
+                            interation for each learner.)
+
+    --epoch-selection  MODE  How to select the epoch for each model:
+                            dev  = use development data that is part of the
+                                   data set
+                            last = use last epoch
+                            remaining = use labelled data not part of the
+                                   seed data (due to sampling with
+                                   replacement)
+                            9010 = split seed data 90:10 into train and dev
+
+    --per-item              Apply apply tri-training to individual items,
+                            either select an item or not.
+                            (Default: only select full sentences)
+
+    --per-item-and-target   Apply apply tri-training to individual target
+                            features of items, e.g. in depdendency parsing
+                            make independent decisions for heads and labels.
+
+    --continue              Skip steps finished in a previous run
+                            (default: abort if intermediate output files are
+                            found)
+
+                            
 """)
 
 def main():
@@ -69,6 +154,7 @@ def main():
     opt_unlabelled_ids = []
     opt_dataset_module = 'conllu_dataset'
     opt_model_module   = 'uuparser_model'
+    opt_model_modules  = []
     opt_model_seed     = None
 
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
