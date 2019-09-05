@@ -114,12 +114,16 @@ def main():
     import random
     import sys
     if len(sys.argv) < 2 or sys.argv[1][:3] in ('-h', '--h'):
-        print('usage: $0 $NUMBER_SENTENCES {load|map} < in.conllu > out.conllu')
+        print('usage: $0 $NUMBER_SENTENCES {load|map} {dropoutsample|shuffle} < in.conllu > out.conllu')
         sys.exit(1)
     max_sentences = int(sys.argv[1])
     mode = sys.argv[2]
     dataset = ConlluDataset()
     dataset.load_or_map_file(sys.stdin, max_sentences, mode)
+    if sys.argv[3] == 'shuffle':
+        dataset.shuffle(random)
+        dataset.save_to_file(sys.stdout)
+        return
     dropout = basic_dataset.SentenceDropout(random,
             [pos_column, head_column, label_column],
             [0.2,        0.8,         0.5]
