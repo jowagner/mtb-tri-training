@@ -224,12 +224,13 @@ class Sample(Dataset):
         self.reset_sample(rng, size)
 
     def reset_sample(self, rng, size = None):
-        if not size:
-            size = len(self.dataset)
+        d_size = len(self.dataset)
+        if size is None:
+            size = d_size
         self.sentences = []
         remaining = size
         while remaining:
-            d_index = rng.randrange(size)
+            d_index = rng.randrange(d_size)
             self.sentences.append(d_index)
             remaining -= 1
 
