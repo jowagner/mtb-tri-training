@@ -92,7 +92,6 @@ class ConlluDataset(basic_dataset.Dataset):
             len(self),
         )
 
-
     def read_sentence(self, f_in):
         sentence = None
         while True:
@@ -189,6 +188,9 @@ def load(dataset_id,
         else:
             print('Warning: %r not found' %filename)
     return tr, dev, test
+
+def new_empty_set():
+    return ConlluDataset()
 
 def main():
     import random

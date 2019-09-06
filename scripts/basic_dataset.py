@@ -9,7 +9,8 @@
 # Author: Joachim Wagner
 
 import collections
-
+import hashlib
+import StringIO
 
 class Sentence(collections.Sequence):
 
@@ -117,6 +118,15 @@ class Dataset(collections.Sequence):
             if sentence_completer is not None:
                 sentence = sentence_completer(sentence)
             self.write_sentence(f_out, sentence)
+
+    def hexdigest(self):
+        h = hashlib.sha512()
+        for sentence in self:
+            f = StringIO.StringIO()
+            self.write_sentence(f, sentence)
+            f.seek(0)
+            h.update(f.read())
+        return h.hexdigest()
 
     def read_sentence(self, f_in):
         raise NotImplementedError
@@ -235,6 +245,9 @@ class Concat(Dataset):
     def load_or_map_file(self, *args):
         raise ValueError('Cannot load data into concatenation')
 
+    def write_sentence(self, f_out, sentence):
+        self.datasets[0].write_sentence(f_out, sentence)
+
 
 class Sample(Dataset):
 
@@ -305,5 +318,9 @@ def load(dataset_id,
     load_tr = True, load_dev = True, load_test = True,
     mode = 'load'
 ):
+    raise NotImplementedError
+
+
+def new_empty_set():
     raise NotImplementedError
 
