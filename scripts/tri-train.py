@@ -13,11 +13,14 @@
 
 from __future__ import print_function
 
+import importlib
 import hashlib
 import os
 import random
 import string
 import sys
+
+import basic_dataset
 
 def print_usage():
     print('Usage: %s [options]' %(os.path.split(sys.argv[0])[-1]))
@@ -119,6 +122,10 @@ Options:
     --iterations  NUMBER    Perform NUMBER iterations of tri-training.
                             (Default: 5)
 
+    --learners  NUMBER      Use NUMBER learners in tri-training. Knowledge
+                            transfer is always from 2 teachers to 1 learner.
+                            (Default: 3)
+
     --last-k  NUMBER        Only use the automatically labelled data of the
                             last k tri-training iterations
                             (default: 0 = use all iterations)
@@ -177,6 +184,7 @@ def main():
     opt_diversify_attempts = 1
     opt_oversample = False
     opt_iterations = 5
+    opt_learners = 3
     opt_last_k = 0
     opt_last_decay = 1.0
 
@@ -234,6 +242,9 @@ def main():
         elif option == '--iterations':
             opt_iterations = int(sys.argv[1])
             del sys.argv[1]
+        elif option == '--learners':
+            opt_learners = int(sys.argv[1])
+            del sys.argv[1]
         elif option == '--last-k':
             opt_last_k = int(sys.argv[1])
             del sys.argv[1]
@@ -243,7 +254,7 @@ def main():
         elif option == '--debug':
             opt_debug = True
         else:
-            print('Unsupported option %s' %option)
+            print('Unsupported or not yet implemented option %s' %option)
             opt_help = True
             break
 
@@ -264,8 +275,27 @@ def main():
     if not opt_model_modules:
         opt_model_modules.append('uuparser_model')
 
-    if opt_init_seed:
-        random.seed(int(hashlib.sha512(opt_init_seed).hexdigest(), 16))
+    dataset_module = importlib.import_module(opt_dataset_module)
+
+    training_data_sets = []
+    dev_sets = []
+    test_sets = []
+    for dataset_id in opt_labelled_ids:
+        tr, dev, test = dataset_module.load(dataset_id)
+        #print('Dataset %r: %r, %r, %r' %(dataset_id, tr, dev, test))
+        training_data_sets.append(tr)
+        dev_sets.append(dev)
+        test_sets.append(test)
+    training_data = basic_dataset.Concat(training_data_sets)
+
+    unlabelled_data_sets = []
+    for dataset_id in opt_unlabelled_ids:
+        tr, _, _ = dataset_module.load(
+            dataset_id, load_dev = False, load_test = False
+        )
+        #print('Dataset %r: %r' %(dataset_id, tr))
+        unlabelled_data_sets.append(tr)
+    unlabelled_data = basic_dataset.Concat(unlabelled_data_sets)
 
     training_data_size = training_data.get_number_of_items()
     unlabelled_data_size = unlabelled_data.get_number_of_items()
@@ -273,16 +303,72 @@ def main():
     opt_subset_size  = adjust_size(opt_subset_size,  unlabelled_data_size)
     opt_augment_size = adjust_size(opt_augment_size, unlabelled_data_size)
 
+    tr_size = training_data.get_number_of_items()
+    print('labelled training data with %d items in %d sentences' %(
+        tr_size, len(training_data)
+    ))
+    print('opt_seed_size', opt_seed_size)
+    print('labelled training data with %d items in %d sentences' %(
+        unlabelled_data.get_number_of_items(),
+        len(unlabelled_data)
+    ))
+    print('opt_subset_size', opt_subset_size)
+    print('opt_augment_size', opt_augment_size)
+
+    print('\n== Selection of Seed Data ==\n')
+
+    if opt_init_seed:
+        random.seed(int(hashlib.sha512('seed selection %s' %(
+            opt_init_seed,
+        )).hexdigest(), 16))
+
+    seed_sets = []
+    for learner_rank in range(opt_learners):
+        candidates = []
+        for _ in range(opt_seed_attempts):
+            n_sentences = int(0.5 + len(training_data) * opt_seed_size / tr_size)
+            candidate = basic_dataset.Sample(training_data, random, n_sentences)
+            size = candidate.get_number_of_items()
+            deviation = abs(size - opt_seed_size)
+            candidates.append((deviation, random.random(), candidate))
+        candidates.sort()
+        best_deviation, _, best_seed_set = candidates[0]
+        print('Learner %d has seed data with %d items in %d sentences' %(
+            learner_rank+1, best_seed_set.get_number_of_items(), len(best_seed_set),
+        ))
+        seed_sets.append(best_seed_set)
+
+    print('\n== Training of Seed Models ==\n')
+
+    for learner_rank in range(opt_learners):
+        print('Learner %d, seed %r' %(learner_rank+1,
+            get_model_seed(opt_model_init_type, opt_init_seed, learner_rank, 0)))
+
     for training_round in range(opt_iterations):
-        for learner_rank in (1,2,3):
-            print('%d\t%d\t%r' %(learner_rank, training_round,
-                get_model_seed(opt_model_seed, opt_seed, learner_rank, training_round)))
+        print('\n== Tri-training Iteration %d of %d ==\n' %(
+            training_round+1, opt_iterations
+        ))
+        if opt_init_seed:
+            random.seed(int(hashlib.sha512('round %d: %s' %(
+                training_round, opt_init_seed,
+            )).hexdigest(), 16))
+
+        print('Selecting subset of unlabelled data:')
+
+        print('Making predictions:')
+
+        print('Teaching:')
+
+        print('Training of new models:')
+        for learner_rank in range(opt_learners):
+            print(' * Learner %d, seed %r' %(learner_rank+1,
+                get_model_seed(opt_model_init_type, opt_init_seed, learner_rank, training_round+1)))
 
 def adjust_size(size, data_size):
     if size.endswith('%'):
         fraction = float(size[:-1]) / 100.0
         return int(0.5 + fraction * data_size)
-    elif opt_seed_size[-1:].lower() in 'kmgt':
+    elif size[-1:].lower() in 'kmgt':
         fraction = float(size[:-1])
         multiplier = {
             'k': 1000.0,
@@ -313,10 +399,10 @@ def get_model_seed(mode, main_seed, learner_rank, training_round):
             chars.append(random.choice(string.ascii_letters + string.digits))
             n -= 1
         return ''.join(chars)
-    elif mode == 'combine':
+    elif mode in ('combine', 'compose'):
         if main_seed is None:
             raise ValueError('cannot combine model seed without main seed')
-        return '%s%d%d' %(main_seed, learner_rank, training_round)
+        return '%s%d%02d' %(main_seed, learner_rank, training_round)
     else:
         raise ValueError('unknown model seed type %r' %mode)
 
