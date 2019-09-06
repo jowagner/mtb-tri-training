@@ -272,6 +272,8 @@ def main():
         print_usage()
         sys.exit(0)
 
+    if opt_learners < 1:
+        raise ValueError('must have at least one learner')
     if opt_last_k < 0:
         raise ValueError('last_k must not be negative')
     if opt_last_decay > 1.0:
@@ -383,9 +385,13 @@ def main():
         for s_index, s_predictions in enumerate(dataset_predictions):
             learner_index, merged_prediction = knowledge_transfer(
                 s_predictions, column_weights, opt_learners,
+                opt_max_teacher_disagreement_fraction,
+                opt_min_teacher_agreements,
                 opt_learner_must_disagree,
                 opt_min_learner_disagreement,
             )
+            if learner_index < 0:
+                continue
             # add new sentence to data set of learner
             new_datasets[learner_index].append(merged_prediction)
 
@@ -414,28 +420,57 @@ def merge_predictions(predictions):
 
 def knowledge_transfer(
     predictions, column_weights, learners = 3,
+    max_teacher_disagreement_fraction = 0.20,
+    min_teacher_agreements = 3.25,
     learner_must_disagree = True, min_learner_disagreement = 1.25
 ):
     # knowledge transfer candidates: first element says how much the teachers disagree
     kt_candidates = []
+    s_length = float(len(predictions[0]))
+    total = 0.0
+    for weight in column_weights:
+        total += weight * s_length
     for learner_index in range(learners):
-        for teacher1_index in range(learners-1):
-            if teacher1_index == learner_index:
-                continue
-            for teacher2_index in range(teacher1_index+1, learners):
-                if teacher2_index == learner_index:
-                    continue
+        learner_prediction = predictions[learner_index]
+        if learners == 1:
+            t1_indices = [None]
+        else:
+            t1_indices = range(learners-1)
+        for teacher1_index in t1_indices:
+            if learners > 1:
                 t1_prediction = predictions[teacher1_index]
-                t2_prediction = predictions[teacher2_index]
-                # measure disagreement between teachers
-                teacher_disagreement = get_disagreement(
-                    t1_prediction, t2_prediction, column_weights
-                )
-                # optionanlly consider disagreement with learner
-                if learner_must_disagree:
-                    merged_prediction = merge_predictions([
+                if teacher1_index == learner_index:
+                    continue
+            if learners <= 2:
+                t2_indices = [None]
+            else:
+                t2_indices = range(teacher1_index+1, learners)
+            for teacher2_index in t2_indices:
+                if learners == 1:
+                    # self-training
+                    teachers_predictions = [learner_prediction]
+                elif learners == 2:
+                    # co-training
+                    teachers_predictions = [t1_prediction]
+                else:
+                    if teacher2_index == learner_index:
+                        continue
+                    t2_prediction = predictions[teacher2_index]
+                    # measure disagreement between teachers
+                    teacher_disagreement = get_disagreement(
+                        t1_prediction, t2_prediction, column_weights
+                    )
+                    teacher_disagreement_fraction = teacher_disagreement / s_length
+                    if teacher_disagreement_fraction > max_teacher_disagreement_fraction:
+                        continue
+                    if total - teacher_disagreement < min_teacher_agreements:
+                        continue
+                    teachers_predictions = [
                         t1_prediction, t2_prediction
-                    ])
+                    ]
+                # optionally consider disagreement with learner
+                if learner_must_disagree:
+                    merged_prediction = merge_predictions(teachers_predictions)
                     learner_disagreement = get_disagreement(
                         learner_prediction, merged_prediction, column_weights
                     )
