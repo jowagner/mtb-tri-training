@@ -30,6 +30,9 @@ Options:
     --test-type  STRING     whether to test on the dev or test section
                             (default: dev)
 
+    --workdir  DIR          Path to working directory
+                            (default: . = current directory)
+
     --labelled  STRING
     --unlabelled  STRING    append data sets to the list of labelled or
                             unlabelled data sets; STRING must be a space- or
@@ -168,6 +171,7 @@ Options:
 def main():
     opt_help  = False
     test_type = 'dev'
+    opt_workdir = '.'
     opt_debug = False
     opt_init_seed  = None
     opt_labelled_ids = []
@@ -196,6 +200,9 @@ def main():
             break
         elif option == '--test-type':
             test_type = sys.argv[1]
+            del sys.argv[1]
+        elif option == '--workdir':
+            opt_workdir = sys.argv[1]
             del sys.argv[1]
         elif option == '--init-seed':
             opt_init_seed = sys.argv[1]
@@ -336,13 +343,22 @@ def main():
         print('Learner %d has seed data with %d items in %d sentences' %(
             learner_rank+1, best_seed_set.get_number_of_items(), len(best_seed_set),
         ))
+        tr_data_filename = '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank+1)
+        f_out = open(tr_data_filename, 'w')
+        best_seed_set.save_to_file(f_out)
+        f_out.close()
         seed_sets.append(best_seed_set)
 
     print('\n== Training of Seed Models ==\n')
 
     for learner_rank in range(opt_learners):
-        print('Learner %d, seed %r' %(learner_rank+1,
-            get_model_seed(opt_model_init_type, opt_init_seed, learner_rank, 0)))
+        print('Learner:', learner_rank+1)
+        model_init_seed = get_model_seed(opt_model_init_type, opt_init_seed, learner_rank, 0)
+        print('Model initialisation seed:', model_init_seed)
+        data_fingerprint = seed_sets[learner_rank].hexdigest()
+        print('Seed data fingerprint:', data_fingerprint)
+
+        # TODO: check whether model is ready and train it if not
 
     for training_round in range(opt_iterations):
         print('\n== Tri-training Iteration %d of %d ==\n' %(
@@ -352,52 +368,104 @@ def main():
             random.seed(int(hashlib.sha512('round %d: %s' %(
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
-
         print('Selecting subset of unlabelled data:')
+        picked = {}
 
         print('Making predictions:')
+
+        # TODO: call parser
 
         print('Teaching:')
 
         new_datasets = []
         for _ in range(opt_learners):
-            new_datasets.append(...)
-
-        for sentence in predictions:
-            kt_candidates = []   # knowledge transfer candidates: first element says how much the teachers disagree
-            for learner_index in range(opt_learners):
-                for teacher1_index in range(opt_learners-1):
-                    if teacher1_index == learner_index:
-                        continue
-                    for teacher2_index in range(teacher1_index+1, opt_learners):
-                        if teacher2_index == learner_index:
-                            continue
-                        # measure disagreement between teachers
-                        # + optionanlly test disagreement with learner
-                        # TODO
-                        kt_candidates((
-                            priority, random.random(),
-                            learner_index, teacher1_index, teacher2_index
-                        ))
-            kt_candidates.sort()
-            _, _, learner_index, teacher1_index, teacher2_index = kt_candidates[0]
-
-            # merge predictions of teacher 1 and 2
-            # TODO
-
+            new_datasets.append(dataset_module.new_empty_set())
+        for s_index, s_predictions in enumerate(dataset_predictions):
+            learner_index, merged_prediction = knowledge_transfer(
+                s_predictions, column_weights, opt_learners,
+                opt_learner_must_disagree,
+                opt_min_learner_disagreement,
+            )
             # add new sentence to data set of learner
-            # TODO
-            new_datasets[learner_index].append(...)
+            new_datasets[learner_index].append(merged_prediction)
 
         for learner_index in range(opt_learners):
             # write new labelled data to file
             # TODO
+            tr_data_filename = '%s/new-set-%02d-%d.conllu' %(opt_workdir, training_round+1, learner_rank+1)
+            f_out = open(tr_data_filename, 'w')
+            new_datasets[learner_index].save_to_file(f_out)
+            f_out.close()
 
 
         print('Training of new models:')
         for learner_rank in range(opt_learners):
             print(' * Learner %d, seed %r' %(learner_rank+1,
                 get_model_seed(opt_model_init_type, opt_init_seed, learner_rank, training_round+1)))
+
+    print('\n== Final Model ==\n')
+    # TODO
+
+def get_disagreement(prediction1, prediction2, column_weights):
+    raise NotImplementedError
+
+def merge_predictions(predictions):
+    raise NotImplementedError
+
+def knowledge_transfer(
+    predictions, column_weights, learners = 3,
+    learner_must_disagree = True, min_learner_disagreement = 1.25
+):
+    # knowledge transfer candidates: first element says how much the teachers disagree
+    kt_candidates = []
+    for learner_index in range(learners):
+        for teacher1_index in range(learners-1):
+            if teacher1_index == learner_index:
+                continue
+            for teacher2_index in range(teacher1_index+1, learners):
+                if teacher2_index == learner_index:
+                    continue
+                t1_prediction = predictions[teacher1_index]
+                t2_prediction = predictions[teacher2_index]
+                # measure disagreement between teachers
+                teacher_disagreement = get_disagreement(
+                    t1_prediction, t2_prediction, column_weights
+                )
+                # optionanlly consider disagreement with learner
+                if learner_must_disagree:
+                    merged_prediction = merge_predictions([
+                        t1_prediction, t2_prediction
+                    ])
+                    learner_disagreement = get_disagreement(
+                        learner_prediction, merged_prediction, column_weights
+                    )
+                    if learner_disagreement < min_learner_disagreement:
+                        # skip this candidate as the learner
+                        # is unlikely to learn much from it
+                        continue
+                else:
+                    # postpone merging to when it is needed
+                    merged_prediction = None
+                    learner_disagreement = 0
+                # record candidate
+                priority = (teacher_disagreement, -learner_disagreement)
+                kt_candidates((
+                    priority, random.random(),
+                    learner_index, teacher1_index, teacher2_index,
+                    merged_prediction
+                ))
+    if not kt_candidates:
+        # can happen when predictions agree and learner_must_disagree is set
+        return -1, None
+    kt_candidates.sort()
+    _, _, learner_index, t1_index, t2_index, prediction = kt_candidates[0]
+    if prediction is None:
+        t1_prediction = predictions[t1_index]
+        t2_prediction = predictions[t2_index]
+        prediction = merge_predictions([
+            t1_prediction, t2_prediction
+        ])
+    return learner_index, prediction
 
 def adjust_size(size, data_size):
     if size.endswith('%'):
