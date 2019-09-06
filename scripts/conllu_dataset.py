@@ -9,6 +9,7 @@
 # Author: Joachim Wagner
 
 import collections
+import os
 
 import basic_dataset
 
@@ -86,6 +87,12 @@ class ConlluDataset(basic_dataset.Dataset):
     def __init__(self):
         basic_dataset.Dataset.__init__(self)
 
+    def __repr__(self):
+        return '<Conllu with %d sentences>' %(
+            len(self),
+        )
+
+
     def read_sentence(self, f_in):
         sentence = None
         while True:
@@ -109,6 +116,79 @@ class ConlluDataset(basic_dataset.Dataset):
             f_out.write('\n')
         f_out.write('\n')
 
+def get_tbname(tbid, treebank_dir, tbmapfile = None):
+    if not tbmapfile:
+        candidate_file = '%s/tbnames.tsv' %treebank_dir
+        if os.path.exists(candidate_file):
+            tbmapfile = candidate_file
+        elif 'UD_TBNAMES' in os.environ:
+            tbmapfile = os.environ['UD_TBNAMES']
+    if tbmapfile:
+        f = open(tbmapfile, 'r')
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            fields = line.split()
+            if tbid == fields[1]:
+                f.close()
+                return fields[0]
+        f.close()
+        raise ValueError('TBID %r not found in %r' %(tbid, tbmapfile))
+    if treebank_dir:
+        # scan treebank folder
+        lcode = tbid.split('_')[1]
+        for entry in os.listdir(treebank_dir):
+            # is this a good candidate entry?
+            if entry.startswith('UD_') and lcode in entry.lower():
+                # look inside
+                if os.path.exists('%s/%s/%s-ud-test.conllu' %(
+                    treebank_dir, entry, tbid
+                )):
+                    return entry
+        raise ValueError('TBID %r not found in %r (must have test set)' %(tbid, treebank_dir))
+    raise ValueError('TBID %r not found (need map file or treebank dir)' %tbid)
+
+def load_or_map_from_filename(filename, mode = 'load'):
+    data = ConlluDataset()
+    f_in = open(filename, 'r')
+    data.load_or_map_file(f_in, None, mode)
+    if mode == 'load':
+        f_in.close()
+    return data
+
+def load(dataset_id,
+    treebank_dir = None,
+    tbname = None,
+    tbmapfile = None,
+    load_tr = True, load_dev = True, load_test = True,
+    mode = 'load'
+):
+    tbid = dataset_id
+    tr, dev, test = None, None, None
+    if not treebank_dir:
+        treebank_dir = os.environ['UD_TREEBANK_DIR']
+    if not tbname:
+        tbname = get_tbname(tbid, treebank_dir, tbmapfile)
+    if load_tr:
+        filename = '%s/%s/%s-ud-train.conllu' %(treebank_dir, tbname, tbid)
+        if os.path.exists(filename):
+            tr = load_or_map_from_filename(filename, mode)
+        else:
+            print('Warning: %r not found' %filename)
+    if load_dev:
+        filename = '%s/%s/%s-ud-dev.conllu' %(treebank_dir, tbname, tbid)
+        if os.path.exists(filename):
+            dev = load_or_map_from_filename(filename, mode)
+        else:
+            print('Warning: %r not found' %filename)
+    if load_test:
+        filename = '%s/%s/%s-ud-test.conllu' %(treebank_dir, tbname, tbid)
+        if os.path.exists(filename):
+            test = load_or_map_from_filename(filename, mode)
+        else:
+            print('Warning: %r not found' %filename)
+    return tr, dev, test
 
 def main():
     import random
