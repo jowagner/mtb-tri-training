@@ -359,6 +359,41 @@ def main():
 
         print('Teaching:')
 
+        new_datasets = []
+        for _ in range(opt_learners):
+            new_datasets.append(...)
+
+        for sentence in predictions:
+            kt_candidates = []   # knowledge transfer candidates: first element says how much the teachers disagree
+            for learner_index in range(opt_learners):
+                for teacher1_index in range(opt_learners-1):
+                    if teacher1_index == learner_index:
+                        continue
+                    for teacher2_index in range(teacher1_index+1, opt_learners):
+                        if teacher2_index == learner_index:
+                            continue
+                        # measure disagreement between teachers
+                        # + optionanlly test disagreement with learner
+                        # TODO
+                        kt_candidates((
+                            priority, random.random(),
+                            learner_index, teacher1_index, teacher2_index
+                        ))
+            kt_candidates.sort()
+            _, _, learner_index, teacher1_index, teacher2_index = kt_candidates[0]
+
+            # merge predictions of teacher 1 and 2
+            # TODO
+
+            # add new sentence to data set of learner
+            # TODO
+            new_datasets[learner_index].append(...)
+
+        for learner_index in range(opt_learners):
+            # write new labelled data to file
+            # TODO
+
+
         print('Training of new models:')
         for learner_rank in range(opt_learners):
             print(' * Learner %d, seed %r' %(learner_rank+1,
