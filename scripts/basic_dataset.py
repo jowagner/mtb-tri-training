@@ -124,6 +124,12 @@ class Dataset(collections.Sequence):
     def write_sentence(self, f_out, sentence):
         raise NotImplementedError
 
+    def get_number_of_items(self):
+        count = 0
+        for sentence in self:
+            count += len(sentence)
+        return count
+
 
 class SentenceCompleter:
 
@@ -210,6 +216,26 @@ class SentenceFilter:
         return False
 
 
+class Concat(Dataset):
+
+    def __init__(self, datasets):
+        self.datasets = datasets
+        self.sentences = []
+        for ds_index, dataset in enumerate(datasets):
+            for d_index in range(len(dataset)):
+                self.sentences.append((ds_index, d_index))
+
+    def __getitem__(self, index):
+        ds_index, d_index = self.sentences[index]
+        return self.datasets[ds_index][d_index]
+
+    def append(self, item):
+        raise ValueError('Cannot append to concatenation')
+
+    def load_or_map_file(self, *args):
+        raise ValueError('Cannot load data into concatenation')
+
+
 class Sample(Dataset):
 
     def __init__(self, dataset, rng, size = None, percentage = None,
@@ -241,8 +267,11 @@ class Sample(Dataset):
             sentence = self.sentence_modifier(sentence)
         return sentence
 
-    def append(self, sentence):
-        self.dataset.append(sentence)
+    def append(self, item):
+        raise ValueError('Cannot append to sample')
+
+    def load_or_map_file(self, *args):
+        raise ValueError('Cannot load data into sample')
 
     def get_counts(self):
         retval = len(self.dataset) * [0]
@@ -257,6 +286,24 @@ class Sample(Dataset):
                 self.sentences.append(d_index)
         self.shuffle(rng)
 
+    def set_remaining(self, rng):
+        '''
+        Make this dataset the subset not selected by the current sample.
+        '''
+        counts = self.get_counts()
+        self.sentences = []
+        for d_index, count in enumerate(counts):
+            if not count:
+                self.sentences.append(d_index)
+        self.shuffle(rng)
+
     def write_sentence(self, f_out, sentence):
         self.dataset.write_sentence(f_out, sentence)
+
+
+def load(dataset_id,
+    load_tr = True, load_dev = True, load_test = True,
+    mode = 'load'
+):
+    raise NotImplementedError
 
