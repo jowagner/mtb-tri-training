@@ -392,6 +392,14 @@ def main():
             )
             if learner_index < 0:
                 continue
+            # TODO: The above constraints are sentence-level
+            #       filters. We also need to apply similar
+            #       contraints per item and column, i.e.
+            #       optionally only accept items from the
+            #       merged prediction that sufficiently
+            #       disagree from the learner's prediction
+            #       (or are undefined, i.e. '_').
+
             # add new sentence to data set of learner
             new_datasets[learner_index].append(merged_prediction)
 
