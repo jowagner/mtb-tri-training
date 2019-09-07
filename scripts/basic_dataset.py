@@ -63,6 +63,14 @@ class Dataset(collections.Sequence):
     def __len__(self):
         return len(self.sentences)
 
+    def clone(self):
+        retval = Dataset()
+        # make new lists so that shuffling the clone
+        # does not affect self
+        retval.sentences = self.sentences[:]
+        retval.files = self.files[:]
+        return retval
+
     def append(self, sentence):
         self.sentences.append((-1, sentence))
 
@@ -239,6 +247,14 @@ class Concat(Dataset):
         ds_index, d_index = self.sentences[index]
         return self.datasets[ds_index][d_index]
 
+    def clone(self):
+        retval = Concat([])
+        # make new lists so that shuffling the clone
+        # does not affect self
+        retval.sentences = self.sentences[:]
+        retval.datasets = self.datasets[:]
+        return retval
+
     def append(self, item):
         raise ValueError('Cannot append to concatenation')
 
@@ -292,6 +308,18 @@ class Sample(Dataset):
         if self.sentence_modifier is not None:
             sentence = self.sentence_modifier(sentence)
         return sentence
+
+    def clone(self):
+        retval = Sample([], random)
+        # make new lists so that shuffling the clone
+        # or changing the subset with reset_sample(),
+        # set_counts() or set_remaining() does not
+        # affect self
+        retval.sentences = self.sentences[:]
+        retval.dataset = self.dataset
+        retval.sentence_modifier = self.sentence_modifier
+        retval.with_replacement  = self.with_replacement
+        return retval
 
     def append(self, item):
         raise ValueError('Cannot append to sample')
