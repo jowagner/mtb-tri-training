@@ -10,6 +10,7 @@
 
 import collections
 import hashlib
+import random
 import StringIO
 
 class Sentence(collections.Sequence):

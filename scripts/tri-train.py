@@ -155,6 +155,18 @@ Options:
                             (Default: Select epoch using dev+remaining and
                             use last tri-training iteration for final models.)
 
+    --max-selection-size  NUMBER
+                            If validation set for model selection exceeds
+                            NUMBER items subsample (without replacement)
+                            the set to approximately NUMBER items.
+                            Applied to both epoch and iteration selection.
+                            (Default: 50k)
+
+    --selection-attempts  NUMBER
+                            How hard to try to reach the requested selection
+                            size.
+                            (Default: 5)
+
     --mask-teacher-disagreement  NUMBER
                             When the 2 teachers disagree about a label if an
                             item, replace it with '_' (which finally is
@@ -213,6 +225,10 @@ def main():
     opt_learners = 3
     opt_last_k = 0
     opt_last_decay = 1.0
+    opt_epoch_selection = 'dev+remaining'
+    opt_iteration_selection = 'last'
+    opt_max_selection_size = '50k'
+    opt_selection_attempts = 5
 
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
@@ -279,6 +295,18 @@ def main():
             del sys.argv[1]
         elif option in ('--last-decay', '--decay'):
             opt_last_decay = float(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--epoch-selection':
+            opt_epoch_selection = sys.argv[1]
+            del sys.argv[1]
+        elif option == '--iteration-selection':
+            opt_iteration_selection = sys.argv[1]
+            del sys.argv[1]
+        elif option == '--max-selection-size':
+            opt_max_selection_size = sys.argv[1]
+            del sys.argv[1]
+        elif option == '--selection-attempts':
+            opt_selection_attempts = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--debug':
             opt_debug = True
@@ -366,7 +394,7 @@ def main():
         ))
         write_dataset(
             seed_set,
-            '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank+1))
+            '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank+1)
         )
         # before we can use the seed set, we may have to slice off 10%
         if opt_epoch_selection == '9010' or opt_iteration_selection == '9010':
@@ -377,7 +405,7 @@ def main():
                 '%s/seed-subset-90-%d.conllu' %(opt_workdir, learner_rank+1)
             )
             seed_set_10 = get_remaining(
-                seed_set_90,
+                seed_set_90, random,
                 write_file = \
                 '%s/seed-subset-10-%d.conllu' %(opt_workdir, learner_rank+1)
             )
@@ -393,6 +421,7 @@ def main():
         ]:
             selection_sets.append(get_model_selection_dataset(
                 selection_type, dev_sets, seed_set, seed_set_10,
+                opt_max_selection_size, opt_selection_attempts, random,
                 write_file = \
                 '%s/for-%s-selection-%d.conllu' %(opt_workdir, name, learner_rank+1)
             ))
@@ -481,32 +510,38 @@ def get_model_selection_dataset(
     size_limit = None, attempts = 5, rng = None,
     write_file = None
 ):
-    if selection_type = 'last':
+    if selection_type == 'last':
         return None
     if selection_type in ('dev', 'dev+remaining'):
-        dev_set = basic_datasets.Concat(dev_sets)
+        dev_set = basic_dataset.Concat(dev_sets)
     if selection_type in ('remaining', 'dev+remaining'):
-        remaining = get_remaining(seed_set)
+        remaining = get_remaining(seed_set, rng)
     if selection_type == 'dev':
         retval = dev_set
     if selection_type == 'remaining':
         retval = remaining
     if selection_type == 'dev+remaining':
-        retval = basic_datasets.Concat([dev_set, remaining])
+        print('dev_set', dev_set)
+        print('remaining', remaining)
+        retval = basic_dataset.Concat([dev_set, remaining])
     if selection_type == '9010':
         retval = seed_set_10
-    if size_limit and retval.get_number_of_items() > size_limit:
-        retval = get_subset(
-            retval, size_limit, rng, attempts, with_replacement = False,
-            prefer_smaller = True
-        )
+    if size_limit:
+        retval_size = retval.get_number_of_items()
+        size_limit = adjust_size(size_limit, retval_size)
+        if retval_size > size_limit:
+            retval = get_subset(
+                retval, size_limit, rng, attempts, with_replacement = False,
+                prefer_smaller = True
+            )
     if write_file:
         write_dataset(retval, write_file)
     return retval
 
-def get_remaining(dataset, write_file = None):
+def get_remaining(dataset, rng, write_file = None):
     ''' dataset must be a Sample instance '''
-    retval = dataset.clone().set_remaining()
+    retval = dataset.clone()
+    retval.set_remaining(rng)
     if write_file:
         write_dataset(retval, write_file)
     return retval
@@ -528,7 +563,7 @@ def get_subset(
             priority = 1
         candidates.append((priority, deviation, rng.random(), candidate))
     candidates.sort()
-    retval = candidates[-1]
+    retval = candidates[0][-1]
     if write_file:
         write_dataset(retval, write_file)
     return retval
