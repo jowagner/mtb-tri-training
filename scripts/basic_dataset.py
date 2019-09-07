@@ -252,6 +252,7 @@ class Concat(Dataset):
 class Sample(Dataset):
 
     def __init__(self, dataset, rng, size = None, percentage = None,
+        with_replacement = True,
         sentence_modifier = None
     ):
         if size and percentage:
@@ -260,15 +261,27 @@ class Sample(Dataset):
             size = int(0.5+percentage*len(dataset)/100.0)
         self.dataset = dataset
         self.sentence_modifier = sentence_modifier
+        self.with_replacement  = with_replacement
         self.reset_sample(rng, size)
 
     def reset_sample(self, rng, size = None):
         d_size = len(self.dataset)
         if size is None:
             size = d_size
+        if not self.with_replacement:
+            permutation = list(range(d_size))
+            rng.shuffle(permutation)
         self.sentences = []
         remaining = size
         while remaining:
+            if not self.with_replacement:
+                if remaining >= d_size:
+                    remaining -= d_size
+                else:
+                    permutation = permutation[:remaining]
+                    remaining = 0
+                self.sentences += permutation
+                continue
             d_index = rng.randrange(d_size)
             self.sentences.append(d_index)
             remaining -= 1
