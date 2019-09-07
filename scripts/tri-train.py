@@ -139,19 +139,41 @@ Options:
                             can be combined with --last-k
                             (default: 1.0 = use all data)
 
-    --iteration-selection   Use development data to select strongest model for
-                            each learner.
-                            (Default: Use model of the last tri-training
-                            interation for each learner.)
-
-    --epoch-selection  MODE  How to select the epoch for each model:
+    --epoch-selection  MODE
+    --iteration-selection  MODE
+                            How to select the epoch for each model and how to
+                            select the tri-training iteration for the final
+                            model:
                             dev  = use development data that is part of the
-                                   data set
+                                   data set (concatenation if multiple sets)
                             last = use last epoch
                             remaining = use labelled data not part of the
                                    seed data (due to sampling with
                                    replacement)
+                            dev+remaining = concatenation of dev and remaining
                             9010 = split seed data 90:10 into train and dev
+                            (Default: Select epoch using dev+remaining and
+                            use last tri-training iteration for final models.)
+
+    --mask-teacher-disagreement  NUMBER
+                            When the 2 teachers disagree about a label if an
+                            item, replace it with '_' (which finally is
+                            replaced with a random label) with probability
+                            NUMBER. Otherwise pick the prediction of one of
+                            the teachers at random.
+                            (Default: 1.0 = always replace with '_')
+
+    --mask-learner-agreement  NUMBER
+                            When the learner agrees with the teachers'
+                            joint prediction, reaplace it with '_' (which
+                            finally is replaced with a random label) with
+                            probability NUMBER. Otherwise reinforce
+                            existing knowledge.
+                            (Default: 0.0 = never replace with '_')
+
+    # TODO: Not clear how the following two options apply. Maybe they should
+    #       be short-hands for settings various other options (some of which
+    #       are not yet documented here).
 
     --per-item              Apply apply tri-training to individual items,
                             either select an item or not.
@@ -332,24 +354,48 @@ def main():
         )).hexdigest(), 16))
 
     seed_sets = []
+    epoch_selection_sets = []
+    iteration_selection_sets = []
     for learner_rank in range(opt_learners):
-        candidates = []
-        for _ in range(opt_seed_attempts):
-            n_sentences = int(0.5 + len(training_data) * opt_seed_size / tr_size)
-            candidate = basic_dataset.Sample(training_data, random, n_sentences)
-            size = candidate.get_number_of_items()
-            deviation = abs(size - opt_seed_size)
-            candidates.append((deviation, random.random(), candidate))
-        candidates.sort()
-        best_deviation, _, best_seed_set = candidates[0]
+        seed_set = get_subset(
+            training_data, opt_seed_size, random, opt_seed_attempts,
+            with_replacement = True
+        )
         print('Learner %d has seed data with %d items in %d sentences' %(
-            learner_rank+1, best_seed_set.get_number_of_items(), len(best_seed_set),
+            learner_rank+1, seed_set.get_number_of_items(), len(seed_set),
         ))
-        tr_data_filename = '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank+1)
-        f_out = open(tr_data_filename, 'w')
-        best_seed_set.save_to_file(f_out)
-        f_out.close()
-        seed_sets.append(best_seed_set)
+        write_dataset(
+            seed_set,
+            '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank+1))
+        )
+        # before we can use the seed set, we may have to slice off 10%
+        if opt_epoch_selection == '9010' or opt_iteration_selection == '9010':
+            seed_set_90 = get_subset(
+                seed_set, int(0.5+0.90*opt_seed_size), random, opt_seed_attempts,
+                with_replacement = False,
+                write_file = \
+                '%s/seed-subset-90-%d.conllu' %(opt_workdir, learner_rank+1)
+            )
+            seed_set_10 = get_remaining(
+                seed_set_90,
+                write_file = \
+                '%s/seed-subset-10-%d.conllu' %(opt_workdir, learner_rank+1)
+            )
+            seed_sets.append(seed_set_90)
+        else:
+            seed_set_90 = None
+            seed_set_10 = None
+            seed_sets.append(seed_set)
+        # create datasets for epoch and iteration selection
+        for selection_sets, selection_type, name in [
+            (epoch_selection_sets,     opt_epoch_selection,     'epoch'),
+            (iteration_selection_sets, opt_iteration_selection, 'iteration'),
+        ]:
+            selection_sets.append(get_model_selection_dataset(
+                selection_type, dev_sets, seed_set, seed_set_10,
+                write_file = \
+                '%s/for-%s-selection-%d.conllu' %(opt_workdir, name, learner_rank+1)
+            ))
 
     print('\n== Training of Seed Models ==\n')
 
@@ -399,6 +445,10 @@ def main():
             #       merged prediction that sufficiently
             #       disagree from the learner's prediction
             #       (or are undefined, i.e. '_').
+            #       Note that masking the agreements with
+            #       the learner's prediction with '_' is
+            #       likely to result in training data with
+            #       mostly masked predictions.
 
             # add new sentence to data set of learner
             new_datasets[learner_index].append(merged_prediction)
@@ -411,14 +461,82 @@ def main():
             new_datasets[learner_index].save_to_file(f_out)
             f_out.close()
 
+            # TODO: compile training set for this iteration and learner
+            #       according to --last-k, --decay and --oversample
 
         print('Training of new models:')
         for learner_rank in range(opt_learners):
             print(' * Learner %d, seed %r' %(learner_rank+1,
-                get_model_seed(opt_model_init_type, opt_init_seed, learner_rank, training_round+1)))
+                get_model_seed(
+                    opt_model_init_type, opt_init_seed, learner_rank,
+                    training_round+1
+                )
+            ))
 
     print('\n== Final Model ==\n')
     # TODO
+
+def get_model_selection_dataset(
+    selection_type, dev_sets, seed_set, seed_set_10,
+    size_limit = None, attempts = 5, rng = None,
+    write_file = None
+):
+    if selection_type = 'last':
+        return None
+    if selection_type in ('dev', 'dev+remaining'):
+        dev_set = basic_datasets.Concat(dev_sets)
+    if selection_type in ('remaining', 'dev+remaining'):
+        remaining = get_remaining(seed_set)
+    if selection_type == 'dev':
+        retval = dev_set
+    if selection_type == 'remaining':
+        retval = remaining
+    if selection_type == 'dev+remaining':
+        retval = basic_datasets.Concat([dev_set, remaining])
+    if selection_type == '9010':
+        retval = seed_set_10
+    if size_limit and retval.get_number_of_items() > size_limit:
+        retval = get_subset(
+            retval, size_limit, rng, attempts, with_replacement = False,
+            prefer_smaller = True
+        )
+    if write_file:
+        write_dataset(retval, write_file)
+    return retval
+
+def get_remaining(dataset, write_file = None):
+    ''' dataset must be a Sample instance '''
+    retval = dataset.clone().set_remaining()
+    if write_file:
+        write_dataset(retval, write_file)
+    return retval
+
+def get_subset(
+    dataset, target_size, rng, attempts = 5, with_replacement = True,
+    write_file = None, prefer_smaller = False
+):
+    candidates = []
+    ds_size = dataset.get_number_of_items()
+    for _ in range(attempts):
+        n_sentences = int(0.5 + len(dataset) * target_size / ds_size)
+        candidate = basic_dataset.Sample(dataset, rng, n_sentences)
+        size = candidate.get_number_of_items()
+        deviation = abs(size - target_size)
+        if size <= target_size or not prefer_smaller:
+            priority = 0
+        else:
+            priority = 1
+        candidates.append((priority, deviation, rng.random(), candidate))
+    candidates.sort()
+    retval = candidates[-1]
+    if write_file:
+        write_dataset(retval, write_file)
+    return retval
+
+def write_dataset(dataset, filename):
+    f_out = open(filename, 'w')
+    dataset.save_to_file(f_out)
+    f_out.close()
 
 def get_disagreement(prediction1, prediction2, column_weights):
     raise NotImplementedError
