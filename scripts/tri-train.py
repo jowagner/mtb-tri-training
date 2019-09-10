@@ -349,7 +349,7 @@ def main():
         raise ValueError('last_decay must not be zero or negative')
 
     if not opt_model_modules:
-        opt_model_modules.append('uuparser_model')
+        opt_model_modules.append('udpipe_future')
 
     dataset_module = importlib.import_module(opt_dataset_module)
 
@@ -451,7 +451,10 @@ def main():
 
     print('\n== Training of Seed Models ==\n')
 
-    model_module = importlib.import_module(opt_model_module)
+    models = []
+    if not opt_manually_train:
+        for name in opt_model_modules:
+            models.append(importlib.import_module(name))
 
     manual_training_needed = []
     for learner_rank in range(opt_learners):
@@ -484,6 +487,8 @@ def main():
             # for all leaners have been printed
             manual_training_needed.append(learner_rank+1)
         else:
+            # choose model for learner
+            model_module = models[learner_rank % len(models)]
             # ask model module to train the model
             model_module.train(seed_set.filename, model_init_seed, model_path)
 
