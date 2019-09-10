@@ -241,6 +241,8 @@ class Concat(Dataset):
         self.datasets = datasets
         self.sentences = []
         for ds_index, dataset in enumerate(datasets):
+            if dataset is None:
+                continue
             for d_index in range(len(dataset)):
                 self.sentences.append((ds_index, d_index))
 

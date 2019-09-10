@@ -27,8 +27,9 @@ def print_usage():
     print("""
 Options:
 
-    --test-type  STRING     whether to test on the dev or test section
-                            (default: dev)
+    --final-test            Also report results for the test sets of each
+                            data set.
+                            (Default: only report development set results)
 
     --workdir  DIR          Path to working directory
                             (default: . = current directory)
@@ -214,7 +215,7 @@ Options:
 def main():
     opt_help  = False
     opt_verbose = False
-    test_type = 'dev'
+    opt_final_test = False
     opt_workdir = '.'
     opt_debug = False
     opt_init_seed  = None
@@ -248,8 +249,8 @@ def main():
         if option in ('--help', '-h'):
             opt_help = True
             break
-        elif option == '--test-type':
-            test_type = sys.argv[1]
+        elif option == '--final-test':
+            opt_final_test = True
             del sys.argv[1]
         elif option == '--workdir':
             opt_workdir = sys.argv[1]
@@ -356,7 +357,9 @@ def main():
     dev_sets = []
     test_sets = []
     for dataset_id in opt_labelled_ids:
-        tr, dev, test = dataset_module.load(dataset_id)
+        tr, dev, test = dataset_module.load(
+            dataset_id, load_test = opt_final_test
+        )
         #print('Dataset %r: %r, %r, %r' %(dataset_id, tr, dev, test))
         training_data_sets.append(tr)
         dev_sets.append(dev)
@@ -364,12 +367,16 @@ def main():
     training_data = basic_dataset.Concat(training_data_sets)
 
     unlabelled_data_sets = []
+    unl_dev_sets = []
+    unl_test_sets = []
     for dataset_id in opt_unlabelled_ids:
-        tr, _, _ = dataset_module.load(
-            dataset_id, load_dev = False, load_test = False
+        tr, dev, test = dataset_module.load(
+            dataset_id, load_test = opt_final_test
         )
         #print('Dataset %r: %r' %(dataset_id, tr))
         unlabelled_data_sets.append(tr)
+        unl_dev_sets.append(dev)
+        unl_test_sets.append(test)
     unlabelled_data = basic_dataset.Concat(unlabelled_data_sets)
 
     training_data_size = training_data.get_number_of_items()
@@ -383,7 +390,7 @@ def main():
         tr_size, len(training_data)
     ))
     print('opt_seed_size', opt_seed_size)
-    print('labelled training data with %d items in %d sentences' %(
+    print('unlabelled training data with %d items in %d sentences' %(
         unlabelled_data.get_number_of_items(),
         len(unlabelled_data)
     ))
