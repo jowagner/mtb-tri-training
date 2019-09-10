@@ -43,6 +43,13 @@ Options:
     --init-seed  STRING     initialise random number generator with STRING;
                             (default or empty string: use system seed)
 
+    --manually-train        Quit this script each time models need to be
+                            trained.
+                            Tri-training can be continued by re-running this
+                            script with the same initialisation seed.
+                            (Default: Ask the model module to train each
+                            model.)
+
     --model-init  TYPE      derive the initialisation seed for each model to
                             be trained from
                             the output of this script's random number
@@ -195,6 +202,8 @@ Options:
                             features of items, e.g. in depdendency parsing
                             make independent decisions for heads and labels.
 
+    --verbose               More detailed log output
+
     --continue              Skip steps finished in a previous run
                             (default: abort if intermediate output files are
                             found)
@@ -204,10 +213,12 @@ Options:
 
 def main():
     opt_help  = False
+    opt_verbose = False
     test_type = 'dev'
     opt_workdir = '.'
     opt_debug = False
     opt_init_seed  = None
+    opt_manually_train = False
     opt_labelled_ids = []
     opt_unlabelled_ids = []
     opt_dataset_module = 'conllu_dataset'
@@ -229,6 +240,7 @@ def main():
     opt_iteration_selection = 'last'
     opt_max_selection_size = '50k'
     opt_selection_attempts = 5
+    opt_continue = False
 
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
@@ -245,6 +257,8 @@ def main():
         elif option == '--init-seed':
             opt_init_seed = sys.argv[1]
             del sys.argv[1]
+        elif option == '--manually-train':
+            opt_manually_train = True
         elif option in ('--model-init', '--model-init-type'):
             opt_model_init_type = sys.argv[1]
             del sys.argv[1]
@@ -308,6 +322,8 @@ def main():
         elif option == '--selection-attempts':
             opt_selection_attempts = int(sys.argv[1])
             del sys.argv[1]
+        elif option == '--continue':
+            opt_continue = True
         elif option == '--debug':
             opt_debug = True
         else:
@@ -428,14 +444,47 @@ def main():
 
     print('\n== Training of Seed Models ==\n')
 
+    manual_training_needed = []
     for learner_rank in range(opt_learners):
         print('Learner:', learner_rank+1)
-        model_init_seed = get_model_seed(opt_model_init_type, opt_init_seed, learner_rank, 0)
+        model_init_seed = get_model_seed(
+            opt_model_init_type, opt_init_seed, learner_rank, 0
+        )
         print('Model initialisation seed:', model_init_seed)
-        data_fingerprint = seed_sets[learner_rank].hexdigest()
-        print('Seed data fingerprint:', data_fingerprint)
+        seed_set = seed_sets[learner_rank]
+        epoch_selection_set = epoch_selection_sets[learner_rank]
+        model_fingerprint = get_model_fingerprint(
+            model_init_seed, seed_set, epoch_selection_set,
+            verbose = opt_verbose
+        )
+        if opt_verbose:
+            print('Model fingerprint (shortened):', model_fingerprint[:40])
+        model_path = '%s/model-00-%d-%s' %(
+                opt_workdir, learner_rank, model_fingerprint[:20]
+        )
+        print('Model path:', model_path)
+        if os.path.exists(model_path):
+            if not opt_continue:
+                raise ValueError(
+                   'Conflicting model %r found. Use option'
+                   ' --continue to re-use it.' %model_path
+                )
+            print('Re-using existing model')
+        elif opt_manually_train:
+            # we will ask the user to train the models when details
+            # for all leaners have been printed
+            manual_training_needed.append(learner_rank+1)
+        else:
+            # ask model module to train the model
+            raise NotImplementedError
 
-        # TODO: check whether model is ready and train it if not
+    if manual_training_needed:
+        print('\n*** Manual training requested. ***\n')
+        print(
+            'Please train models for learner(s) %r using the details'
+            ' above and the new files provided.\n' %manual_training_needed
+        )
+        sys.exit(0)
 
     for training_round in range(opt_iterations):
         print('\n== Tri-training Iteration %d of %d ==\n' %(
@@ -505,6 +554,33 @@ def main():
     print('\n== Final Model ==\n')
     # TODO
 
+def hex2base62(h):
+    s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    i = int(h, 16)
+    if not i:
+        return '0'
+    digits = []
+    while i:
+        d = i % 62
+        digits.append(s[d])
+        i = int(i/62)
+    return ''.join(digits)
+
+def get_model_fingerprint(model_init_seed, seed_set, epoch_selection_set = None, verbose = False):
+    data_fingerprint = seed_set.hexdigest()
+    if verbose:
+        print('Seed data fingerprint (shortened):', data_fingerprint[:40])
+    if epoch_selection_set:
+        epoch_selection_fingerprint = epoch_selection_set.hexdigest()
+    else:
+        epoch_selection_fingerprint = 'N/A'
+    if verbose:
+        print('Epoch selection fingerprint (shortened):', epoch_selection_fingerprint[:40])
+    model_fingerprint = hashlib.sha512('%s:%s:%s' %(
+        model_init_seed, data_fingerprint, epoch_selection_fingerprint
+    )).hexdigest()
+    return hex2base62(model_fingerprint)
+
 def get_model_selection_dataset(
     selection_type, dev_sets, seed_set, seed_set_10,
     size_limit = None, attempts = 5, rng = None,
@@ -521,8 +597,6 @@ def get_model_selection_dataset(
     if selection_type == 'remaining':
         retval = remaining
     if selection_type == 'dev+remaining':
-        print('dev_set', dev_set)
-        print('remaining', remaining)
         retval = basic_dataset.Concat([dev_set, remaining])
     if selection_type == '9010':
         retval = seed_set_10
