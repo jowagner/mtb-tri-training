@@ -76,7 +76,7 @@ Options:
                             combine with --help to see module-specific options;
                             specify 3 times to mix different models in
                             tri-training
-                            (default: uuparser_model)
+                            (default: udpipe_future)
 
     --seed-size  NUMBER     How many tokens to sample (with replacement) from
                             the labelled data for each learner.
@@ -451,6 +451,8 @@ def main():
 
     print('\n== Training of Seed Models ==\n')
 
+    model_module = importlib.import_module(opt_model_module)
+
     manual_training_needed = []
     for learner_rank in range(opt_learners):
         print('Learner:', learner_rank+1)
@@ -483,7 +485,7 @@ def main():
             manual_training_needed.append(learner_rank+1)
         else:
             # ask model module to train the model
-            raise NotImplementedError
+            model_module.train(seed_set.filename, model_init_seed, model_path)
 
     if manual_training_needed:
         print('\n*** Manual training requested. ***\n')
@@ -652,6 +654,7 @@ def get_subset(
 def write_dataset(dataset, filename):
     f_out = open(filename, 'w')
     dataset.save_to_file(f_out)
+    dataset.filename = filename
     f_out.close()
 
 def get_disagreement(prediction1, prediction2, column_weights):
