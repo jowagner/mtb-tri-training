@@ -594,7 +594,7 @@ def main():
                 manual_prediction_needed.append(learner_rank+1)
             else:
                 # choose model for learner
-                model_module = model_modules[learner_rank % len(models)]
+                model_module = model_modules[learner_rank % len(model_modules)]
                 # ask model module to predict the model
                 model_module.predict(model_path, subset_path, prediction_path)
             predictions.append((prediction_fingerprint, prediction_path))
