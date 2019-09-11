@@ -503,6 +503,12 @@ def main():
         )
         sys.exit(0)
 
+    target_columns = dataset_module.get_target_columns()
+    drop_all_targets = basic_dataset.SentenceDropout(
+        rng = random.Random(0),
+        target_columns = target_columns,
+        dropout_probabilities = len(target_columns) * [1.0]
+    )
     previously_picked = {}
     for training_round in range(opt_iterations):
         print('\n== Tri-training Iteration %d of %d ==\n' %(
@@ -518,6 +524,9 @@ def main():
             with_replacement = True,
             diversify_attempts = opt_diversify_attempts,
             disprefer = previously_picked,
+            sentence_modifier = drop_all_targets,
+            write_file = \
+            '%s/subset-%02d.conllu' %(opt_workdir, training_round+1)
         )
         for d_index in unlabelled_subset.indices():
             try:
@@ -651,6 +660,7 @@ def get_remaining(dataset, rng, write_file = None):
 def get_subset(
     dataset, target_size, rng, attempts = 5, with_replacement = True,
     write_file = None, prefer_smaller = False,
+    sentence_modifier = None,
     diversify_attempts = 1,
     disprefer = {},
 ):
@@ -660,6 +670,7 @@ def get_subset(
         n_sentences = int(0.5 + len(dataset) * target_size / ds_size)
         candidate = basic_dataset.Sample(
             dataset, rng, n_sentences,
+            sentence_modifier = sentence_modifier,
             diversify_attempts = diversify_attempts,
             disprefer = disprefer
         )

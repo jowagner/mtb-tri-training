@@ -446,3 +446,6 @@ def load(dataset_id,
 def new_empty_set():
     raise NotImplementedError
 
+def get_target_columns():
+    raise NotImplementedError
+
