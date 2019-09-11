@@ -50,7 +50,10 @@ python ${PARSER_DIR}/ud_parser.py \
     --min_epoch_batches 300       \
     --epochs "4:1e-3,2:1e-4"      \
     --logdir ./                   \
-    ${FAKE_TBID}
+    ${FAKE_TBID}                  \
+    2> stderr.txt     \
+    > stdout.txt
+
 
 touch training.end
 
