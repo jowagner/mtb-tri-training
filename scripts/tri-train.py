@@ -490,7 +490,10 @@ def main():
             # choose model for learner
             model_module = models[learner_rank % len(models)]
             # ask model module to train the model
-            model_module.train(seed_set.filename, model_init_seed, model_path)
+            model_module.train(
+                seed_set.filename, model_init_seed, model_path,
+                epoch_selection_set
+            )
 
     if manual_training_needed:
         print('\n*** Manual training requested. ***\n')
@@ -500,6 +503,7 @@ def main():
         )
         sys.exit(0)
 
+    previously_picked = {}
     for training_round in range(opt_iterations):
         print('\n== Tri-training Iteration %d of %d ==\n' %(
             training_round+1, opt_iterations
@@ -509,7 +513,17 @@ def main():
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
         print('Selecting subset of unlabelled data:')
-        picked = {}
+        unlabelled_subset = get_subset(
+            unlabelled_data, opt_subset_size, random, opt_subset_attempts,
+            with_replacement = True,
+            diversify_attempts = opt_diversify_attempts,
+            disprefer = previously_picked,
+        )
+        for d_index in unlabelled_subset.indices():
+            try:
+                previously_picked[d_index] += 1
+            except KeyError:
+                previously_picked[d_index] = 1
 
         print('Making predictions:')
 
@@ -636,13 +650,19 @@ def get_remaining(dataset, rng, write_file = None):
 
 def get_subset(
     dataset, target_size, rng, attempts = 5, with_replacement = True,
-    write_file = None, prefer_smaller = False
+    write_file = None, prefer_smaller = False,
+    diversify_attempts = 1,
+    disprefer = {},
 ):
     candidates = []
     ds_size = dataset.get_number_of_items()
     for _ in range(attempts):
         n_sentences = int(0.5 + len(dataset) * target_size / ds_size)
-        candidate = basic_dataset.Sample(dataset, rng, n_sentences)
+        candidate = basic_dataset.Sample(
+            dataset, rng, n_sentences,
+            diversify_attempts = diversify_attempts,
+            disprefer = disprefer
+        )
         size = candidate.get_number_of_items()
         deviation = abs(size - target_size)
         if size <= target_size or not prefer_smaller:

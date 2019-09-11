@@ -81,6 +81,10 @@ class ConlluSentence(basic_dataset.Sentence):
     def unset_label(self, index, column):
         self[index][column] = '_'
 
+    def get_vector_representation(self):
+        # TODO: return 4096 dimensional vector
+        # counting each n-gram hash value
+        raise NotImplementedError
 
 class ConlluDataset(basic_dataset.Dataset):
 

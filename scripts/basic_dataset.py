@@ -42,6 +42,9 @@ class Sentence(collections.Sequence):
     def unset_label(self, index, column):
         raise NotImplementedError
 
+    def get_vector_representation(self):
+        raise NotImplementedError
+
 
 class Dataset(collections.Sequence):
 
@@ -272,38 +275,107 @@ class Sample(Dataset):
 
     def __init__(self, dataset, rng, size = None, percentage = None,
         with_replacement = True,
-        sentence_modifier = None
+        sentence_modifier = None,
+        diversify_attempts = 1,
+        disprefer = {}
     ):
         if size and percentage:
             raise ValueError('Must not specify both size and percentage.')
         if percentage:
             size = int(0.5+percentage*len(dataset)/100.0)
         self.dataset = dataset
+        self.is_vectorised = False
         self.sentence_modifier = sentence_modifier
         self.with_replacement  = with_replacement
-        self.reset_sample(rng, size)
+        self.reset_sample(rng, size, diversify_attempts, disprefer)
 
-    def reset_sample(self, rng, size = None):
+
+    def _get_preferred_d_indices(self, d_size, size, disprefer):
+        if size >= d_size or not disprefer:
+            # use all data
+            return list(range(d_size))
+        # stratify data according to
+        # how strongly items are dispreferred
+        level2indices = {}
+        max_level = 0
+        for d_index in range(d_size):
+            try:
+                level = disprefer[d_index]
+            except KeyError:
+                level = 0
+            if level not in level2indices:
+                level2indices[level] = []
+            level2indices[level].append(d_index)
+            if level > max_level:
+                max_level = level
+        # select as much data as needed
+        # starting with the lowest levels
+        retval = []
+        level = 0
+        while len(retval) < size:
+            assert level <= max_level, 'Missing some data after stratification.'
+            try:
+                indices = level2indices[level]
+            except KeyError:
+                indices = []
+            retval += indices
+            level += 1
+        return retval
+
+    def reset_sample(
+        self, rng, size = None,
+        diversify_attempts = 1,
+        disprefer = {}
+    ):
+        if self.with_replacement and disprefer:
+            # not clear how this should be implemented,
+            # e.g. with what probability dispreferred
+            # items should be picked
+            raise NotImplementedError
         d_size = len(self.dataset)
         if size is None:
             size = d_size
         if not self.with_replacement:
-            permutation = list(range(d_size))
+            permutation = self._get_preferred_d_indices(
+                d_size, size, disprefer
+            )
+            p_size = len(permutation)
             rng.shuffle(permutation)
         self.sentences = []
         remaining = size
         while remaining:
-            if not self.with_replacement:
-                if remaining >= d_size:
-                    remaining -= d_size
+            candidates = []
+            for attempt in range(diversify_attempts):
+                if self.with_replacement:
+                    d_index = rng.randrange(d_size)
                 else:
-                    permutation = permutation[:remaining]
-                    remaining = 0
-                self.sentences += permutation
-                continue
-            d_index = rng.randrange(d_size)
+                    d_index = permutation[(size-remaining) % p_size]
+                if diversify_attempts == 1 or not self.sentences:
+                    # no choice
+                    priority = 0
+                else:
+                    priority = -self._nearest_neighbour_distance(d_index)
+                candidates.append((priority, attempt, d_index))
+            candidates.sort()
+            d_index = candidates[0][-1]
             self.sentences.append(d_index)
             remaining -= 1
+
+    def _nearest_neighbour_distance(self, d_index):
+        if not self.is_vectorised:
+            self._vectorise()
+        nn_distance = self._vector_distance(self.sentence[0], d_index)
+        for candidate_index in self.sentences[1:]:
+            distance = self._vector_distance(candidate_index, d_index)
+            if distance < nn_distance:
+                nn_distance = distance
+        return nn_distance
+
+    def _vectorise(self):
+        self.vectors = []
+        for d_index, sentence in enumerate(self.dataset):
+            self.vectors.append(sentence.get_vector_representation())
+        self.is_vectorised = True
 
     def __getitem__(self, index):
         d_index = self.sentences[index]
@@ -311,6 +383,9 @@ class Sample(Dataset):
         if self.sentence_modifier is not None:
             sentence = self.sentence_modifier(sentence)
         return sentence
+
+    def indices(self):
+        return self.sentences
 
     def clone(self):
         retval = Sample([], random)
@@ -320,6 +395,9 @@ class Sample(Dataset):
         # affect self
         retval.sentences = self.sentences[:]
         retval.dataset = self.dataset
+        retval.is_vectorised = self.is_vectorised
+        if self.is_vectorised:
+            retval.vectors = self.vectors
         retval.sentence_modifier = self.sentence_modifier
         retval.with_replacement  = self.with_replacement
         return retval

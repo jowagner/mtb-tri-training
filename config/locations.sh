@@ -17,7 +17,7 @@ SIMPLEHOST=`echo ${HOSTNAME} | cut -c-2 | tr '23456789' '11111111'`
 SETTING=${USER}@${SIMPLEHOST}
 
 case "${SETTING}" in
-"jwagner@e5")
+"jwagner@li")
     UD_TREEBANK_DIR=/home/jwagner/Documents/research/parsing/tri-training-2019/ud-treebanks-v2.3
     UDPIPE_FUTURE_DIR=${HOME}/bert/UDPipe-Future
     ;;
