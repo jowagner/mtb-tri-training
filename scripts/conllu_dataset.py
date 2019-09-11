@@ -199,6 +199,10 @@ def new_empty_set():
 def get_target_columns():
     return [2,3,4,5,6,7,8]
 
+def get_filename_extension():
+    ''' recommended extension for output files '''
+    return '.conllu'
+
 def main():
     import random
     import sys

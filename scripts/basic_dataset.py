@@ -449,3 +449,7 @@ def new_empty_set():
 def get_target_columns():
     raise NotImplementedError
 
+def get_filename_extension():
+    ''' recommended extension for output files '''
+    return '.data'
+

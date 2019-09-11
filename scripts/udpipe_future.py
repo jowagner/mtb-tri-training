@@ -24,6 +24,17 @@ def train(dataset_filename, seed, model_dir, epoch_selection_dataset = None):
     sys.stdout.flush()
     subprocess.call(command)
 
+def predict(model_path, input_path, prediction_output_path):
+    command = []
+    command.append('./udpipe_future-predict.sh')
+    command.append(model_path)
+    command.append(input_path)
+    command.append(prediction_output_path)
+    print('Running', command)
+    sys.stderr.flush()
+    sys.stdout.flush()
+    subprocess.call(command)
+
 def main():
     raise NotImplementedError
 

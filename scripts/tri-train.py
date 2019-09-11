@@ -46,10 +46,30 @@ Options:
 
     --manually-train        Quit this script each time models need to be
                             trained.
-                            Tri-training can be continued by re-running this
-                            script with the same initialisation seed.
+                            Tri-training can be continued after manually
+                            creating the model files by re-running this
+                            script with the same initialisation seed and
+                            using the option --continue.
                             (Default: Ask the model module to train each
                             model.)
+
+    --manually-predict      Quit this script each time predictions need to
+                            be made, i.e. before running the predictor.
+                            Tri-training can be continued after manually
+                            creating the prediction file(s) by re-running
+                            this script with the same initialisation seed
+                            and using the option --continue.
+                            (Default: Ask the model module to make
+                            predictions.)
+
+    --quit-after-prediction  Quit this script after all predictions for a
+                            tri-training iteration have been made. After
+                            inspecting and/or modifying the predictions,
+                            tri-training can be continued by re-running this
+                            script with the same initialisation seed and
+                            using the option --continue.
+                            (Default: Proceed to knowledge transfer between
+                            learners without further ado.)
 
     --model-init  TYPE      derive the initialisation seed for each model to
                             be trained from
@@ -220,6 +240,8 @@ def main():
     opt_debug = False
     opt_init_seed  = None
     opt_manually_train = False
+    opt_manually_predict = False
+    opt_quit_after_prediction = False
     opt_labelled_ids = []
     opt_unlabelled_ids = []
     opt_dataset_module = 'conllu_dataset'
@@ -245,6 +267,7 @@ def main():
 
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
+        option = option.replace('_', '-')
         del sys.argv[1]
         if option in ('--help', '-h'):
             opt_help = True
@@ -260,6 +283,10 @@ def main():
             del sys.argv[1]
         elif option == '--manually-train':
             opt_manually_train = True
+        elif option == '--manually-predict':
+            opt_manually_predict = True
+        elif option == '--quit-after-prediction':
+            opt_quit_after_prediction = True
         elif option in ('--model-init', '--model-init-type'):
             opt_model_init_type = sys.argv[1]
             del sys.argv[1]
@@ -451,12 +478,13 @@ def main():
 
     print('\n== Training of Seed Models ==\n')
 
-    models = []
+    model_modules = []
     if not opt_manually_train:
         for name in opt_model_modules:
-            models.append(importlib.import_module(name))
+            model_modules.append(importlib.import_module(name))
 
     manual_training_needed = []
+    models = []
     for learner_rank in range(opt_learners):
         print('Learner:', learner_rank+1)
         model_init_seed = get_model_seed(
@@ -488,12 +516,13 @@ def main():
             manual_training_needed.append(learner_rank+1)
         else:
             # choose model for learner
-            model_module = models[learner_rank % len(models)]
+            model_module = model_modules[learner_rank % len(model_modules)]
             # ask model module to train the model
             model_module.train(
                 seed_set.filename, model_init_seed, model_path,
                 epoch_selection_set
             )
+        models.append((model_fingerprint, model_path))
 
     if manual_training_needed:
         print('\n*** Manual training requested. ***\n')
@@ -519,14 +548,14 @@ def main():
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
         print('Selecting subset of unlabelled data:')
+        subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round+1)
         unlabelled_subset = get_subset(
             unlabelled_data, opt_subset_size, random, opt_subset_attempts,
             with_replacement = True,
             diversify_attempts = opt_diversify_attempts,
             disprefer = previously_picked,
             sentence_modifier = drop_all_targets,
-            write_file = \
-            '%s/subset-%02d.conllu' %(opt_workdir, training_round+1)
+            write_file = subset_path
         )
         for d_index in unlabelled_subset.indices():
             try:
@@ -536,7 +565,57 @@ def main():
 
         print('Making predictions:')
 
-        # TODO: call parser
+        manual_prediction_needed = []
+        predictions = []
+        filename_extension = dataset_module.get_filename_extension()
+        for learner_rank in range(opt_learners):
+            print('Learner:', learner_rank+1)
+            model_fingerprint, model_path = models[learner_rank]
+            prediction_fingerprint = get_prediction_fingerprint(
+                 model_fingerprint, unlabelled_subset
+            )
+            if opt_verbose:
+                print('Prediction input and model fingerprint (shortened):', prediction_fingerprint[:40])
+            prediction_path = '%s/prediction-%02d-%d-%s%s' %(
+                    opt_workdir, training_round+1, learner_rank+1,
+                    prediction_fingerprint[:20], filename_extension
+            )
+            print('Prediction output path:', prediction_path)
+            if os.path.exists(prediction_path):
+                if not opt_continue:
+                    raise ValueError(
+                       'Conflicting prediction %r found. Use option'
+                       ' --continue to re-use it.' %prediction_path
+                    )
+                print('Re-using existing prediction')
+            elif opt_manually_predict:
+                # we will ask the user to predict the models when details
+                # for all leaners have been printed
+                manual_prediction_needed.append(learner_rank+1)
+            else:
+                # choose model for learner
+                model_module = model_modules[learner_rank % len(models)]
+                # ask model module to predict the model
+                model_module.predict(model_path, subset_path, prediction_path)
+            predictions.append((prediction_fingerprint, prediction_path))
+
+        if manual_prediction_needed:
+            print('\n*** Manual prediction requested. ***\n')
+            print(
+                'Please make predictions for learner(s) %r using the details'
+                ' above and the new files provided.\n' %manual_prediction_needed
+            )
+            sys.exit(0)
+
+        if opt_quit_after_prediction:
+            print('\n*** Manual intervention requested. ***\n')
+            print(
+                'The predictions are ready. As --quit-after-predictions was'
+                ' specified, you can now inspect and/or modify the predictions'
+                ' and then continue tri-training by re-running this script'
+                ' with the same settings and --continue.'
+            )
+            sys.exit(0)
 
         print('Teaching:')
 
@@ -602,6 +681,15 @@ def hex2base62(h):
         digits.append(s[d])
         i = int(i/62)
     return ''.join(digits)
+
+def get_prediction_fingerprint(model_fingerprint, unlabelled_subset, verbose = False):
+    data_fingerprint = unlabelled_subset.hexdigest()
+    if verbose:
+        print('Prediction input data fingerprint (shortened):', data_fingerprint[:40])
+    fingerprint = hashlib.sha512('%s:%s' %(
+        model_fingerprint, data_fingerprint
+    )).hexdigest()
+    return hex2base62(fingerprint)
 
 def get_model_fingerprint(model_init_seed, seed_set, epoch_selection_set = None, verbose = False):
     data_fingerprint = seed_set.hexdigest()
