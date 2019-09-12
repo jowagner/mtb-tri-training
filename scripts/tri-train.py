@@ -505,6 +505,8 @@ def main():
                 opt_workdir, learner_rank, model_fingerprint[:20]
         )
         print('Model path:', model_path)
+        # choose model for learner
+        model_module = model_modules[learner_index % len(model_modules)]
         if os.path.exists(model_path):
             if not opt_continue:
                 raise ValueError(
@@ -517,8 +519,6 @@ def main():
             # for all leaners have been printed
             manual_training_needed.append(learner_rank)
         else:
-            # choose model for learner
-            model_module = model_modules[learner_index % len(model_modules)]
             # ask model module to train the model
             model_module.train(
                 seed_set.filename, model_init_seed, model_path,
@@ -624,6 +624,9 @@ def main():
 
         print('Teaching:')
 
+        # TODO: provide options to control column weights;
+        # for now, any difference triggers a disagreement
+        column_weights = len(target_columns) * [1.0]
         new_datasets = []
         prediction_sets = []
         for learner_index in range(opt_learners):
@@ -633,15 +636,18 @@ def main():
                 predictions[learner_index][1]
             ))
         for subset_index in range(len(unlabelled_subset)):
+            print('Subset item', subset_index+1)
             sentence_predictions = []
             for learner_index in range(opt_learners):
                 sentence_predictions.append(predictions[learner_index])
             learner_index, merged_prediction = knowledge_transfer(
-                s_predictions, column_weights, opt_learners,
-                opt_max_teacher_disagreement_fraction,
-                opt_min_teacher_agreements,
-                opt_learner_must_disagree,
-                opt_min_learner_disagreement,
+                sentence_predictions,
+                target_columns, column_weights, opt_learners,
+                #opt_max_teacher_disagreement_fraction,
+                #opt_min_teacher_agreements,
+                #opt_learner_must_disagree,
+                #opt_min_learner_disagreement,
+                verbose = True,
             )
             if learner_index < 0:
                 continue
@@ -671,6 +677,7 @@ def main():
 
             # TODO: compile training set for this iteration and learner
             #       according to --last-k, --decay and --oversample
+            #       and with blank labels replaced with random labels
 
         print('Training of new models:')
         for learner_index in range(opt_learners):
@@ -796,24 +803,61 @@ def write_dataset(dataset, filename):
     dataset.filename = filename
     f_out.close()
 
-def get_disagreement(prediction1, prediction2, column_weights):
-    raise NotImplementedError
+def get_disagreement(prediction1, prediction2, target_columns, column_weights):
+    len1 = len(prediction1)
+    len2 = len(prediction2)
+    if len1 != len2:
+        raise ValueError('trying to compare predictions with different lengths')
+    disagreements = 0
+    for item_index in range(len1):
+        row1 = prediction1[item_index]
+        row2 = prediction2[item_index]
+        weighted_disagreement = 0.0
+        for c_index, column in enumerate(target_columns):
+            if row1[column] != row2[column]:
+                weighted_disagreement += column_weights[c_index]
+        if weighted_disagreement >= 1.0:
+            disagreements += 1
+    return disagreements
 
-def merge_predictions(predictions):
-    raise NotImplementedError
+def merge_predictions(predictions, target_columns):
+    first_prediction = predictions[0]
+    len1 = len(first_predictions)
+    remaining_predictions = predictions[1:]
+    for pred in remaining_predictions:
+        if len(pred) != len1:
+            raise ValueError('trying to merge predictions with different lengths')
+    retval = None
+    for item_index in range(len1):
+        for column in target_columns:
+            first_label = first_prediction[column]
+            all_agree = True
+            for pred in remaining_predictions:
+                if first_label != pred[column]:
+                    all_agree = False
+                    break
+            if not all_agree:
+                # found a disagreement
+                # --> can no longer return first prediction
+                if retval is None:
+                    retval = first_prediction.clone()
+                # blank label
+                retval.unset_label(item_index, column)
+    if not retval:
+        return first_prediction
+    else:
+        return retval
 
 def knowledge_transfer(
-    predictions, column_weights, learners = 3,
-    max_teacher_disagreement_fraction = 0.20,
-    min_teacher_agreements = 3.25,
-    learner_must_disagree = True, min_learner_disagreement = 1.25
+    predictions, target_columns, column_weights, learners = 3,
+    max_teacher_disagreement_fraction = 0.0,
+    min_teacher_agreements = 2,
+    learner_must_disagree = True, min_learner_disagreement = 1,
+    verbose = False
 ):
     # knowledge transfer candidates: first element says how much the teachers disagree
     kt_candidates = []
     s_length = float(len(predictions[0]))
-    total = 0.0
-    for weight in column_weights:
-        total += weight * s_length
     for learner_index in range(learners):
         learner_prediction = predictions[learner_index]
         if learners == 1:
@@ -839,28 +883,38 @@ def knowledge_transfer(
                 else:
                     if teacher2_index == learner_index:
                         continue
+                    print('Learner %d, teachers %d and %d' %(
+                        learner_index+1, teacher1_index+1, teacher2_index+1
+                    ))
                     t2_prediction = predictions[teacher2_index]
                     # measure disagreement between teachers
                     teacher_disagreement = get_disagreement(
-                        t1_prediction, t2_prediction, column_weights
+                        t1_prediction, t2_prediction,
+                        target_columns, column_weights
                     )
                     teacher_disagreement_fraction = teacher_disagreement / s_length
                     if teacher_disagreement_fraction > max_teacher_disagreement_fraction:
+                        print(teacher_disagreement_fraction, 'exceeds max_teacher_disagreement_fraction')
                         continue
-                    if total - teacher_disagreement < min_teacher_agreements:
+                    if s_length - teacher_disagreement < min_teacher_agreements:
+                        print(s_length - teacher_disagreement, 'below min_teacher_agreements')
                         continue
                     teachers_predictions = [
                         t1_prediction, t2_prediction
                     ]
                 # optionally consider disagreement with learner
                 if learner_must_disagree:
-                    merged_prediction = merge_predictions(teachers_predictions)
+                    merged_prediction = merge_predictions(
+                        teachers_predictions, target_columns
+                    )
                     learner_disagreement = get_disagreement(
-                        learner_prediction, merged_prediction, column_weights
+                        learner_prediction, merged_prediction,
+                        target_columns, column_weights
                     )
                     if learner_disagreement < min_learner_disagreement:
                         # skip this candidate as the learner
                         # is unlikely to learn much from it
+                        print('below min_learner_disagreement')
                         continue
                 else:
                     # postpone merging to when it is needed
@@ -875,15 +929,20 @@ def knowledge_transfer(
                 ))
     if not kt_candidates:
         # can happen when predictions agree and learner_must_disagree is set
+        if verbose:
+            print('No candidates')
         return -1, None
     kt_candidates.sort()
+    if verbose:
+        print('Candidates:', kt_candidates)
     _, _, learner_index, t1_index, t2_index, prediction = kt_candidates[0]
     if prediction is None:
         t1_prediction = predictions[t1_index]
         t2_prediction = predictions[t2_index]
-        prediction = merge_predictions([
-            t1_prediction, t2_prediction
-        ])
+        prediction = merge_predictions(
+            [t1_prediction, t2_prediction],
+            target_columns
+        )
     return learner_index, prediction
 
 def adjust_size(size, data_size):
