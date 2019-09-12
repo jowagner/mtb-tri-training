@@ -436,6 +436,13 @@ class Sample(Dataset):
         self.dataset.write_sentence(f_out, sentence)
 
 
+def load_or_map_from_filename(data, filename, mode = 'load'):
+    f_in = open(filename, 'r')
+    data.load_or_map_file(f_in, None, mode)
+    if mode == 'load':
+        f_in.close()
+    return data
+
 def load(dataset_id,
     load_tr = True, load_dev = True, load_test = True,
     mode = 'load'

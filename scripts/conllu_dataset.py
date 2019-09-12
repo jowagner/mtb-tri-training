@@ -152,14 +152,6 @@ def get_tbname(tbid, treebank_dir, tbmapfile = None):
         raise ValueError('TBID %r not found in %r (must have test set)' %(tbid, treebank_dir))
     raise ValueError('TBID %r not found (need map file or treebank dir)' %tbid)
 
-def load_or_map_from_filename(filename, mode = 'load'):
-    data = ConlluDataset()
-    f_in = open(filename, 'r')
-    data.load_or_map_file(f_in, None, mode)
-    if mode == 'load':
-        f_in.close()
-    return data
-
 def load(dataset_id,
     treebank_dir = None,
     tbname = None,
@@ -176,19 +168,25 @@ def load(dataset_id,
     if load_tr:
         filename = '%s/%s/%s-ud-train.conllu' %(treebank_dir, tbname, tbid)
         if os.path.exists(filename):
-            tr = load_or_map_from_filename(filename, mode)
+            tr = basic_dataset.load_or_map_from_filename(
+                ConlluDataset(), filename, mode
+            )
         else:
             print('Warning: %r not found' %filename)
     if load_dev:
         filename = '%s/%s/%s-ud-dev.conllu' %(treebank_dir, tbname, tbid)
         if os.path.exists(filename):
-            dev = load_or_map_from_filename(filename, mode)
+            dev = basic_dataset.load_or_map_from_filename(
+                ConlluDataset(), filename, mode
+            )
         else:
             print('Warning: %r not found' %filename)
     if load_test:
         filename = '%s/%s/%s-ud-test.conllu' %(treebank_dir, tbname, tbid)
         if os.path.exists(filename):
-            test = load_or_map_from_filename(filename, mode)
+            test = basic_dataset.load_or_map_from_filename(
+                ConlluDataset(), filename, mode
+            )
         else:
             print('Warning: %r not found' %filename)
     return tr, dev, test
