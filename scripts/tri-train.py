@@ -544,6 +544,7 @@ def main():
         dropout_probabilities = len(target_columns) * [1.0]
     )
     previously_picked = {}
+    new_datasets = []
     for training_index in range(opt_iterations):
         training_round = training_index + 1
         print('\n== Tri-training Iteration %d of %d ==\n' %(
@@ -627,19 +628,19 @@ def main():
         # TODO: provide options to control column weights;
         # for now, any difference triggers a disagreement
         column_weights = len(target_columns) * [1.0]
-        new_datasets = []
+        new_datasets.append([])
         prediction_sets = []
         for learner_index in range(opt_learners):
-            new_datasets.append(dataset_module.new_empty_set())
+            new_datasets[training_index].append(dataset_module.new_empty_set())
             prediction_sets.append(basic_dataset.load_or_map_from_filename(
                 dataset_module.new_empty_set(),
                 predictions[learner_index][1]
             ))
         for subset_index in range(len(unlabelled_subset)):
-            print('Subset item', subset_index+1)
+            print('\nSubset item', subset_index+1)
             sentence_predictions = []
             for learner_index in range(opt_learners):
-                sentence_predictions.append(predictions[learner_index])
+                sentence_predictions.append(prediction_sets[learner_index][subset_index])
             learner_index, merged_prediction = knowledge_transfer(
                 sentence_predictions,
                 target_columns, column_weights, opt_learners,
@@ -664,7 +665,7 @@ def main():
             #       mostly masked predictions.
 
             # add new sentence to data set of learner
-            new_datasets[learner_index].append(merged_prediction)
+            new_datasets[training_index][learner_index].append(merged_prediction)
 
         for learner_index in range(opt_learners):
             learner_rank = learner_index + 1
@@ -672,12 +673,23 @@ def main():
             # TODO
             tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
             f_out = open(tr_data_filename, 'w')
-            new_datasets[learner_index].save_to_file(f_out)
+            new_datasets[training_index][learner_index].save_to_file(f_out)
             f_out.close()
 
             # TODO: compile training set for this iteration and learner
             #       according to --last-k, --decay and --oversample
             #       and with blank labels replaced with random labels
+
+            # (1) Create concatenation of downsampled candidate sets
+
+            last_k_datasets = []
+            for k in range(opt_last_k):
+                t_index = training_index - k
+                weight = opt_decay ** k
+                target_size = int(0.5 + weight * opt_augment_size)
+                raise NotImplementedError
+
+            # (2) Oversample seed data to match size
 
         print('Training of new models:')
         for learner_index in range(opt_learners):
@@ -822,7 +834,7 @@ def get_disagreement(prediction1, prediction2, target_columns, column_weights):
 
 def merge_predictions(predictions, target_columns):
     first_prediction = predictions[0]
-    len1 = len(first_predictions)
+    len1 = len(first_prediction)
     remaining_predictions = predictions[1:]
     for pred in remaining_predictions:
         if len(pred) != len1:
@@ -830,10 +842,10 @@ def merge_predictions(predictions, target_columns):
     retval = None
     for item_index in range(len1):
         for column in target_columns:
-            first_label = first_prediction[column]
+            first_label = first_prediction[item_index][column]
             all_agree = True
             for pred in remaining_predictions:
-                if first_label != pred[column]:
+                if first_label != pred[item_index][column]:
                     all_agree = False
                     break
             if not all_agree:
@@ -858,6 +870,7 @@ def knowledge_transfer(
     # knowledge transfer candidates: first element says how much the teachers disagree
     kt_candidates = []
     s_length = float(len(predictions[0]))
+    print('Sentence length', s_length)
     for learner_index in range(learners):
         learner_prediction = predictions[learner_index]
         if learners == 1:
@@ -892,6 +905,7 @@ def knowledge_transfer(
                         t1_prediction, t2_prediction,
                         target_columns, column_weights
                     )
+                    print('Teacher disagreement:', teacher_disagreement)
                     teacher_disagreement_fraction = teacher_disagreement / s_length
                     if teacher_disagreement_fraction > max_teacher_disagreement_fraction:
                         print(teacher_disagreement_fraction, 'exceeds max_teacher_disagreement_fraction')
@@ -922,7 +936,7 @@ def knowledge_transfer(
                     learner_disagreement = 0
                 # record candidate
                 priority = (teacher_disagreement, -learner_disagreement)
-                kt_candidates((
+                kt_candidates.append((
                     priority, random.random(),
                     learner_index, teacher1_index, teacher2_index,
                     merged_prediction
@@ -934,7 +948,7 @@ def knowledge_transfer(
         return -1, None
     kt_candidates.sort()
     if verbose:
-        print('Candidates:', kt_candidates)
+        print('Number of candidates:', len(kt_candidates))
     _, _, learner_index, t1_index, t2_index, prediction = kt_candidates[0]
     if prediction is None:
         t1_prediction = predictions[t1_index]
