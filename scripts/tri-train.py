@@ -524,7 +524,7 @@ def main():
                 seed_set.filename, model_init_seed, model_path,
                 epoch_selection_set
             )
-        models.append((model_fingerprint, model_path))
+        models.append((model_fingerprint, model_path, model_module))
 
     if manual_training_needed:
         print('\n*** Manual training requested. ***\n')
@@ -533,6 +533,9 @@ def main():
             ' above and the new files provided.\n' %manual_training_needed
         )
         sys.exit(0)
+
+    # TODO: evaluate models using all dev sets (and test sets if --final-test)
+    # evaluate(training_round, models, dev_sets, test_sets, set_names, unl_dev_sets, unl_test_sets, unl_set_names, opt_final_test)
 
     target_columns = dataset_module.get_target_columns()
     drop_all_targets = basic_dataset.SentenceDropout(
@@ -574,7 +577,7 @@ def main():
         for learner_index in range(opt_learners):
             learner_rank = learner_index+1
             print('Learner:', learner_rank)
-            model_fingerprint, model_path = models[learner_index]
+            model_fingerprint, model_path, model_module = models[learner_index]
             prediction_fingerprint = get_prediction_fingerprint(
                  model_fingerprint, unlabelled_subset
             )
@@ -597,8 +600,6 @@ def main():
                 # for all leaners have been printed
                 manual_prediction_needed.append(learner_rank)
             else:
-                # choose model for learner
-                model_module = model_modules[learner_index % len(model_modules)]
                 # ask model module to predict the model
                 model_module.predict(model_path, subset_path, prediction_path)
             predictions.append((prediction_fingerprint, prediction_path))
@@ -624,9 +625,17 @@ def main():
         print('Teaching:')
 
         new_datasets = []
-        for _ in range(opt_learners):
+        prediction_sets = []
+        for learner_index in range(opt_learners):
             new_datasets.append(dataset_module.new_empty_set())
-        for s_index, s_predictions in enumerate(dataset_predictions):
+            prediction_sets.append(basic_dataset.load_or_map_from_filename(
+                dataset_module.new_empty_set(),
+                predictions[learner_index][1]
+            ))
+        for subset_index in range(len(unlabelled_subset)):
+            sentence_predictions = []
+            for learner_index in range(opt_learners):
+                sentence_predictions.append(predictions[learner_index])
             learner_index, merged_prediction = knowledge_transfer(
                 s_predictions, column_weights, opt_learners,
                 opt_max_teacher_disagreement_fraction,
@@ -652,9 +661,10 @@ def main():
             new_datasets[learner_index].append(merged_prediction)
 
         for learner_index in range(opt_learners):
+            learner_rank = learner_index + 1
             # write new labelled data to file
             # TODO
-            tr_data_filename = '%s/new-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
+            tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
             f_out = open(tr_data_filename, 'w')
             new_datasets[learner_index].save_to_file(f_out)
             f_out.close()
