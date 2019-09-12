@@ -434,17 +434,18 @@ def main():
     seed_sets = []
     epoch_selection_sets = []
     iteration_selection_sets = []
-    for learner_rank in range(opt_learners):
+    for learner_index in range(opt_learners):
+        learner_rank = learner_index + 1
         seed_set = get_subset(
             training_data, opt_seed_size, random, opt_seed_attempts,
             with_replacement = True
         )
         print('Learner %d has seed data with %d items in %d sentences' %(
-            learner_rank+1, seed_set.get_number_of_items(), len(seed_set),
+            learner_rank, seed_set.get_number_of_items(), len(seed_set),
         ))
         write_dataset(
             seed_set,
-            '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank+1)
+            '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank)
         )
         # before we can use the seed set, we may have to slice off 10%
         if opt_epoch_selection == '9010' or opt_iteration_selection == '9010':
@@ -452,12 +453,12 @@ def main():
                 seed_set, int(0.5+0.90*opt_seed_size), random, opt_seed_attempts,
                 with_replacement = False,
                 write_file = \
-                '%s/seed-subset-90-%d.conllu' %(opt_workdir, learner_rank+1)
+                '%s/seed-subset-90-%d.conllu' %(opt_workdir, learner_rank)
             )
             seed_set_10 = get_remaining(
                 seed_set_90, random,
                 write_file = \
-                '%s/seed-subset-10-%d.conllu' %(opt_workdir, learner_rank+1)
+                '%s/seed-subset-10-%d.conllu' %(opt_workdir, learner_rank)
             )
             seed_sets.append(seed_set_90)
         else:
@@ -473,7 +474,7 @@ def main():
                 selection_type, dev_sets, seed_set, seed_set_10,
                 opt_max_selection_size, opt_selection_attempts, random,
                 write_file = \
-                '%s/for-%s-selection-%d.conllu' %(opt_workdir, name, learner_rank+1)
+                '%s/for-%s-selection-%d.conllu' %(opt_workdir, name, learner_rank)
             ))
 
     print('\n== Training of Seed Models ==\n')
@@ -485,14 +486,15 @@ def main():
 
     manual_training_needed = []
     models = []
-    for learner_rank in range(opt_learners):
-        print('Learner:', learner_rank+1)
+    for learner_index in range(opt_learners):
+        learner_rank = learner_index+1
+        print('Learner:', learner_rank)
         model_init_seed = get_model_seed(
             opt_model_init_type, opt_init_seed, learner_rank, 0
         )
         print('Model initialisation seed:', model_init_seed)
-        seed_set = seed_sets[learner_rank]
-        epoch_selection_set = epoch_selection_sets[learner_rank]
+        seed_set = seed_sets[learner_index]
+        epoch_selection_set = epoch_selection_sets[learner_index]
         model_fingerprint = get_model_fingerprint(
             model_init_seed, seed_set, epoch_selection_set,
             verbose = opt_verbose
@@ -513,10 +515,10 @@ def main():
         elif opt_manually_train:
             # we will ask the user to train the models when details
             # for all leaners have been printed
-            manual_training_needed.append(learner_rank+1)
+            manual_training_needed.append(learner_rank)
         else:
             # choose model for learner
-            model_module = model_modules[learner_rank % len(model_modules)]
+            model_module = model_modules[learner_index % len(model_modules)]
             # ask model module to train the model
             model_module.train(
                 seed_set.filename, model_init_seed, model_path,
@@ -539,16 +541,17 @@ def main():
         dropout_probabilities = len(target_columns) * [1.0]
     )
     previously_picked = {}
-    for training_round in range(opt_iterations):
+    for training_index in range(opt_iterations):
+        training_round = training_index + 1
         print('\n== Tri-training Iteration %d of %d ==\n' %(
-            training_round+1, opt_iterations
+            training_round, opt_iterations
         ))
         if opt_init_seed:
             random.seed(int(hashlib.sha512('round %d: %s' %(
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
         print('Selecting subset of unlabelled data:')
-        subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round+1)
+        subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
         unlabelled_subset = get_subset(
             unlabelled_data, opt_subset_size, random, opt_subset_attempts,
             with_replacement = True,
@@ -568,16 +571,17 @@ def main():
         manual_prediction_needed = []
         predictions = []
         filename_extension = dataset_module.get_filename_extension()
-        for learner_rank in range(opt_learners):
-            print('Learner:', learner_rank+1)
-            model_fingerprint, model_path = models[learner_rank]
+        for learner_index in range(opt_learners):
+            learner_rank = learner_index+1
+            print('Learner:', learner_rank)
+            model_fingerprint, model_path = models[learner_index]
             prediction_fingerprint = get_prediction_fingerprint(
                  model_fingerprint, unlabelled_subset
             )
             if opt_verbose:
                 print('Prediction input and model fingerprint (shortened):', prediction_fingerprint[:40])
             prediction_path = '%s/prediction-%02d-%d-%s%s' %(
-                    opt_workdir, training_round+1, learner_rank+1,
+                    opt_workdir, training_round, learner_rank,
                     prediction_fingerprint[:20], filename_extension
             )
             print('Prediction output path:', prediction_path)
@@ -591,10 +595,10 @@ def main():
             elif opt_manually_predict:
                 # we will ask the user to predict the models when details
                 # for all leaners have been printed
-                manual_prediction_needed.append(learner_rank+1)
+                manual_prediction_needed.append(learner_rank)
             else:
                 # choose model for learner
-                model_module = model_modules[learner_rank % len(model_modules)]
+                model_module = model_modules[learner_index % len(model_modules)]
                 # ask model module to predict the model
                 model_module.predict(model_path, subset_path, prediction_path)
             predictions.append((prediction_fingerprint, prediction_path))
@@ -650,7 +654,7 @@ def main():
         for learner_index in range(opt_learners):
             # write new labelled data to file
             # TODO
-            tr_data_filename = '%s/new-set-%02d-%d.conllu' %(opt_workdir, training_round+1, learner_rank+1)
+            tr_data_filename = '%s/new-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
             f_out = open(tr_data_filename, 'w')
             new_datasets[learner_index].save_to_file(f_out)
             f_out.close()
@@ -659,11 +663,12 @@ def main():
             #       according to --last-k, --decay and --oversample
 
         print('Training of new models:')
-        for learner_rank in range(opt_learners):
-            print(' * Learner %d, seed %r' %(learner_rank+1,
+        for learner_index in range(opt_learners):
+            learner_rank = learner_index+1
+            print(' * Learner %d, seed %r' %(learner_rank,
                 get_model_seed(
                     opt_model_init_type, opt_init_seed, learner_rank,
-                    training_round+1
+                    training_round
                 )
             ))
 
