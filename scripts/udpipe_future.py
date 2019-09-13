@@ -8,6 +8,11 @@
 
 # Author: Joachim Wagner
 
+# For Python 2-3 compatible code
+# https://python-future.org/compatible_idioms.html
+
+from __future__ import print_function
+
 import subprocess
 import sys
 
