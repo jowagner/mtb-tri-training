@@ -21,6 +21,12 @@ class Sentence(collections.Sequence):
     def __getitem__(self, index):
         raise NotImplementedError
 
+    def collect_labels(self, labelset, column):
+        ''' For each label in the given column, add the
+            label as a key to the dictionary `labelset`
+        '''
+        raise NotImplementedError
+
     def __len__(self):
         raise NotImplementedError
 
@@ -63,6 +69,10 @@ class Dataset(collections.Sequence):
             f_in = self.files[f_index]
             f_in.seek(info)
             return self.read_sentence(f_in)
+
+    def collect_labels(self, labelset, column):
+        for sentence in self:
+            sentence.collect_labels(labelset, column)
 
     def __len__(self):
         return len(self.sentences)

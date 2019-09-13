@@ -30,6 +30,10 @@ class ConlluSentence(basic_dataset.Sentence):
     def __getitem__(self, index):
         return self.rows[self.token2row[index]]
 
+    def collect_labels(self, labelset, column):
+        for row in self:
+            labelset[row[column]] = None
+
     def __len__(self):
         return len(self.token2row)
 
