@@ -118,7 +118,7 @@ Options:
                             number.
                             If NUMBER end with % it is relative to the size
                             of the labelled data.
-                            (Default: 20k)
+                            (Default: 200k)
 
     --subset-attempts  NUMBER  Create NUMBER subsets and pick the one that is
                             closest to the desired subset size
@@ -254,7 +254,7 @@ def main():
     opt_model_init_type = None
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
-    opt_subset_size = '20k'
+    opt_subset_size = '200k'
     opt_subset_attempts = 5
     opt_augment_size = '4k'
     opt_augment_attempts = 5
