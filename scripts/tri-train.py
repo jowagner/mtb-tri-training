@@ -352,6 +352,8 @@ def main():
             del sys.argv[1]
         elif option == '--continue':
             opt_continue = True
+        elif option == '--verbose':
+            opt_verbose = True
         elif option == '--debug':
             opt_debug = True
         else:
@@ -379,6 +381,7 @@ def main():
         opt_model_modules.append('udpipe_future')
 
     dataset_module = importlib.import_module(opt_dataset_module)
+    target_columns = dataset_module.get_target_columns()
 
     training_data_sets = []
     dev_sets = []
@@ -392,6 +395,14 @@ def main():
         dev_sets.append(dev)
         test_sets.append(test)
     training_data = basic_dataset.Concat(training_data_sets)
+
+    target_labelsets = []
+    for column in target_columns:
+        labelset = {}
+        training_data.collect_labels(labelset, column)
+        labelset = list(labelset.keys())
+        labelset.sort()
+        target_labelsets.append(labelset)
 
     unlabelled_data_sets = []
     unl_dev_sets = []
@@ -484,60 +495,16 @@ def main():
         for name in opt_model_modules:
             model_modules.append(importlib.import_module(name))
 
-    manual_training_needed = []
-    models = []
-    for learner_index in range(opt_learners):
-        learner_rank = learner_index+1
-        print('Learner:', learner_rank)
-        model_init_seed = get_model_seed(
-            opt_model_init_type, opt_init_seed, learner_rank, 0
-        )
-        print('Model initialisation seed:', model_init_seed)
-        seed_set = seed_sets[learner_index]
-        epoch_selection_set = epoch_selection_sets[learner_index]
-        model_fingerprint = get_model_fingerprint(
-            model_init_seed, seed_set, epoch_selection_set,
-            verbose = opt_verbose
-        )
-        if opt_verbose:
-            print('Model fingerprint (shortened):', model_fingerprint[:40])
-        model_path = '%s/model-00-%d-%s' %(
-                opt_workdir, learner_rank, model_fingerprint[:20]
-        )
-        print('Model path:', model_path)
-        # choose model for learner
-        model_module = model_modules[learner_index % len(model_modules)]
-        if os.path.exists(model_path):
-            if not opt_continue:
-                raise ValueError(
-                   'Conflicting model %r found. Use option'
-                   ' --continue to re-use it.' %model_path
-                )
-            print('Re-using existing model')
-        elif opt_manually_train:
-            # we will ask the user to train the models when details
-            # for all leaners have been printed
-            manual_training_needed.append(learner_rank)
-        else:
-            # ask model module to train the model
-            model_module.train(
-                seed_set.filename, model_init_seed, model_path,
-                epoch_selection_set
-            )
-        models.append((model_fingerprint, model_path, model_module))
-
-    if manual_training_needed:
-        print('\n*** Manual training requested. ***\n')
-        print(
-            'Please train models for learner(s) %r using the details'
-            ' above and the new files provided.\n' %manual_training_needed
-        )
-        sys.exit(0)
+    models = train_models(
+        opt_learners, seed_sets, epoch_selection_sets, model_modules,
+        opt_model_init_type, opt_init_seed, 0,
+        opt_workdir, opt_manually_train, opt_continue,
+        opt_verbose,
+    )
 
     # TODO: evaluate models using all dev sets (and test sets if --final-test)
     # evaluate(training_round, models, dev_sets, test_sets, set_names, unl_dev_sets, unl_test_sets, unl_set_names, opt_final_test)
 
-    target_columns = dataset_module.get_target_columns()
     drop_all_targets = basic_dataset.SentenceDropout(
         rng = random.Random(0),
         target_columns = target_columns,
@@ -667,39 +634,91 @@ def main():
             # add new sentence to data set of learner
             new_datasets[training_index][learner_index].append(merged_prediction)
 
+        new_training_sets = []
         for learner_index in range(opt_learners):
+            if opt_init_seed:
+                random.seed(int(hashlib.sha512('New dataset %d %d %s' %(
+                    training_round, learner_rank, opt_init_seed,
+                )).hexdigest(), 16))
             learner_rank = learner_index + 1
+            new_dataset = new_datasets[training_index][learner_index]
             # write new labelled data to file
-            # TODO
             tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
             f_out = open(tr_data_filename, 'w')
-            new_datasets[training_index][learner_index].save_to_file(f_out)
+            new_dataset.save_to_file(f_out)
             f_out.close()
-
-            # TODO: compile training set for this iteration and learner
-            #       according to --last-k, --decay and --oversample
-            #       and with blank labels replaced with random labels
-
-            # (1) Create concatenation of downsampled candidate sets
-
+            new_size = new_dataset.get_number_of_items()
+            print('Size of new dataset:', new_size)
+            if new_size > opt_augment_size:
+                print('Pruning new dataset to augment size', opt_augment_size)
+                new_datasets[training_index][learner_index] = get_subset(
+                    new_dataset, opt_augment_size, random,
+                    opt_augment_attempts, with_replacement = False,
+                    prefer_smaller = True,
+                    write_file = \
+                    '%s/new-selected-set-%02d-%d.conllu' %(
+                        opt_workdir, training_round, learner_rank
+                    )
+                )
+            # compile training set for this iteration and learner
+            # according to --last-k, --decay and --oversample
+            if opt_last_k:
+                # cannot use more than the available sets
+                last_k = min(training_round, opt_last_k)
+            else:
+                last_k = training_round
             last_k_datasets = []
-            for k in range(opt_last_k):
+            for k in range(last_k):
                 t_index = training_index - k
                 weight = opt_decay ** k
                 target_size = int(0.5 + weight * opt_augment_size)
-                raise NotImplementedError
-
-            # (2) Oversample seed data to match size
-
-        print('Training of new models:')
-        for learner_index in range(opt_learners):
-            learner_rank = learner_index+1
-            print(' * Learner %d, seed %r' %(learner_rank,
-                get_model_seed(
-                    opt_model_init_type, opt_init_seed, learner_rank,
-                    training_round
+                new_dataset = new_datasets[t_index][learner_index]
+                if (
+                    not k # never prune the dataset of the current round
+                    and new_dataset.get_number_of_items() > target_size
+                ):
+                    new_dataset = get_subset(
+                        new_dataset, target_size, random,
+                        opt_decay_attempts, with_replacement = False,
+                        write_file = \
+                        '%s/new-decayed-set-%02d-%d-%02d.conllu' %(
+                            opt_workdir, training_round, learner_rank, t_index
+                        )
+                last_k_datasets.append(new_dataset)
+            last_k_datasets = basic_dataset.Concat(last_k_datasets)
+            # add seed set
+            seed_dataset = seed_sets[learner_index]
+            if opt_oversample:
+                # oversample seed data to match size of last k data
+                target_size = last_k_datasets.get_number_of_items()
+                seed_size = seed_dataset.get_number_of_items()
+                if target_size > seed_size:
+                    seed_dataset = get_subset(
+                        seed_dataset, target_size, random,
+                        with_replacement = False,
+                    )
+            new_training_sets.append(basic_dataset.Concat(
+                [seed_dataset, last_k_datasets],
+                sentence_modifier = basic_dataset.SentenceCompleter(
+                    # use a new sentence completer in each round
+                    # to make its random choices independent of
+                    # previous rounds
+                    random, target_columns, target_labelsets
+                ),
+                # write dataset with blank labels replaced with random labels
+                write_file = \
+                '%s/new-training-set-%02d-%d.conllu' %(
+                    opt_workdir, training_round, learner_rank
                 )
             ))
+
+        print('Training of new models:')
+        models = train_models(
+            opt_learners, new_datasets, epoch_selection_sets, model_modules,
+            opt_model_init_type, opt_init_seed, training_round,
+            opt_workdir, opt_manually_train, opt_continue,
+            opt_verbose,
+        )
 
     print('\n== Final Model ==\n')
     # TODO
@@ -1000,6 +1019,61 @@ def get_model_seed(mode, main_seed, learner_rank, training_round):
         return '%s%d%02d' %(main_seed, learner_rank, training_round)
     else:
         raise ValueError('unknown model seed type %r' %mode)
+
+def train_models(
+    opt_learners, training_sets, epoch_selection_sets, model_modules,
+    opt_model_init_type, opt_init_seed, 0,
+    opt_workdir, opt_manually_train, opt_continue,
+    opt_verbose,
+):
+    manual_training_needed = []
+    for learner_index in range(opt_learners):
+        learner_rank = learner_index+1
+        print('Learner:', learner_rank)
+        model_init_seed = get_model_seed(
+            opt_model_init_type, opt_init_seed, learner_rank, 0,
+        )
+        print('Model initialisation seed:', model_init_seed)
+        training_set = training_sets[learner_index]
+        epoch_selection_set = epoch_selection_sets[learner_index]
+        model_fingerprint = get_model_fingerprint(
+            model_init_seed, training_set, epoch_selection_set,
+            verbose = opt_verbose
+        )
+        if opt_verbose:
+            print('Model fingerprint (shortened):', model_fingerprint[:40])
+        model_path = '%s/model-00-%d-%s' %(
+                opt_workdir, learner_rank, model_fingerprint[:20]
+        )
+        print('Model path:', model_path)
+        # choose model for learner
+        model_module = model_modules[learner_index % len(model_modules)]
+        if os.path.exists(model_path):
+            if not opt_continue:
+                raise ValueError(
+                   'Conflicting model %r found. Use option'
+                   ' --continue to re-use it.' %model_path
+                )
+            print('Re-using existing model')
+        elif opt_manually_train:
+            # we will ask the user to train the models when details
+            # for all leaners have been printed
+            manual_training_needed.append(learner_rank)
+        else:
+            # ask model module to train the model
+            model_module.train(
+                training_set.filename, model_init_seed, model_path,
+                epoch_selection_set
+            )
+        models.append((model_fingerprint, model_path, model_module))
+    if manual_training_needed:
+        print('\n*** Manual training requested. ***\n')
+        print(
+            'Please train models for learner(s) %r using the details'
+            ' above and the new files provided.\n' %manual_training_needed
+        )
+        sys.exit(0)
+    return models
 
 
 if __name__ == "__main__":
