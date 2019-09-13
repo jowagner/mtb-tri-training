@@ -32,7 +32,9 @@ class ConlluSentence(basic_dataset.Sentence):
 
     def collect_labels(self, labelset, column):
         for row in self:
-            labelset[row[column]] = None
+            label = row[column]
+            if label != '@@MISSING@@':
+                labelset[label] = None
 
     def __len__(self):
         return len(self.token2row)
@@ -68,7 +70,7 @@ class ConlluSentence(basic_dataset.Sentence):
         return copy
 
     def is_missing(self, index, column):
-        return self[index][column] == '_'
+        return self[index][column] == '@@MISSING@@'
 
     def set_label(self, index, column, new_label):
         self[index][column] = new_label
@@ -83,7 +85,7 @@ class ConlluSentence(basic_dataset.Sentence):
         return map(lambda x: '%d' %x, retval)
 
     def unset_label(self, index, column):
-        self[index][column] = '_'
+        self[index][column] = '@@MISSING@@'
 
     def get_vector_representation(self):
         # TODO: return 4096 dimensional vector
