@@ -47,7 +47,7 @@ hostname > training.start
 python ${PARSER_DIR}/ud_parser.py \
     --seed ${SEED}                \
     --skip_incomplete_batches     \
-    --min_epoch_batches 300       \
+    --min_epoch_batches 3000      \
     --epochs "4:1e-3,2:1e-4"      \
     --logdir ./                   \
     ${FAKE_TBID}                  \

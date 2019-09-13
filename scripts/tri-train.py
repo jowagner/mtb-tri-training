@@ -254,9 +254,9 @@ def main():
     opt_model_init_type = None
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
-    opt_subset_size = '200k'
+    opt_subset_size = '600k'
     opt_subset_attempts = 5
-    opt_augment_size = '4k'
+    opt_augment_size = '10k'
     opt_augment_attempts = 5
     opt_diversify_attempts = 1
     opt_oversample = False
@@ -826,6 +826,7 @@ def get_subset(
         n_sentences = int(0.5 + len(dataset) * target_size / ds_size)
         candidate = basic_dataset.Sample(
             dataset, rng, n_sentences,
+            with_replacement = with_replacement,
             sentence_modifier = sentence_modifier,
             diversify_attempts = diversify_attempts,
             disprefer = disprefer
