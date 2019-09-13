@@ -250,8 +250,9 @@ class SentenceFilter:
 
 class Concat(Dataset):
 
-    def __init__(self, datasets):
+    def __init__(self, datasets, sentence_modifier = None):
         self.datasets = datasets
+        self.sentence_modifier = sentence_modifier
         self.sentences = []
         for ds_index, dataset in enumerate(datasets):
             if dataset is None:
@@ -261,7 +262,10 @@ class Concat(Dataset):
 
     def __getitem__(self, index):
         ds_index, d_index = self.sentences[index]
-        return self.datasets[ds_index][d_index]
+        sentence = self.datasets[ds_index][d_index]
+        if self.sentence_modifier is not None:
+            sentence = self.sentence_modifier(sentence)
+        return sentence
 
     def clone(self):
         retval = Concat([])
@@ -269,6 +273,7 @@ class Concat(Dataset):
         # does not affect self
         retval.sentences = self.sentences[:]
         retval.datasets = self.datasets[:]
+        retval.sentence_modifier = self.sentence_modifier
         return retval
 
     def append(self, item):
