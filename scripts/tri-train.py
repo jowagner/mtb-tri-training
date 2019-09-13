@@ -161,11 +161,16 @@ Options:
                             last k tri-training iterations
                             (default: 0 = use all iterations)
 
-    --decay  NUMBER         Subsample (without replacement) fraction
+    --last-decay  NUMBER    Subsample (without replacement) fraction
                             NUMBER^(j-i) of automatically labelled data of the
                             i-th iteration in iteration j;
                             can be combined with --last-k
                             (default: 1.0 = use all data)
+
+    --last-decay-attempts  NUMBER
+                            Create NUMBER decayed sets and pick the
+                            one that is closest to the desired set size
+                            (default: 5)
 
     --epoch-selection  MODE
     --iteration-selection  MODE
@@ -259,6 +264,7 @@ def main():
     opt_learners = 3
     opt_last_k = 0
     opt_last_decay = 1.0
+    opt_last_decay_attempts = 5
     opt_epoch_selection = 'dev+remaining'
     opt_iteration_selection = 'last'
     opt_max_selection_size = '50k'
@@ -337,6 +343,9 @@ def main():
             del sys.argv[1]
         elif option in ('--last-decay', '--decay'):
             opt_last_decay = float(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--last-decay-attempts':
+            opt_last_decay_attempts = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--epoch-selection':
             opt_epoch_selection = sys.argv[1]
@@ -648,7 +657,9 @@ def main():
             new_dataset.save_to_file(f_out)
             f_out.close()
             new_size = new_dataset.get_number_of_items()
-            print('Size of new dataset:', new_size)
+            print('Size of new dataset: %d items in %d sentences' %(
+                new_size, len(new_dataset)
+            ))
             if new_size > opt_augment_size:
                 print('Pruning new dataset to augment size', opt_augment_size)
                 new_datasets[training_index][learner_index] = get_subset(
@@ -670,7 +681,7 @@ def main():
             last_k_datasets = []
             for k in range(last_k):
                 t_index = training_index - k
-                weight = opt_decay ** k
+                weight = opt_last_decay ** k
                 target_size = int(0.5 + weight * opt_augment_size)
                 new_dataset = new_datasets[t_index][learner_index]
                 if (
@@ -679,11 +690,12 @@ def main():
                 ):
                     new_dataset = get_subset(
                         new_dataset, target_size, random,
-                        opt_decay_attempts, with_replacement = False,
+                        opt_last_decay_attempts, with_replacement = False,
                         write_file = \
                         '%s/new-decayed-set-%02d-%d-%02d.conllu' %(
                             opt_workdir, training_round, learner_rank, t_index
                         )
+                    )
                 last_k_datasets.append(new_dataset)
             last_k_datasets = basic_dataset.Concat(last_k_datasets)
             # add seed set
@@ -697,24 +709,27 @@ def main():
                         seed_dataset, target_size, random,
                         with_replacement = False,
                     )
-            new_training_sets.append(basic_dataset.Concat(
+            new_training_set = basic_dataset.Concat(
                 [seed_dataset, last_k_datasets],
+                # replace blank labels with random labels
                 sentence_modifier = basic_dataset.SentenceCompleter(
                     # use a new sentence completer in each round
                     # to make its random choices independent of
                     # previous rounds
                     random, target_columns, target_labelsets
-                ),
-                # write dataset with blank labels replaced with random labels
-                write_file = \
+                )
+            )
+            write_dataset(
+                new_training_set,
                 '%s/new-training-set-%02d-%d.conllu' %(
                     opt_workdir, training_round, learner_rank
                 )
-            ))
+            )
+            new_training_sets.append(new_training_set)
 
         print('Training of new models:')
         models = train_models(
-            opt_learners, new_datasets, epoch_selection_sets, model_modules,
+            opt_learners, new_training_sets, epoch_selection_sets, model_modules,
             opt_model_init_type, opt_init_seed, training_round,
             opt_workdir, opt_manually_train, opt_continue,
             opt_verbose,
@@ -1022,16 +1037,17 @@ def get_model_seed(mode, main_seed, learner_rank, training_round):
 
 def train_models(
     opt_learners, training_sets, epoch_selection_sets, model_modules,
-    opt_model_init_type, opt_init_seed, 0,
+    opt_model_init_type, opt_init_seed, training_round,
     opt_workdir, opt_manually_train, opt_continue,
     opt_verbose,
 ):
+    retval = []
     manual_training_needed = []
     for learner_index in range(opt_learners):
         learner_rank = learner_index+1
         print('Learner:', learner_rank)
         model_init_seed = get_model_seed(
-            opt_model_init_type, opt_init_seed, learner_rank, 0,
+            opt_model_init_type, opt_init_seed, learner_rank, training_round,
         )
         print('Model initialisation seed:', model_init_seed)
         training_set = training_sets[learner_index]
@@ -1042,8 +1058,9 @@ def train_models(
         )
         if opt_verbose:
             print('Model fingerprint (shortened):', model_fingerprint[:40])
-        model_path = '%s/model-00-%d-%s' %(
-                opt_workdir, learner_rank, model_fingerprint[:20]
+        model_path = '%s/model-%02d-%d-%s' %(
+                opt_workdir, training_round,
+                learner_rank, model_fingerprint[:20]
         )
         print('Model path:', model_path)
         # choose model for learner
@@ -1065,7 +1082,7 @@ def train_models(
                 training_set.filename, model_init_seed, model_path,
                 epoch_selection_set
             )
-        models.append((model_fingerprint, model_path, model_module))
+        retval.append((model_fingerprint, model_path, model_module))
     if manual_training_needed:
         print('\n*** Manual training requested. ***\n')
         print(
@@ -1073,7 +1090,7 @@ def train_models(
             ' above and the new files provided.\n' %manual_training_needed
         )
         sys.exit(0)
-    return models
+    return retval
 
 
 if __name__ == "__main__":
