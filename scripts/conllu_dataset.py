@@ -121,7 +121,18 @@ class ConlluDataset(basic_dataset.Dataset):
         for row in sentence.rows:
             # incomplete sentences should be completed by the caller,
             # e.g. save_to_file(), see basic_dataset.SentenceCompleter
-            f_out.write('\t'.join(row))
+            if '@@MISSING@@' in row:
+                for column, cell in enumerate(row):
+                    if column:
+                        f_out.write('\t')
+                    if column < 2:
+                        f_out.write(cell)
+                    elif cell == '@@MISSING@@':
+                        f_out.write('_')
+                    else:
+                        f_out.write(cell)
+            else:
+                f_out.write('\t'.join(row))
             f_out.write('\n')
         f_out.write('\n')
 
