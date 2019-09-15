@@ -534,7 +534,7 @@ def main():
         subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
         unlabelled_subset = get_subset(
             unlabelled_data, opt_subset_size, random, opt_subset_attempts,
-            with_replacement = True,
+            with_replacement = False,
             diversify_attempts = opt_diversify_attempts,
             disprefer = previously_picked,
             sentence_modifier = drop_all_targets,
