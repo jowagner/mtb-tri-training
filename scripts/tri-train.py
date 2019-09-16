@@ -391,6 +391,7 @@ def main():
 
     dataset_module = importlib.import_module(opt_dataset_module)
     target_columns = dataset_module.get_target_columns()
+    filename_extension = dataset_module.get_filename_extension()
 
     training_data_sets = []
     dev_sets = []
@@ -511,8 +512,17 @@ def main():
         opt_verbose,
     )
 
-    # TODO: evaluate models using all dev sets (and test sets if --final-test)
-    # evaluate(training_round, models, dev_sets, test_sets, set_names, unl_dev_sets, unl_test_sets, unl_set_names, opt_final_test)
+    # evaluate models using all dev sets (and test sets if --final-test)
+    evaluate(
+        models,
+        dev_sets + unl_dev_sets,
+        test_sets + unl_test_sets,
+        opt_labelled_ids + opt_unlabelled_ids,
+        filename_extension = filename_extension,
+        opt_workdir = opt_workdir,
+        opt_continue = opt_continue,
+        opt_verbose = opt_verbose
+    )
 
     drop_all_targets = basic_dataset.SentenceDropout(
         rng = random.Random(0),
@@ -548,47 +558,15 @@ def main():
 
         print('Making predictions:')
 
-        manual_prediction_needed = []
-        predictions = []
-        filename_extension = dataset_module.get_filename_extension()
-        for learner_index in range(opt_learners):
-            learner_rank = learner_index+1
-            print('Learner:', learner_rank)
-            model_fingerprint, model_path, model_module = models[learner_index]
-            prediction_fingerprint = get_prediction_fingerprint(
-                 model_fingerprint, unlabelled_subset
-            )
-            if opt_verbose:
-                print('Prediction input and model fingerprint (shortened):', prediction_fingerprint[:40])
-            prediction_path = '%s/prediction-%02d-%d-%s%s' %(
-                    opt_workdir, training_round, learner_rank,
-                    prediction_fingerprint[:20], filename_extension
-            )
-            print('Prediction output path:', prediction_path)
-            if os.path.exists(prediction_path):
-                if not opt_continue:
-                    raise ValueError(
-                       'Conflicting prediction %r found. Use option'
-                       ' --continue to re-use it.' %prediction_path
-                    )
-                print('Re-using existing prediction')
-            elif opt_manually_predict:
-                # we will ask the user to predict the models when details
-                # for all leaners have been printed
-                manual_prediction_needed.append(learner_rank)
-            else:
-                # ask model module to predict the model
-                model_module.predict(model_path, subset_path, prediction_path)
-            predictions.append((prediction_fingerprint, prediction_path))
-
-        if manual_prediction_needed:
-            print('\n*** Manual prediction requested. ***\n')
-            print(
-                'Please make predictions for learner(s) %r using the details'
-                ' above and the new files provided.\n' %manual_prediction_needed
-            )
-            sys.exit(0)
-
+        predictions = make_predictions(
+            models, unlabelled_subset,
+            training_round = training_round,
+            opt_workdir = opt_workdir,
+            # dataset_name = 'subset',    # TODO: add name when renames files ready
+            filename_extension = filename_extension,
+            opt_continue = opt_continue,
+            opt_manually_predict = opt_manually_predict,
+        )
         if opt_quit_after_prediction:
             print('\n*** Manual intervention requested. ***\n')
             print(
@@ -735,8 +713,113 @@ def main():
             opt_verbose,
         )
 
+        print('Evaluating new models:')
+        evaluate(
+            models,
+            dev_sets + unl_dev_sets,
+            test_sets + unl_test_sets,
+            opt_labelled_ids + opt_unlabelled_ids,
+            training_round = training_round,
+            filename_extension = filename_extension,
+            opt_workdir = opt_workdir,
+            opt_continue = opt_continue,
+            opt_verbose = opt_verbose
+        )
+
+
     print('\n== Final Model ==\n')
     # TODO
+
+def make_predictions(
+    models, dataset,
+    training_round = 0,
+    opt_workdir = './',
+    dataset_name = '',
+    filename_extension = '.data',
+    opt_continue = False,
+    opt_manually_predict = False,
+    opt_verbose = False,
+):
+    ''' makes predictions for the given dataet for all learners
+    '''
+    manual_prediction_needed = []
+    predictions = []
+    if dataset_name:
+        dataset_name = dataset_name + '-'
+    for learner_index, model in enumerate(models):
+        learner_rank = learner_index+1
+        print('Learner:', learner_rank)
+        model_fingerprint, model_path, model_module = model
+        prediction_fingerprint = get_prediction_fingerprint(
+             model_fingerprint, dataset
+        )
+        if opt_verbose:
+            print('Prediction input and model fingerprint (shortened):', prediction_fingerprint[:40])
+        prediction_path = '%s/prediction-%02d-%d-%s%s%s' %(
+                opt_workdir, training_round, learner_rank,
+                dataset_name,
+                prediction_fingerprint[:20], filename_extension
+        )
+        print('Prediction output path:', prediction_path)
+        if os.path.exists(prediction_path):
+            if not opt_continue:
+                raise ValueError(
+                   'Conflicting prediction %r found. Use option'
+                   ' --continue to re-use it.' %prediction_path
+                )
+            print('Re-using existing prediction')
+        elif opt_manually_predict:
+            # we will ask the user to predict the models when details
+            # for all leaners have been printed
+            manual_prediction_needed.append(learner_rank)
+        else:
+            # ask model module to predict the model
+            model_module.predict(model_path, dataset.filename, prediction_path)
+        predictions.append((prediction_fingerprint, prediction_path))
+    if manual_prediction_needed:
+        print('\n*** Manual prediction requested. ***\n')
+        print(
+            'Please make predictions for learner(s) %r using the details'
+            ' above and the new files provided.\n' %manual_prediction_needed
+        )
+        sys.exit(0)
+    return predictions
+
+def evaluate(
+    models, dev_sets, test_sets, set_names,
+    training_round = 0,
+    opt_workdir = './',
+    filename_extension = '.data',
+    opt_continue = False,
+    opt_verbose  = False,
+):
+    for set_list, suffix, names in [
+        (dev_sets,  '-dev',  set_names),
+        (test_sets, '-test', set_names),
+    ]:
+        for d_index, dataset in enumerate(set_list):
+            if dataset is None:
+                continue
+            name = names[d_index] + suffix
+            predictions = make_predictions(
+                models, dataset,
+                training_round = training_round,
+                opt_workdir = opt_workdir,
+                dataset_name = name,
+                filename_extension = filename_extension,
+                opt_continue = opt_continue,
+                opt_manually_predict = False,
+                opt_verbose = opt_verbose,
+            )
+            gold_path = dataset.filename
+            for learner_index, model in enumerate(models):
+                learner_rank = learner_index + 1
+                print('Evaluating learner %d on %s:' %(learner_rank, name))
+                model_fingerprint, model_path, model_module = model
+                prediction_fingerprint, prediction_path = predictions[learner_index]
+                model_module.evaluate(
+                    prediction_path, gold_path
+                )
 
 def hex2base62(h):
     s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'

@@ -174,7 +174,8 @@ def load(dataset_id,
     tbname = None,
     tbmapfile = None,
     load_tr = True, load_dev = True, load_test = True,
-    mode = 'load'
+    mode = 'load',
+    only_get_path = False
 ):
     tbid = dataset_id
     tr, dev, test = None, None, None
@@ -184,7 +185,9 @@ def load(dataset_id,
         tbname = get_tbname(tbid, treebank_dir, tbmapfile)
     if load_tr:
         filename = '%s/%s/%s-ud-train.conllu' %(treebank_dir, tbname, tbid)
-        if os.path.exists(filename):
+        if only_get_path:
+            tr = filename
+        elif os.path.exists(filename):
             tr = basic_dataset.load_or_map_from_filename(
                 ConlluDataset(), filename, mode
             )
@@ -192,7 +195,9 @@ def load(dataset_id,
             print('Warning: %r not found' %filename)
     if load_dev:
         filename = '%s/%s/%s-ud-dev.conllu' %(treebank_dir, tbname, tbid)
-        if os.path.exists(filename):
+        if only_get_path:
+            dev = filename
+        elif os.path.exists(filename):
             dev = basic_dataset.load_or_map_from_filename(
                 ConlluDataset(), filename, mode
             )
@@ -200,7 +205,9 @@ def load(dataset_id,
             print('Warning: %r not found' %filename)
     if load_test:
         filename = '%s/%s/%s-ud-test.conllu' %(treebank_dir, tbname, tbid)
-        if os.path.exists(filename):
+        if only_get_path:
+            test = filename
+        elif os.path.exists(filename):
             test = basic_dataset.load_or_map_from_filename(
                 ConlluDataset(), filename, mode
             )

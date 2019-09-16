@@ -40,6 +40,17 @@ def predict(model_path, input_path, prediction_output_path):
     sys.stdout.flush()
     subprocess.call(command)
 
+def evaluate(prediction_path, gold_path):
+    command = []
+    command.append('./conll18_ud_eval.py')
+    command.append('--verbose')
+    command.append(gold_path)
+    command.append(prediction_path)
+    print('Running', command)
+    sys.stderr.flush()
+    sys.stdout.flush()
+    subprocess.call(command)
+
 def main():
     raise NotImplementedError
 

@@ -456,6 +456,7 @@ def load_or_map_from_filename(data, filename, mode = 'load'):
     data.load_or_map_file(f_in, None, mode)
     if mode == 'load':
         f_in.close()
+    data.filename = filename
     return data
 
 def load(dataset_id,
