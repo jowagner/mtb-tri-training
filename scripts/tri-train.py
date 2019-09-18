@@ -506,19 +506,25 @@ def main():
     model_modules = []
     if not opt_manually_train:
         print('\n== Baseline(s) ==\n')
+        write_dataset(training_data, '%s/training-set-%s%s' %(
+            opt_workdir,
+            get_prediction_fingerprint(opt_init_seed, training_data)[:20],
+            filename_extension
+        ))
         for name in opt_model_modules:
             model_modules.append(importlib.import_module(name))
         if opt_epoch_selection == 'last':
             baseline_epoch_selection = opt_learners*[None]
         else:
-            baseline_epoch_selection = opt_learners*[basic_dataset.Concat(dev_sets)
+            baseline_epoch_selection = opt_learners*[basic_dataset.Concat(dev_sets)]
         models = train_models(
             opt_learners, opt_learners * [training_data],
             baseline_epoch_selection, model_modules,
             opt_model_init_type, opt_init_seed, 0,
             opt_workdir, opt_manually_train, opt_continue,
             opt_verbose,
-            monitoring_datasets = monitoring_datasets
+            monitoring_datasets = monitoring_datasets,
+            prefix = 'baseline-'
         )
         evaluate(
             models,
@@ -1207,6 +1213,7 @@ def train_models(
     opt_workdir, opt_manually_train, opt_continue,
     opt_verbose,
     monitoring_datasets = [],
+    prefix = '',
 ):
     retval = []
     manual_training_needed = []
@@ -1225,8 +1232,8 @@ def train_models(
         )
         if opt_verbose:
             print('Model fingerprint (shortened):', model_fingerprint[:40])
-        model_path = '%s/model-%02d-%d-%s' %(
-                opt_workdir, training_round,
+        model_path = '%s/%smodel-%02d-%d-%s' %(
+                opt_workdir, prefix, training_round,
                 learner_rank, model_fingerprint[:20]
         )
         print('Model path:', model_path)
