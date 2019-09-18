@@ -476,3 +476,9 @@ def get_filename_extension():
     ''' recommended extension for output files '''
     return '.data'
 
+def combine(prediction_paths, output_path):
+    ''' combine (ensemble) the given predictions
+        into a single prediction
+    '''
+    raise NotImplementedError
+

@@ -225,6 +225,25 @@ def get_filename_extension():
     ''' recommended extension for output files '''
     return '.conllu'
 
+def combine(prediction_paths, output_path, combiner_dir = NONE):
+    ''' combine (ensemble) the given predictions
+        into a single prediction
+    '''
+    if not combiner_dir:
+        combiner_dir = os.environ['CONLLU_COMBINER_DIR']
+    if not tbname:
+    command = []
+    command.append('%s/parser.sh' %combiner_dir)
+    command.append('--outfile')
+    command.append(output_path)
+    command.append('--prune-labels')
+    for prediction_path in prediction_paths:
+        command.append(prediction_path)
+    print('Running', command)
+    sys.stderr.flush()
+    sys.stdout.flush()
+    subprocess.call(command)
+
 def main():
     import random
     import sys

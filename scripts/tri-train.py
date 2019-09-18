@@ -503,12 +503,36 @@ def main():
                 '%s/for-%s-selection-%d.conllu' %(opt_workdir, name, learner_rank)
             ))
 
-    print('\n== Training of Seed Models ==\n')
-
     model_modules = []
     if not opt_manually_train:
+        print('\n== Baseline(s) ==\n')
         for name in opt_model_modules:
             model_modules.append(importlib.import_module(name))
+        if opt_epoch_selection == 'last':
+            baseline_epoch_selection = opt_learners*[None]
+        else:
+            baseline_epoch_selection = opt_learners*[basic_dataset.Concat(dev_sets)
+        models = train_models(
+            opt_learners, opt_learners * [training_data],
+            baseline_epoch_selection, model_modules,
+            opt_model_init_type, opt_init_seed, 0,
+            opt_workdir, opt_manually_train, opt_continue,
+            opt_verbose,
+            monitoring_datasets = monitoring_datasets
+        )
+        evaluate(
+            models,
+            dev_sets + unl_dev_sets,
+            test_sets + unl_test_sets,
+            opt_labelled_ids + opt_unlabelled_ids,
+            dataset_module,
+            filename_extension = filename_extension,
+            opt_workdir = opt_workdir,
+            opt_continue = opt_continue,
+            opt_verbose = opt_verbose
+        )
+
+    print('\n== Training of Seed Models ==\n')
 
     models = train_models(
         opt_learners, seed_sets, epoch_selection_sets, model_modules,
@@ -524,6 +548,7 @@ def main():
         dev_sets + unl_dev_sets,
         test_sets + unl_test_sets,
         opt_labelled_ids + opt_unlabelled_ids,
+        dataset_module,
         filename_extension = filename_extension,
         opt_workdir = opt_workdir,
         opt_continue = opt_continue,
@@ -556,13 +581,17 @@ def main():
             sentence_modifier = drop_all_targets,
             write_file = subset_path
         )
+        print('Size of subset: %d items in %d sentences' %(
+            unlabelled_subset.get_number_of_items(),
+            len(unlabelled_subset)
+        ))
         for d_index in unlabelled_subset.indices():
             try:
                 previously_picked[d_index] += 1
             except KeyError:
                 previously_picked[d_index] = 1
 
-        print('Making predictions:')
+        print('\nMaking predictions:')
 
         predictions = make_predictions(
             models, unlabelled_subset,
@@ -583,7 +612,7 @@ def main():
             )
             sys.exit(0)
 
-        print('Teaching:')
+        print('\nTeaching (knowledge transfer):')
 
         # TODO: provide options to control column weights;
         # for now, any difference triggers a disagreement
@@ -712,7 +741,7 @@ def main():
             )
             new_training_sets.append(new_training_set)
 
-        print('Training of new models:')
+        print('\nTraining new models:')
         models = train_models(
             opt_learners, new_training_sets, epoch_selection_sets, model_modules,
             opt_model_init_type, opt_init_seed, training_round,
@@ -721,12 +750,13 @@ def main():
             monitoring_datasets = monitoring_datasets
         )
 
-        print('Evaluating new models:')
+        print('\nEvaluating new models:')
         evaluate(
             models,
             dev_sets + unl_dev_sets,
             test_sets + unl_test_sets,
             opt_labelled_ids + opt_unlabelled_ids,
+            dataset_module,
             training_round = training_round,
             filename_extension = filename_extension,
             opt_workdir = opt_workdir,
@@ -795,6 +825,7 @@ def make_predictions(
 
 def evaluate(
     models, dev_sets, test_sets, set_names,
+    dataset_module,
     training_round = 0,
     opt_workdir = './',
     filename_extension = '.data',
@@ -820,6 +851,8 @@ def evaluate(
                 opt_verbose = opt_verbose,
             )
             gold_path = dataset.filename
+            pred_paths = []
+            pred_fingerprints = []
             for learner_index, model in enumerate(models):
                 learner_rank = learner_index + 1
                 print('Evaluating learner %d on %s:' %(learner_rank, name))
@@ -828,6 +861,20 @@ def evaluate(
                 model_module.evaluate(
                     prediction_path, gold_path
                 )
+                pred_paths.append(prediction_path)
+                pred_fingerprints.append(prediction_fingerprint)
+            print('Evaluating ensemble of learners on %s:' %name)
+            ensemble_fingerprint = hex2base62(hashlib.sha512('%d:%s:%s' %(
+                len(pred_paths), ':'.join(pred_fingerprints),
+            )).hexdigest())
+            output_path = '%s/prediction-%02d-E%s-%s%s' %(
+                opt_workdir, training_round, name, ensemble_fingerprint[:20],
+                filename_extension
+            )
+            dataset_module.combine(pred_paths, output_path)
+            model_module.evaluate(
+                output_path, gold_path
+            )
 
 def hex2base62(h):
     s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'

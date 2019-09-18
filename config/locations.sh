@@ -31,6 +31,7 @@ case "${SETTING}" in
     UD_TREEBANK_DIR=/scratch/jwagner/ud-parsing/ud-treebanks-v2.3
     UDPIPE_FUTURE_DIR=${HOME}/bert/UDPipe-Future
     UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-tf114-py36
+    CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
     ;;
 "jwagner@gr")
     UD_TREEBANK_DIR=${HOME}/tbemb/ud-treebanks-v2.3
