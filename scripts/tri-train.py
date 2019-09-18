@@ -118,7 +118,7 @@ Options:
                             number.
                             If NUMBER end with % it is relative to the size
                             of the labelled data.
-                            (Default: 200k)
+                            (Default: 600k)
 
     --subset-attempts  NUMBER  Create NUMBER subsets and pick the one that is
                             closest to the desired subset size
@@ -131,7 +131,7 @@ Options:
                             As full sentences are selected the actual number
                             of selected tokens can deviate from the requested
                             number.
-                            (default: 4k)
+                            (default: 10k)
 
     --augment-attempts  NUMBER  Create NUMBER augmentation sets and pick the
                             one that is closest to the desired set size
@@ -427,6 +427,11 @@ def main():
         unl_test_sets.append(test)
     unlabelled_data = basic_dataset.Concat(unlabelled_data_sets)
 
+    monitoring_datasets = []
+    for dataset in dev_sets + test_sets + unl_dev_sets + unl_test_sets:
+        if dataset is not None:
+            monitoring_datasets.append(dataset)
+
     training_data_size = training_data.get_number_of_items()
     unlabelled_data_size = unlabelled_data.get_number_of_items()
     opt_seed_size    = adjust_size(opt_seed_size,    training_data_size)
@@ -510,6 +515,7 @@ def main():
         opt_model_init_type, opt_init_seed, 0,
         opt_workdir, opt_manually_train, opt_continue,
         opt_verbose,
+        monitoring_datasets = monitoring_datasets
     )
 
     # evaluate models using all dev sets (and test sets if --final-test)
@@ -590,19 +596,19 @@ def main():
                 dataset_module.new_empty_set(),
                 predictions[learner_index][1]
             ))
+        event_counter = {}
         for subset_index in range(len(unlabelled_subset)):
-            print('\nSubset item', subset_index+1)
             sentence_predictions = []
             for learner_index in range(opt_learners):
                 sentence_predictions.append(prediction_sets[learner_index][subset_index])
             learner_index, merged_prediction = knowledge_transfer(
                 sentence_predictions,
                 target_columns, column_weights, opt_learners,
-                #opt_max_teacher_disagreement_fraction,
+                #opt_max_teacher_disagreement_fraction,  # TODO: provide options for these
                 #opt_min_teacher_agreements,
                 #opt_learner_must_disagree,
                 #opt_min_learner_disagreement,
-                verbose = True,
+                event_counter = event_counter,
             )
             if learner_index < 0:
                 continue
@@ -620,6 +626,7 @@ def main():
 
             # add new sentence to data set of learner
             new_datasets[training_index][learner_index].append(merged_prediction)
+        print_event_counter(event_counter)
 
         new_training_sets = []
         for learner_index in range(opt_learners):
@@ -711,6 +718,7 @@ def main():
             opt_model_init_type, opt_init_seed, training_round,
             opt_workdir, opt_manually_train, opt_continue,
             opt_verbose,
+            monitoring_datasets = monitoring_datasets
         )
 
         print('Evaluating new models:')
@@ -978,43 +986,65 @@ def merge_predictions(predictions, target_columns):
     else:
         return retval
 
+def print_event_counter(event_counter):
+    for key in sorted(event_counter.keys()):
+        print(key, event_counter[key])
+
+def count_event(event_counter, event):
+    if event_counter is None:
+        return
+    try:
+        event_counter[event] += 1
+    except KeyError:
+        event_counter[event] = 1
+
 def knowledge_transfer(
     predictions, target_columns, column_weights, learners = 3,
     max_teacher_disagreement_fraction = 0.0,
     min_teacher_agreements = 2,
     learner_must_disagree = True, min_learner_disagreement = 1,
-    verbose = False
+    verbose = False, event_counter = None
 ):
     # knowledge transfer candidates: first element says how much the teachers disagree
     kt_candidates = []
     s_length = float(len(predictions[0]))
-    print('Sentence length', s_length)
+    if verbose: print('Sentence length', s_length)
     for learner_index in range(learners):
         learner_prediction = predictions[learner_index]
         if learners == 1:
             t1_indices = [None]
         else:
-            t1_indices = range(learners-1)
+            t1_indices = range(learners)
         for teacher1_index in t1_indices:
             if learners > 1:
-                t1_prediction = predictions[teacher1_index]
+                # co- or tri-training: teacher cannot
+                # also be the learner
                 if teacher1_index == learner_index:
                     continue
+                t1_prediction = predictions[teacher1_index]
             if learners <= 2:
+                # self- or co-training: no second teacher
                 t2_indices = [None]
             else:
+                # tri-training
                 t2_indices = range(teacher1_index+1, learners)
             for teacher2_index in t2_indices:
                 if learners == 1:
                     # self-training
                     teachers_predictions = [learner_prediction]
+                    if verbose: print('Learner %d, teacher %d' %(
+                        learner_index+1, teacher1_index+1
+                    ))
                 elif learners == 2:
                     # co-training
                     teachers_predictions = [t1_prediction]
+                    if verbose: print('Learner %d, teacher %d' %(
+                        learner_index+1, teacher1_index+1
+                    ))
                 else:
                     if teacher2_index == learner_index:
                         continue
-                    print('Learner %d, teachers %d and %d' %(
+                    if verbose: print('Learner %d, teachers %d and %d' %(
                         learner_index+1, teacher1_index+1, teacher2_index+1
                     ))
                     t2_prediction = predictions[teacher2_index]
@@ -1023,13 +1053,13 @@ def knowledge_transfer(
                         t1_prediction, t2_prediction,
                         target_columns, column_weights
                     )
-                    print('Teacher disagreement:', teacher_disagreement)
+                    if verbose: print('Teacher disagreement:', teacher_disagreement)
                     teacher_disagreement_fraction = teacher_disagreement / s_length
                     if teacher_disagreement_fraction > max_teacher_disagreement_fraction:
-                        print(teacher_disagreement_fraction, 'exceeds max_teacher_disagreement_fraction')
+                        if verbose: print(teacher_disagreement_fraction, 'exceeds max_teacher_disagreement_fraction')
                         continue
                     if s_length - teacher_disagreement < min_teacher_agreements:
-                        print(s_length - teacher_disagreement, 'below min_teacher_agreements')
+                        if verbose: print(s_length - teacher_disagreement, 'below min_teacher_agreements')
                         continue
                     teachers_predictions = [
                         t1_prediction, t2_prediction
@@ -1046,7 +1076,7 @@ def knowledge_transfer(
                     if learner_disagreement < min_learner_disagreement:
                         # skip this candidate as the learner
                         # is unlikely to learn much from it
-                        print('below min_learner_disagreement')
+                        if verbose: print('below min_learner_disagreement')
                         continue
                 else:
                     # postpone merging to when it is needed
@@ -1059,6 +1089,7 @@ def knowledge_transfer(
                     learner_index, teacher1_index, teacher2_index,
                     merged_prediction
                 ))
+    count_event(event_counter, ('n_kt_candidates', len(kt_candidates)))
     if not kt_candidates:
         # can happen when predictions agree and learner_must_disagree is set
         if verbose:
@@ -1068,6 +1099,10 @@ def knowledge_transfer(
     if verbose:
         print('Number of candidates:', len(kt_candidates))
     _, _, learner_index, t1_index, t2_index, prediction = kt_candidates[0]
+    if t2_index is None:
+        count_event(event_counter, ('kt from', t1_index+1, 'to', learner_index+1))
+    else:
+        count_event(event_counter, ('kt from', t1_index+1, 'and', t2_index+1, 'to', learner_index+1))
     if prediction is None:
         t1_prediction = predictions[t1_index]
         t2_prediction = predictions[t2_index]
@@ -1124,6 +1159,7 @@ def train_models(
     opt_model_init_type, opt_init_seed, training_round,
     opt_workdir, opt_manually_train, opt_continue,
     opt_verbose,
+    monitoring_datasets = [],
 ):
     retval = []
     manual_training_needed = []
@@ -1164,7 +1200,7 @@ def train_models(
             # ask model module to train the model
             model_module.train(
                 training_set.filename, model_init_seed, model_path,
-                epoch_selection_set
+                epoch_selection_set, monitoring_datasets,
             )
         retval.append((model_fingerprint, model_path, model_module))
     if manual_training_needed:

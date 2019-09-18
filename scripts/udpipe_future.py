@@ -16,7 +16,11 @@ from __future__ import print_function
 import subprocess
 import sys
 
-def train(dataset_filename, seed, model_dir, epoch_selection_dataset = None):
+def train(
+    dataset_filename, seed, model_dir,
+    epoch_selection_dataset = None,
+    monitoring_datasets = []
+):
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
     command = []
@@ -24,6 +28,9 @@ def train(dataset_filename, seed, model_dir, epoch_selection_dataset = None):
     command.append(dataset_filename)
     command.append(seed)
     command.append(model_dir)
+    for i in range(2):
+        if len(monitoring_datasets) > i:
+            command.append(monitoring_datasets[i].filename)
     print('Running', command)
     sys.stderr.flush()
     sys.stdout.flush()

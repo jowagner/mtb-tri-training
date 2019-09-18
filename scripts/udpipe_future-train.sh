@@ -17,6 +17,17 @@ test -z $3 && echo "Missing model output folder"
 test -z $3 && exit 1
 MODELDIR=$3
 
+# optional args:
+TEST_SET=$4
+DEV_SET=$5
+
+if [ -n "$TEST_SET" ]; then
+    REAL_TEST_SET=$(realpath ${TEST_SET})
+fi
+if [ -n "$DEV_SET" ]; then
+    REAL_DEV_SET=$(realpath ${DEV_SET})
+fi
+
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 source ${PRJ_DIR}/config/locations.sh
@@ -38,9 +49,16 @@ mkdir -p $MODELDIR
 cp ${TRAIN_CONLLU} $MODELDIR/${FAKE_TBID}-ud-train.conllu
 cd $MODELDIR
 
-# The parser complains if there is no test set.
+if [ -n "$TEST_SET" ]; then
+    ln -s ${REAL_TEST_SET} ${FAKE_TBID}-ud-test.conllu
+else
+    # The parser complains if there is no test set.
+    ln -s ${FAKE_TBID}-ud-train.conllu ${FAKE_TBID}-ud-test.conllu
+fi
 
-ln -s ${FAKE_TBID}-ud-train.conllu ${FAKE_TBID}-ud-test.conllu
+if [ -n "$DEV_SET" ]; then
+    ln -s ${REAL_DEV_SET} ${FAKE_TBID}-ud-dev.conllu
+fi
 
 hostname > training.start
 
