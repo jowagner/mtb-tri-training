@@ -10,6 +10,8 @@
 
 import collections
 import os
+import subprocess
+import sys
 
 import basic_dataset
 
@@ -232,7 +234,7 @@ def combine(prediction_paths, output_path, combiner_dir = None):
     if not combiner_dir:
         combiner_dir = os.environ['CONLLU_COMBINER_DIR']
     command = []
-    command.append('%s/parser.sh' %combiner_dir)
+    command.append('%s/parser.py' %combiner_dir)
     command.append('--outfile')
     command.append(output_path)
     command.append('--prune-labels')

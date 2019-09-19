@@ -870,10 +870,10 @@ def evaluate(
                 pred_paths.append(prediction_path)
                 pred_fingerprints.append(prediction_fingerprint)
             print('Evaluating ensemble of learners on %s:' %name)
-            ensemble_fingerprint = hex2base62(hashlib.sha512('%d:%s:%s' %(
-                len(pred_paths), ':'.join(pred_fingerprints),
-            )).hexdigest())
-            output_path = '%s/prediction-%02d-E%s-%s%s' %(
+            ensemble_fingerprint = hex2base62(hashlib.sha512(
+                ':'.join(pred_fingerprints)
+            ).hexdigest())
+            output_path = '%s/prediction-%02d-E-%s-%s%s' %(
                 opt_workdir, training_round, name, ensemble_fingerprint[:20],
                 filename_extension
             )
