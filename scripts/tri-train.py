@@ -520,27 +520,16 @@ def main():
             baseline_epoch_selection = opt_learners*[None]
         else:
             baseline_epoch_selection = opt_learners*[basic_dataset.Concat(dev_sets)]
-        models = train_models(
-            opt_learners, opt_learners * [training_data],
-            baseline_epoch_selection, model_modules,
-            opt_model_init_type, opt_init_seed, 0,
-            opt_workdir, opt_manually_train, opt_continue,
-            opt_verbose,
-            monitoring_datasets = monitoring_datasets,
-            prefix = 'baseline-'
-        )
-        evaluate(
-            models,
-            dev_sets + unl_dev_sets,
-            test_sets + unl_test_sets,
-            opt_labelled_ids + opt_unlabelled_ids,
-            dataset_module,
-            filename_extension = filename_extension,
-            opt_workdir = opt_workdir,
-            opt_continue = opt_continue,
-            all_prediction_paths = all_prediction_paths,
-            all_prediction_fingerprints = all_prediction_fingerprints,
-            opt_verbose = opt_verbose
+        all_baseline_prediction_paths = {}
+        all_baseline_prediction_fingerprints = {}
+        train_and_evaluate_baselines(
+            training_data, opt_learners, 0, dataset_module, model_modules,
+            opt_init_seed, opt_model_init_type, dev_sets, test_sets,
+            unl_dev_sets, unl_test_sets, opt_labelled_ids, opt_unlabelled_ids,
+            baseline_epoch_selection, monitoring_datasets, opt_workdir,
+            filename_extension, opt_continue, opt_manually_train, opt_verbose,
+            all_baseline_prediction_fingerprints,
+            all_baseline_prediction_paths,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -577,14 +566,31 @@ def main():
     new_datasets = []
     for training_index in range(opt_iterations):
         training_round = training_index + 1
-        print('\n== Tri-training Iteration %d of %d ==\n' %(
+        print('\n== Tri-training Iteration %d of %d ==' %(
             training_round, opt_iterations
         ))
+
+        if not opt_manually_train:
+            print('\nBaseline(s):')
+            if opt_init_seed:
+                random.seed(int(hashlib.sha512('baselines in round %d: %s' %(
+                    training_round, opt_init_seed,
+                )).hexdigest(), 16))
+            train_and_evaluate_baselines(
+                training_data, opt_learners, training_round, dataset_module,
+                model_modules, opt_init_seed, opt_model_init_type, dev_sets,
+                test_sets, unl_dev_sets, unl_test_sets, opt_labelled_ids,
+                opt_unlabelled_ids, baseline_epoch_selection,
+                monitoring_datasets, opt_workdir, filename_extension,
+                opt_continue, opt_manually_train, opt_verbose,
+                all_baseline_prediction_fingerprints,
+                all_baseline_prediction_paths,
+            )
         if opt_init_seed:
             random.seed(int(hashlib.sha512('round %d: %s' %(
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
-        print('Selecting subset of unlabelled data:')
+        print('\nSelecting subset of unlabelled data:')
         subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
         unlabelled_subset = get_subset(
             unlabelled_data, opt_subset_size, random, opt_subset_attempts,
@@ -900,10 +906,8 @@ def evaluate(
             model_module.evaluate(
                 output_path, gold_path
             )
-            all_prediction_paths[gold_path].append(output_path)
-            all_prediction_fingerprints[gold_path].append(ensemble_fingerprint)
             if not is_first:
-                print('Evaluating ensemble of all past predictions')
+                print('Evaluating ensemble of all non-ensemble past predictions')
                 pred_paths = all_prediction_paths[gold_path]
                 pred_fingerprints = all_prediction_fingerprints[gold_path]
                 ensemble_fingerprint = hex2base62(hashlib.sha512(
@@ -917,6 +921,38 @@ def evaluate(
                 model_module.evaluate(
                     output_path, gold_path
                 )
+
+def train_and_evaluate_baselines(
+    training_data, opt_learners, training_round, dataset_module,
+    model_modules, opt_init_seed, opt_model_init_type, dev_sets,
+    test_sets, unl_dev_sets, unl_test_sets, opt_labelled_ids,
+    opt_unlabelled_ids, baseline_epoch_selection, monitoring_datasets,
+    opt_workdir, filename_extension, opt_continue, opt_manually_train,
+    opt_verbose, all_baseline_prediction_fingerprints,
+    all_baseline_prediction_paths,
+):
+    models = train_models(
+        opt_learners, opt_learners * [training_data],
+        baseline_epoch_selection, model_modules,
+        opt_model_init_type, opt_init_seed, training_round,
+        opt_workdir, opt_manually_train, opt_continue,
+        opt_verbose,
+        monitoring_datasets = monitoring_datasets,
+        prefix = 'baseline-'
+    )
+    evaluate(
+        models,
+        dev_sets + unl_dev_sets,
+        test_sets + unl_test_sets,
+        opt_labelled_ids + opt_unlabelled_ids,
+        dataset_module,
+        filename_extension = filename_extension,
+        opt_workdir = opt_workdir,
+        opt_continue = opt_continue,
+        all_prediction_paths = all_baseline_prediction_paths,
+        all_prediction_fingerprints = all_baseline_prediction_fingerprints,
+        opt_verbose = opt_verbose
+    )
 
 def hex2base62(h):
     s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
