@@ -503,6 +503,9 @@ def main():
                 '%s/for-%s-selection-%d.conllu' %(opt_workdir, name, learner_rank)
             ))
 
+    all_prediction_paths = {}
+    all_prediction_fingerprints = {}
+
     model_modules = []
     if not opt_manually_train:
         print('\n== Baseline(s) ==\n')
@@ -535,6 +538,8 @@ def main():
             filename_extension = filename_extension,
             opt_workdir = opt_workdir,
             opt_continue = opt_continue,
+            all_prediction_paths = all_prediction_paths,
+            all_prediction_fingerprints = all_prediction_fingerprints,
             opt_verbose = opt_verbose
         )
 
@@ -558,6 +563,8 @@ def main():
         filename_extension = filename_extension,
         opt_workdir = opt_workdir,
         opt_continue = opt_continue,
+        all_prediction_paths = all_prediction_paths,
+        all_prediction_fingerprints = all_prediction_fingerprints,
         opt_verbose = opt_verbose
     )
 
@@ -767,6 +774,8 @@ def main():
             filename_extension = filename_extension,
             opt_workdir = opt_workdir,
             opt_continue = opt_continue,
+            all_prediction_paths = all_prediction_paths,
+            all_prediction_fingerprints = all_prediction_fingerprints,
             opt_verbose = opt_verbose
         )
 
@@ -837,7 +846,8 @@ def evaluate(
     filename_extension = '.data',
     opt_continue = False,
     opt_verbose  = False,
-    all_predictions = {},
+    all_prediction_paths = {},
+    all_prediction_fingerprints = {},
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -858,6 +868,12 @@ def evaluate(
                 opt_verbose = opt_verbose,
             )
             gold_path = dataset.filename
+            if gold_path not in all_prediction_paths:
+                all_prediction_paths[gold_path] = []
+                all_prediction_fingerprints[gold_path] = []
+                is_first = True
+            else:
+                is_first = False
             pred_paths = []
             pred_fingerprints = []
             for learner_index, model in enumerate(models):
@@ -870,10 +886,8 @@ def evaluate(
                 )
                 pred_paths.append(prediction_path)
                 pred_fingerprints.append(prediction_fingerprint)
-                key = (gold_path, learner_index)
-                if key not in all_predictions:
-                    all_predictions[key] = []
-                all_predictions[key].append(prediction_path)
+                all_prediction_paths[gold_path].append(prediction_path)
+                all_prediction_fingerprints[gold_path].append(prediction_fingerprint)
             print('Evaluating ensemble of learners on %s:' %name)
             ensemble_fingerprint = hex2base62(hashlib.sha512(
                 ':'.join(pred_fingerprints)
@@ -886,16 +900,12 @@ def evaluate(
             model_module.evaluate(
                 output_path, gold_path
             )
-            key = (gold_path, len(models))
-            if key not in all_predictions:
-                all_predictions[key] = []
-                is_first = True
-            else:
-                is_first = False
-            all_predictions[key].append(prediction_path)
+            all_prediction_paths[gold_path].append(output_path)
+            all_prediction_fingerprints[gold_path].append(ensemble_fingerprint)
             if not is_first:
                 print('Evaluating ensemble of all past predictions')
-                pred_fingerprints.append(ensemble_fingerprint)
+                pred_paths = all_prediction_paths[gold_path]
+                pred_fingerprints = all_prediction_fingerprints[gold_path]
                 ensemble_fingerprint = hex2base62(hashlib.sha512(
                     ':'.join(pred_fingerprints)
                 ).hexdigest())
