@@ -837,6 +837,7 @@ def evaluate(
     filename_extension = '.data',
     opt_continue = False,
     opt_verbose  = False,
+    all_predictions = {},
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -869,6 +870,10 @@ def evaluate(
                 )
                 pred_paths.append(prediction_path)
                 pred_fingerprints.append(prediction_fingerprint)
+                key = (gold_path, learner_index)
+                if key not in all_predictions:
+                    all_predictions[key] = []
+                all_predictions[key].append(prediction_path)
             print('Evaluating ensemble of learners on %s:' %name)
             ensemble_fingerprint = hex2base62(hashlib.sha512(
                 ':'.join(pred_fingerprints)
@@ -881,6 +886,27 @@ def evaluate(
             model_module.evaluate(
                 output_path, gold_path
             )
+            key = (gold_path, len(models))
+            if key not in all_predictions:
+                all_predictions[key] = []
+                is_first = True
+            else:
+                is_first = False
+            all_predictions[key].append(prediction_path)
+            if not is_first:
+                print('Evaluating ensemble of all past predictions')
+                pred_fingerprints.append(ensemble_fingerprint)
+                ensemble_fingerprint = hex2base62(hashlib.sha512(
+                    ':'.join(pred_fingerprints)
+                ).hexdigest())
+                output_path = '%s/prediction-%02d-A-%s-%s%s' %(
+                    opt_workdir, training_round, name, ensemble_fingerprint[:20],
+                    filename_extension
+                )
+                dataset_module.combine(pred_paths, output_path)
+                model_module.evaluate(
+                    output_path, gold_path
+                )
 
 def hex2base62(h):
     s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
