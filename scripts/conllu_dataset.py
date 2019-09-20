@@ -237,6 +237,7 @@ def combine(prediction_paths, output_path, combiner_dir = None):
     command.append('%s/parser.py' %combiner_dir)
     command.append('--outfile')
     command.append(output_path)
+    command.append('--overwrite')
     command.append('--prune-labels')
     for prediction_path in prediction_paths:
         command.append(prediction_path)
