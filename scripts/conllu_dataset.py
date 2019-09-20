@@ -227,7 +227,7 @@ def get_filename_extension():
     ''' recommended extension for output files '''
     return '.conllu'
 
-def combine(prediction_paths, output_path, combiner_dir = None):
+def combine(prediction_paths, output_path, combiner_dir = None, seed = '42'):
     ''' combine (ensemble) the given predictions
         into a single prediction
     '''
@@ -239,6 +239,8 @@ def combine(prediction_paths, output_path, combiner_dir = None):
     command.append(output_path)
     command.append('--overwrite')
     command.append('--prune-labels')
+    command.append('--seed')
+    command.append(seed)
     for prediction_path in prediction_paths:
         command.append(prediction_path)
     print('Running', command)
