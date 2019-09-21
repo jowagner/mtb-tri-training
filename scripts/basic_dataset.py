@@ -11,7 +11,12 @@
 import collections
 import hashlib
 import random
-import StringIO
+
+# https://stackoverflow.com/questions/11914472/stringio-in-python3
+try:
+    from StringIO import StringIO ## for Python 2
+except ImportError:
+    from io import StringIO ## for Python 3
 
 class Sentence(collections.Sequence):
 
@@ -144,7 +149,7 @@ class Dataset(collections.Sequence):
     def hexdigest(self):
         h = hashlib.sha512()
         for sentence in self:
-            f = StringIO.StringIO()
+            f = StringIO()
             self.write_sentence(f, sentence)
             f.seek(0)
             h.update(f.read())

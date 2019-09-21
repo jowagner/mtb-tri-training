@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 # (C) 2019 Dublin City University
@@ -10,6 +10,8 @@
 
 # For Python 2-3 compatible code
 # https://python-future.org/compatible_idioms.html
+
+# TODO: make all parts work with Python3 
 
 from __future__ import print_function
 
@@ -270,6 +272,9 @@ def main():
     opt_max_selection_size = '50k'
     opt_selection_attempts = 5
     opt_continue = False
+    opt_max_teacher_disagreement_fraction = 0.0
+    opt_min_teacher_agreements   = 0
+    opt_min_learner_disagreement = 0     # 1 = tri-training with disagreement
 
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
@@ -652,10 +657,10 @@ def main():
             learner_index, merged_prediction = knowledge_transfer(
                 sentence_predictions,
                 target_columns, column_weights, opt_learners,
-                #opt_max_teacher_disagreement_fraction,  # TODO: provide options for these
-                #opt_min_teacher_agreements,
-                #opt_learner_must_disagree,
-                #opt_min_learner_disagreement,
+                opt_max_teacher_disagreement_fraction,
+                opt_min_teacher_agreements,
+                opt_learner_must_disagree,
+                opt_min_learner_disagreement,
                 event_counter = event_counter,
             )
             if learner_index < 0:
@@ -1190,7 +1195,7 @@ def knowledge_transfer(
                         t1_prediction, t2_prediction
                     ]
                 # optionally consider disagreement with learner
-                if learner_must_disagree:
+                if min_learner_disagreement > 0:
                     merged_prediction = merge_predictions(
                         teachers_predictions, target_columns
                     )
@@ -1216,7 +1221,7 @@ def knowledge_transfer(
                 ))
     count_event(event_counter, ('n_kt_candidates', len(kt_candidates)))
     if not kt_candidates:
-        # can happen when predictions agree and learner_must_disagree is set
+        # can happen when predictions agree and min_learner_disagreement > 0
         if verbose:
             print('No candidates')
         return -1, None

@@ -35,6 +35,10 @@ source ${PRJ_DIR}/config/locations.sh
 PARSER_NAME=udpipe-future
 PARSER_DIR=${UDPIPE_FUTURE_DIR}
 
+if [ -n "$UDPIPE_FUTURE_CONDA" ]; then
+    conda activate ${UDPIPE_FUTURE_CONDA}
+fi
+
 if [ -n "$UDPIPE_FUTURE_ENV" ]; then
     source ${UDPIPE_FUTURE_ENV}/bin/activate
 fi
