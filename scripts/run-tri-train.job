@@ -1,0 +1,43 @@
+#!/bin/bash
+  
+#SBATCH -p compute       # which partition to run on
+#SBATCH --gres=gpu:tesla:2  # rtx2080ti:2
+#SBATCH -B 2-2:4-18:2-2
+#SBATCH -J tri-train    # name for the job
+#SBATCH --mem=14000
+#SBATCH --cpus-per-task=6
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+PRJDIR=${HOME}/tri-training
+
+source ${PRJDIR}/mtb-tri-training/config/locations.sh
+
+echo "Setting: ${SETTING}"
+echo "Treebanks: ${UD_TREEBANK_DIR}"
+
+SCRIPTDIR=${PRJDIR}/mtb-tri-training/scripts
+WORKDIR=${PRJDIR}/workdirs/default
+
+mkdir -p ${WORKDIR}
+
+hostname > ${WORKDIR}/run.start
+
+#    --deadline 36.0            \
+#    --stopfile ${WORKDIR}/stop  \
+
+cd ${SCRIPTDIR}
+./tri-train.py   \
+    --init-seed 42       \
+    --model-init compose  \
+    --unlabelled en_ewt    \
+    --labelled   en_lines  \
+    --continue             \
+    --epoch-selection last  \
+    --iterations 20         \
+    --workdir ${WORKDIR}     \
+    2> ${WORKDIR}/stderr.txt  \
+    >  ${WORKDIR}/stdout.txt
+
+touch ${WORKDIR}/run.end
+
