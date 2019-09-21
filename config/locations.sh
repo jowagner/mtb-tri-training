@@ -31,7 +31,7 @@ case "${SETTING}" in
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
-    export UDPIPE_FUTURE_LIB_PATH=/home/support/nvidia/cuda10/lib64
+    export UDPIPE_FUTURE_LIB_PATH=/home/support/nvidia/cuda10/lib64:/home/support/nvidia/cudnn/cuda10_cudnn7_7.5/lib64
     export CONDA_HOME=${HOME}/anaconda3
     export UDPIPE_FUTURE_CONDA=udpf
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
