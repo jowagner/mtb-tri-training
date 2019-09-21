@@ -24,6 +24,10 @@ source ${PRJ_DIR}/config/locations.sh
 PARSER_NAME=udpipe-future
 PARSER_DIR=${UDPIPE_FUTURE_DIR}
 
+if [ -n "$UDPIPE_FUTURE_LIB_PATH" ]; then
+    export LD_LIBRARY_PATH=${UDPIPE_FUTURE_LIB_PATH}:${LD_LIBRARY_PATH}
+fi
+
 if [ -n "$UDPIPE_FUTURE_CONDA" ]; then
     source ${CONDA_HOME}/etc/profile.d/conda.sh
     conda activate ${UDPIPE_FUTURE_CONDA}
