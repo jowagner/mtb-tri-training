@@ -36,6 +36,7 @@ PARSER_NAME=udpipe-future
 PARSER_DIR=${UDPIPE_FUTURE_DIR}
 
 if [ -n "$UDPIPE_FUTURE_CONDA" ]; then
+    source ${CONDA_HOME}/etc/profile.d/conda.sh
     conda activate ${UDPIPE_FUTURE_CONDA}
 fi
 
