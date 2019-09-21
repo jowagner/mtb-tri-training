@@ -28,12 +28,14 @@ case "${SETTING}" in
     export UD_TREEBANK_DIR=/ichec/work/dcu01/jwagner/ud-parsing/ud-treebanks-v2.3
     ;;
 "jwagner@bo")
+    export PRJ_DIR=${HOME}/tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
-    export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
+    export UDPIPE_FUTURE_DIR=${PRJ_DIR}/UDPipe-Future
     export UDPIPE_FUTURE_CONDA=udpf
-    export CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
+    export CONLLU_COMBINER_DIR=${PRJ_DIR}/ADAPT-DCU/combination
     ;;
 "jwagner@ok")
+    export PRJ_DIR=${HOME}/tri-training
     export UD_TREEBANK_DIR=/scratch/jwagner/ud-parsing/ud-treebanks-v2.3
     export UDPIPE_FUTURE_DIR=${HOME}/bert/UDPipe-Future
     export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-tf114-py36
