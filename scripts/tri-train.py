@@ -113,6 +113,13 @@ Options:
                             the one that is closest to the desired seed size.
                             (Default: 5)
 
+    --seed-without-replacement
+    --without-replacement   Sample seed sets without replacement. If seed size
+                            is over 100% make n copies first to reach n x 100%
+                            and then sample the remaining < 100% without
+                            replacement.
+                            (Default: sample seed sets without replacement)
+
     --subset-size  NUMBER   How many items to select from the unlabelled
                             data in each tri-training iteration
                             As full sentences are selected the actual number
@@ -128,8 +135,8 @@ Options:
 
     --augment-size  NUMBER  How many items to add to each learner in each
                             tri-training iteration.
-                            If the subset size is too small, e.g. less than 3x
-                            augment size, the augment size may not be reached.
+                            If the subset size is too small the augment size
+                            may not be reached.
                             As full sentences are selected the actual number
                             of selected tokens can deviate from the requested
                             number.
@@ -256,6 +263,7 @@ def main():
     opt_model_init_type = None
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
+    opt_seed_with_replacement = True
     opt_subset_size = '600k'
     opt_subset_attempts = 5
     opt_augment_size = '10k'
@@ -320,6 +328,8 @@ def main():
         elif option == '--seed-attempts':
             opt_seed_attempts = int(sys.argv[1])
             del sys.argv[1]
+        elif option in ('--seed-without-replacement', '--without-replacement'):
+            opt_seed_with_replacement = False
         elif option == '--subset-size':
             opt_subset_size = sys.argv[1]
             del sys.argv[1]
@@ -469,7 +479,7 @@ def main():
         learner_rank = learner_index + 1
         seed_set = get_subset(
             training_data, opt_seed_size, random, opt_seed_attempts,
-            with_replacement = True
+            with_replacement = opt_seed_with_replacement
         )
         print('Learner %d has seed data with %d items in %d sentences' %(
             learner_rank, seed_set.get_number_of_items(), len(seed_set),
