@@ -1,5 +1,4 @@
 #!/usr/bin/env python2
-if os.path.exists(
 # -*- coding: utf-8 -*-
 
 # (C) 2019 Dublin City University
