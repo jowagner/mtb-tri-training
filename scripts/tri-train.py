@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+if os.path.exists(
 # -*- coding: utf-8 -*-
 
 # (C) 2019 Dublin City University
@@ -11,7 +12,7 @@
 # For Python 2-3 compatible code
 # https://python-future.org/compatible_idioms.html
 
-# TODO: make all parts work with Python3 
+# TODO: make all parts work with Python3
 
 from __future__ import print_function
 
@@ -72,6 +73,15 @@ Options:
                             using the option --continue.
                             (Default: Proceed to knowledge transfer between
                             learners without further ado.)
+
+    --baselines             Also train and test NUMBER_OF_LEARNERS baseline
+                            models (usually 3) trained on the labelled
+                            training data (before re-sampling seed data for
+                            each learner) and ensemble models in each
+                            tri-training round using the same initialisation
+                            as the learners.
+                            (Default: Only train and test tri-training model
+                            and ensembles.)
 
     --model-init  TYPE      derive the initialisation seed for each model to
                             be trained from
@@ -256,6 +266,7 @@ def main():
     opt_manually_train = False
     opt_manually_predict = False
     opt_quit_after_prediction = False
+    opt_baselines = False
     opt_labelled_ids = []
     opt_unlabelled_ids = []
     opt_dataset_module = 'conllu_dataset'
@@ -306,6 +317,8 @@ def main():
             opt_manually_predict = True
         elif option == '--quit-after-prediction':
             opt_quit_after_prediction = True
+        elif option == '--baselines':
+            opt_baselines = True
         elif option in ('--model-init', '--model-init-type'):
             opt_model_init_type = sys.argv[1]
             del sys.argv[1]
@@ -523,14 +536,15 @@ def main():
 
     model_modules = []
     if not opt_manually_train:
+        for name in opt_model_modules:
+            model_modules.append(importlib.import_module(name))
+    if opt_baselines and not opt_manually_train:
         print('\n== Baseline(s) ==\n')
         write_dataset(training_data, '%s/training-set-%s%s' %(
             opt_workdir,
             get_prediction_fingerprint(opt_init_seed, training_data)[:20],
             filename_extension
         ))
-        for name in opt_model_modules:
-            model_modules.append(importlib.import_module(name))
         if opt_epoch_selection == 'last':
             baseline_epoch_selection = opt_learners*[None]
         else:
@@ -585,7 +599,7 @@ def main():
             training_round, opt_iterations
         ))
 
-        if not opt_manually_train:
+        if opt_baselines and not opt_manually_train:
             print('\nBaseline(s):')
             if opt_init_seed:
                 random.seed(int(hashlib.sha512('baselines in round %d: %s' %(
@@ -813,6 +827,7 @@ def make_predictions(
     opt_continue = False,
     opt_manually_predict = False,
     opt_verbose = False,
+    prefix = '',
 ):
     ''' makes predictions for the given dataet for all learners
     '''
@@ -829,11 +844,21 @@ def make_predictions(
         )
         if opt_verbose:
             print('Prediction input and model fingerprint (shortened):', prediction_fingerprint[:40])
-        prediction_path = '%s/prediction-%02d-%d-%s%s%s' %(
-                opt_workdir, training_round, learner_rank,
+        prediction_path = '%s/%sprediction-%02d-%d-%s%s%s' %(
+                opt_workdir, prefix,
+                training_round, learner_rank,
                 dataset_name,
                 prediction_fingerprint[:20], filename_extension
         )
+        # TODO: remove the following when all running jobs have been updated
+        old_prediction_path = '%s/prediction-%02d-%d-%s%s%s' %(
+            opt_workdir,
+            training_round, learner_rank,
+            dataset_name,
+            prediction_fingerprint[:20], filename_extension
+        )
+        if os.path.exists(old_prediction_path):
+            os.rename(old_prediction_path, old_prediction_path)
         print('Prediction output path:', prediction_path)
         if os.path.exists(prediction_path):
             if not opt_continue:
@@ -869,6 +894,7 @@ def evaluate(
     opt_verbose  = False,
     all_prediction_paths = {},
     all_prediction_fingerprints = {},
+    prefix = '',
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -887,6 +913,7 @@ def evaluate(
                 opt_continue = opt_continue,
                 opt_manually_predict = False,
                 opt_verbose = opt_verbose,
+                prefix = prefix,
             )
             gold_path = dataset.filename
             if gold_path not in all_prediction_paths:
@@ -913,8 +940,9 @@ def evaluate(
             ensemble_fingerprint = hex2base62(hashlib.sha512(
                 ':'.join(pred_fingerprints)
             ).hexdigest())
-            output_path = '%s/prediction-%02d-E-%s-%s%s' %(
-                opt_workdir, training_round, name, ensemble_fingerprint[:20],
+            output_path = '%s/%sprediction-%02d-E-%s-%s%s' %(
+                opt_workdir, prefix,
+                training_round, name, ensemble_fingerprint[:20],
                 filename_extension
             )
             dataset_module.combine(pred_paths, output_path)
@@ -928,8 +956,9 @@ def evaluate(
                 ensemble_fingerprint = hex2base62(hashlib.sha512(
                     ':'.join(pred_fingerprints)
                 ).hexdigest())
-                output_path = '%s/prediction-%02d-A-%s-%s%s' %(
-                    opt_workdir, training_round, name, ensemble_fingerprint[:20],
+                output_path = '%s/%sprediction-%02d-A-%s-%s%s' %(
+                    opt_workdir, prefix,
+                    training_round, name, ensemble_fingerprint[:20],
                     filename_extension
                 )
                 dataset_module.combine(pred_paths, output_path)
@@ -966,7 +995,8 @@ def train_and_evaluate_baselines(
         opt_continue = opt_continue,
         all_prediction_paths = all_baseline_prediction_paths,
         all_prediction_fingerprints = all_baseline_prediction_fingerprints,
-        opt_verbose = opt_verbose
+        opt_verbose = opt_verbose,
+        prefix = 'baseline-'
     )
 
 def hex2base62(h):
