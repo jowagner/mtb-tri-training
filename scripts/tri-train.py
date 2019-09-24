@@ -219,6 +219,16 @@ Options:
                             size.
                             (Default: 5)
 
+    --min-learner-disagreement  NUMBER
+                            Only consider knowledge transfer candidates where
+                            the learner disagrees with the teacher about at
+                            least NUMBER items of the sentence.
+                            (Default: 0 = Normal tri-training, i.e. the
+                            learner's prediction does not affect whether
+                            knowledge is transferred.)
+
+    --with-disagreement     Short for --min-learner-disagreement 1
+
     --mask-teacher-disagreement  NUMBER
                             When the 2 teachers disagree about a label if an
                             item, replace it with '_' (which finally is
@@ -404,6 +414,11 @@ def main():
             del sys.argv[1]
         elif option == '--selection-attempts':
             opt_selection_attempts = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--with-disagreement':
+            opt_min_learner_disagreement = 1
+        elif option == '--min-learner-disagreement':
+            opt_min_learner_disagreement = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--continue':
             opt_continue = True
