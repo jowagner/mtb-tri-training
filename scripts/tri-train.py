@@ -21,6 +21,7 @@ import os
 import random
 import string
 import sys
+import time
 
 import basic_dataset
 
@@ -246,6 +247,14 @@ Options:
                             features of items, e.g. in depdendency parsing
                             make independent decisions for heads and labels.
 
+    --deadline  HOURS       Do not train another model after HOURS hours
+                            and quit script. Prediction and evaluation may
+                            continue on.
+                            (Default: 0.0 = no limit)
+
+    --stopfile  FILE        Do not train another model if FILE exists.
+
+
     --verbose               More detailed log output
 
     --continue              Skip steps finished in a previous run
@@ -258,6 +267,8 @@ Options:
 def main():
     opt_help  = False
     opt_verbose = False
+    opt_deadline = 0.0
+    opt_stopfile = None
     opt_final_test = False
     opt_workdir = '.'
     opt_debug = False
@@ -301,6 +312,14 @@ def main():
         if option in ('--help', '-h'):
             opt_help = True
             break
+        elif option == '--deadline':
+            opt_deadline = float(sys.argv[1])
+            if opt_deadline:
+                opt_deadline += time.time()
+            del sys.argv[1]
+        elif option == '--stopfile':
+            opt_stopfile = sys.argv[1]
+            del sys.argv[1]
         elif option == '--final-test':
             opt_final_test = True
             del sys.argv[1]
@@ -488,6 +507,7 @@ def main():
     epoch_selection_sets = []
     iteration_selection_sets = []
     for learner_index in range(opt_learners):
+        check_deadline(opt_deadline, opt_stopfile)
         learner_rank = learner_index + 1
         seed_set = get_subset(
             training_data, opt_seed_size, random, opt_seed_attempts,
@@ -558,6 +578,7 @@ def main():
             filename_extension, opt_continue, opt_manually_train, opt_verbose,
             all_baseline_prediction_fingerprints,
             all_baseline_prediction_paths,
+            opt_deadline, opt_stopfile,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -613,6 +634,7 @@ def main():
                 opt_continue, opt_manually_train, opt_verbose,
                 all_baseline_prediction_fingerprints,
                 all_baseline_prediction_paths,
+                opt_deadline, opt_stopfile,
             )
         if opt_init_seed:
             random.seed(int(hashlib.sha512('round %d: %s' %(
@@ -682,7 +704,6 @@ def main():
                 target_columns, column_weights, opt_learners,
                 opt_max_teacher_disagreement_fraction,
                 opt_min_teacher_agreements,
-                opt_learner_must_disagree,
                 opt_min_learner_disagreement,
                 event_counter = event_counter,
             )
@@ -817,6 +838,16 @@ def main():
     print('\n== Final Model ==\n')
     # TODO
 
+def check_deadline(deadline = None, stopfile = None):
+    if deadline:
+        if time.time() > deadline:
+            print('\n*** Reached deadline. ***\n')
+            sys.exit(0)
+    if stopfile:
+        if os.path.exists(stopfile):
+            print('\n*** Found stop file. ***\n')
+            sys.exit(0)
+
 def make_predictions(
     models, dataset,
     training_round = 0,
@@ -827,6 +858,7 @@ def make_predictions(
     opt_manually_predict = False,
     opt_verbose = False,
     prefix = '',
+    deadline = None, stopfile = None,
 ):
     ''' makes predictions for the given dataet for all learners
     '''
@@ -835,6 +867,7 @@ def make_predictions(
     if dataset_name:
         dataset_name = dataset_name + '-'
     for learner_index, model in enumerate(models):
+        check_deadline(deadline, stopfile)
         learner_rank = learner_index+1
         print('Learner:', learner_rank)
         model_fingerprint, model_path, model_module = model
@@ -894,12 +927,14 @@ def evaluate(
     all_prediction_paths = {},
     all_prediction_fingerprints = {},
     prefix = '',
+    deadline = None, stopfile = None,
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
         (test_sets, '-test', set_names),
     ]:
         for d_index, dataset in enumerate(set_list):
+            check_deadline(deadline, stopfile)
             if dataset is None:
                 continue
             name = names[d_index] + suffix
@@ -913,6 +948,7 @@ def evaluate(
                 opt_manually_predict = False,
                 opt_verbose = opt_verbose,
                 prefix = prefix,
+                deadline = deadline, stopfile = stopfile,
             )
             gold_path = dataset.filename
             if gold_path not in all_prediction_paths:
@@ -924,6 +960,7 @@ def evaluate(
             pred_paths = []
             pred_fingerprints = []
             for learner_index, model in enumerate(models):
+                check_deadline(deadline, stopfile)
                 learner_rank = learner_index + 1
                 print('Evaluating learner %d on %s:' %(learner_rank, name))
                 model_fingerprint, model_path, model_module = model
@@ -936,6 +973,7 @@ def evaluate(
                 all_prediction_paths[gold_path].append(prediction_path)
                 all_prediction_fingerprints[gold_path].append(prediction_fingerprint)
             print('Evaluating ensemble of learners on %s:' %name)
+            check_deadline(deadline, stopfile)
             ensemble_fingerprint = hex2base62(hashlib.sha512(
                 ':'.join(pred_fingerprints)
             ).hexdigest())
@@ -950,6 +988,7 @@ def evaluate(
             )
             if not is_first:
                 print('Evaluating ensemble of all non-ensemble past predictions')
+                check_deadline(deadline, stopfile)
                 pred_paths = all_prediction_paths[gold_path]
                 pred_fingerprints = all_prediction_fingerprints[gold_path]
                 ensemble_fingerprint = hex2base62(hashlib.sha512(
@@ -973,6 +1012,7 @@ def train_and_evaluate_baselines(
     opt_workdir, filename_extension, opt_continue, opt_manually_train,
     opt_verbose, all_baseline_prediction_fingerprints,
     all_baseline_prediction_paths,
+    opt_deadline, opt_stopfile,
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -981,7 +1021,8 @@ def train_and_evaluate_baselines(
         opt_workdir, opt_manually_train, opt_continue,
         opt_verbose,
         monitoring_datasets = monitoring_datasets,
-        prefix = 'baseline-'
+        prefix = 'baseline-',
+        deadline = opt_deadline, stopfile = opt_stopfile,
     )
     evaluate(
         models,
@@ -995,7 +1036,8 @@ def train_and_evaluate_baselines(
         all_prediction_paths = all_baseline_prediction_paths,
         all_prediction_fingerprints = all_baseline_prediction_fingerprints,
         opt_verbose = opt_verbose,
-        prefix = 'baseline-'
+        prefix = 'baseline-',
+        deadline = opt_deadline, stopfile = opt_stopfile,
     )
 
 def hex2base62(h):
@@ -1171,7 +1213,7 @@ def knowledge_transfer(
     predictions, target_columns, column_weights, learners = 3,
     max_teacher_disagreement_fraction = 0.0,
     min_teacher_agreements = 2,
-    learner_must_disagree = True, min_learner_disagreement = 1,
+    min_learner_disagreement = 1,
     verbose = False, event_counter = None
 ):
     # knowledge transfer candidates: first element says how much the teachers disagree
@@ -1330,10 +1372,12 @@ def train_models(
     opt_verbose,
     monitoring_datasets = [],
     prefix = '',
+    deadline = None, stopfile = None,
 ):
     retval = []
     manual_training_needed = []
     for learner_index in range(opt_learners):
+        check_deadline(deadline, stopfile)
         learner_rank = learner_index+1
         print('Learner:', learner_rank)
         model_init_seed = get_model_seed(
