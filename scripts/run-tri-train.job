@@ -1,9 +1,8 @@
 #!/bin/bash
   
 #SBATCH -p compute       # which partition to run on
-#SBATCH --gres=gpu:tesla:2  # rtx2080ti:2
-#SBATCH -B 2-2:4-18:2-2
-#SBATCH -J tri-train    # name for the job
+#SBATCH --gres=gpu:rtx2080ti:1
+#SBATCH -J ftowd-42    # name for the job
 #SBATCH --mem=14000
 #SBATCH --cpus-per-task=6
 #SBATCH --ntasks=1
@@ -15,18 +14,25 @@ echo "Setting: ${SETTING}"
 echo "Treebanks: ${UD_TREEBANK_DIR}"
 
 SCRIPTDIR=${PRJ_DIR}/scripts
-WORKDIR=${PRJ_DIR}/workdirs/default
+WORKDIR=${PRJ_DIR}/workdirs/ftowd-42
 
 mkdir -p ${WORKDIR}
 
-hostname > ${WORKDIR}/run.start
-
-#    --deadline 36.0            \
-#    --stopfile ${WORKDIR}/stop  \
+echo $(hostname) $(date) >> ${WORKDIR}/run.start
+if [ -e run.end ]; then
+    mv run.end run.prev-end
+fi
 
 cd ${SCRIPTDIR}
 ./tri-train.py   \
     --init-seed 42       \
+    --oversample             \
+    --without-replacement        \
+    --min-learner-disagreement 1  \
+    --subset-size 800k            \
+    --augment-size 25k           \
+    --deadline 36.0            \
+    --stopfile ${WORKDIR}/stop  \
     --model-init compose  \
     --unlabelled en_ewt    \
     --labelled   en_lines  \
