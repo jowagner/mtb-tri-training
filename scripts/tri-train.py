@@ -323,7 +323,7 @@ def main():
             opt_help = True
             break
         elif option == '--deadline':
-            opt_deadline = float(sys.argv[1])
+            opt_deadline = 3600.0 * float(sys.argv[1])
             if opt_deadline:
                 opt_deadline += time.time()
             del sys.argv[1]
@@ -858,6 +858,8 @@ def check_deadline(deadline = None, stopfile = None):
         if time.time() > deadline:
             print('\n*** Reached deadline. ***\n')
             sys.exit(0)
+        else:
+            print('%.1f hours to deadline' %((deadline - time.time())/3600.0))
     if stopfile:
         if os.path.exists(stopfile):
             print('\n*** Found stop file. ***\n')
