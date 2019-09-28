@@ -15,7 +15,12 @@ SEED=$2
 
 test -z $3 && echo "Missing model output folder"
 test -z $3 && exit 1
-MODELDIR=$3
+MODELDIR=$(realpath $3)
+
+if [ -e "$MODELDIR" ];
+    echo "Refusing to overwrite output folder"
+    exit 1
+fi
 
 # optional args:
 TEST_SET=$4
@@ -50,7 +55,10 @@ fi
 
 FAKE_TBID=xx_xxx
 
-mkdir -p $MODELDIR
+FINAL_MODELDIR=$MODELDIR
+MODELDIR=${MODELDIR}-workdir
+
+mkdir -p ${MODELDIR}
 
 # The model is not complete without the conllu file as
 # the checkpoint does not contain the vocabularies.
@@ -84,4 +92,7 @@ python ${PARSER_DIR}/ud_parser.py \
 
 
 touch training.end
+
+cd /
+mv $MODELDIR $FINAL_MODELDIR
 
