@@ -790,7 +790,8 @@ def main():
                         opt_last_decay_attempts, with_replacement = False,
                         write_file = \
                         '%s/new-decayed-set-%02d-%d-%02d.conllu' %(
-                            opt_workdir, training_round, learner_rank, t_index
+                            opt_workdir, training_round, learner_rank,
+                            t_index+1
                         )
                     )
                 last_k_datasets.append(new_dataset)
