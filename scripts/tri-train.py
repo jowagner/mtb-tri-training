@@ -775,16 +775,16 @@ def main():
                 last_k = min(training_round, opt_last_k)
             else:
                 last_k = training_round
+            print('Compiling new training data using last %d round(s).' %last_k)
             last_k_datasets = []
             for k in range(last_k):
                 t_index = training_index - k
                 weight = opt_last_decay ** k
                 target_size = int(0.5 + weight * opt_augment_size)
                 new_dataset = new_datasets[t_index][learner_index]
-                if (
-                    not k # never prune the dataset of the current round
-                    and new_dataset.get_number_of_items() > target_size
-                ):
+                if weight < 1.0:
+                    current_size = new_dataset.get_number_of_items()
+                if weight < 1.0 and current_size > target_size:
                     new_dataset = get_subset(
                         new_dataset, target_size, random,
                         opt_last_decay_attempts, with_replacement = False,
@@ -794,7 +794,14 @@ def main():
                         )
                     )
                 last_k_datasets.append(new_dataset)
+                print('Taking %s items in %d sentences from round %d.' %(
+                    new_dataset.get_number_of_items(), len(new_dataset),
+                    t_index+1
+                ))
             last_k_datasets = basic_dataset.Concat(last_k_datasets)
+            print('Subtotal: %s items in %d sentences.' %(
+                last_k_datasets.get_number_of_items(), len(last_k_datasets)
+            ))
             # add seed set
             seed_dataset = seed_sets[learner_index]
             if opt_oversample:
@@ -806,6 +813,9 @@ def main():
                         seed_dataset, target_size, random,
                         with_replacement = False,
                     )
+            print('Taking %s items in %s sentences from the seed data.' %(
+                seed_dataset.get_number_of_items(), len(seed_dataset)
+            ))
             new_training_set = basic_dataset.Concat(
                 [seed_dataset, last_k_datasets],
                 # replace blank labels with random labels
@@ -816,6 +826,9 @@ def main():
                     random, target_columns, target_labelsets
                 )
             )
+            print('Total: %s items in %d sentences.' %(
+                new_training_set.get_number_of_items(), len(new_training_set)
+            ))
             write_dataset(
                 new_training_set,
                 '%s/new-training-set-%02d-%d.conllu' %(
