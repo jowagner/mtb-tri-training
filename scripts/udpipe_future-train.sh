@@ -17,7 +17,7 @@ test -z $3 && echo "Missing model output folder"
 test -z $3 && exit 1
 MODELDIR=$(realpath $3)
 
-if [ -e "$MODELDIR" ];
+if [ -e "$MODELDIR" ]; then
     echo "Refusing to overwrite output folder"
     exit 1
 fi
