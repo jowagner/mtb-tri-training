@@ -744,7 +744,7 @@ def main():
 
         new_training_sets = []
         for learner_index in range(opt_learners):
-            print('\nLearner %d:' %learner_index+1)
+            print('\nLearner %d:' %(learner_index+1))
             if opt_init_seed:
                 random.seed(int(hashlib.sha512('New dataset %d %d %s' %(
                     training_round, learner_rank, opt_init_seed,
