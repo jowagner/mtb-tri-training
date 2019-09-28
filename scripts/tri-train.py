@@ -740,8 +740,11 @@ def main():
             new_datasets[training_index][learner_index].append(merged_prediction)
         print_event_counter(event_counter)
 
+        print('\nCompiling new datasets:')
+
         new_training_sets = []
         for learner_index in range(opt_learners):
+            print('\nLearner %d:' %learner_index+1)
             if opt_init_seed:
                 random.seed(int(hashlib.sha512('New dataset %d %d %s' %(
                     training_round, learner_rank, opt_init_seed,
@@ -775,7 +778,7 @@ def main():
                 last_k = min(training_round, opt_last_k)
             else:
                 last_k = training_round
-            print('Compiling new training data using last %d round(s).' %last_k)
+            print('Using data sets of last %d round(s):' %last_k)
             last_k_datasets = []
             for k in range(last_k):
                 t_index = training_index - k
