@@ -143,6 +143,14 @@ Options:
                             closest to the desired subset size
                             (default: 5)
 
+    --allow-oversampling-of-subset
+    --oversample-subset     For compatibility with early Sep 2019 version,
+                            oversample from the unlabelled data when the
+                            subset size is greater than the size of the
+                            unlabelled data.
+                            (Default: Do not create subsets larger than
+                            the provided data.)
+
     --augment-size  NUMBER  How many items to add to each learner in each
                             tri-training iteration.
                             If the subset size is too small the augment size
@@ -297,6 +305,7 @@ def main():
     opt_seed_with_replacement = True
     opt_subset_size = '600k'
     opt_subset_attempts = 5
+    opt_allow_oversampling_of_subset = False
     opt_augment_size = '10k'
     opt_augment_attempts = 5
     opt_diversify_attempts = 1
@@ -377,6 +386,8 @@ def main():
         elif option == '--subset-attempts':
             opt_subset_attempts = int(sys.argv[1])
             del sys.argv[1]
+        elif option in ('--allow-oversampling-of-subset', '--oversample-subset'):
+            opt_allow_oversampling_of_subset = True
         elif option == '--augment-size':
             opt_augment_size = sys.argv[1]
             del sys.argv[1]
@@ -656,9 +667,14 @@ def main():
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
         print('\nSelecting subset of unlabelled data:')
+        if opt_allow_oversampling_of_subset:
+            target_size = opt_subset_size
+        else:
+            target_size = min(opt_subset_size, unlabelled_data.get_number_of_items())
         subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
         unlabelled_subset = get_subset(
-            unlabelled_data, opt_subset_size, random, opt_subset_attempts,
+            unlabelled_data, target_size,
+            random, opt_subset_attempts,
             with_replacement = False,
             diversify_attempts = opt_diversify_attempts,
             disprefer = previously_picked,
