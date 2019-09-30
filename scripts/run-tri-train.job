@@ -15,7 +15,7 @@ echo "Setting: ${SETTING}"
 echo "Treebanks: ${UD_TREEBANK_DIR}"
 
 SCRIPTDIR=${PRJ_DIR}/scripts
-WORKDIR=${PRJ_DIR}/workdirs/ftowd-42
+WORKDIR=${PRJ_DIR}/workdirs/%(name)s
 
 mkdir -p ${WORKDIR}
 
