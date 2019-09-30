@@ -2,7 +2,8 @@
   
 #SBATCH -p compute       # which partition to run on
 #SBATCH --gres=gpu:rtx2080ti:1
-#SBATCH -J ftowd-42    # name for the job
+#SBATCH -J %(name)s    # name for the job
+#SBATCH -d singleton
 #SBATCH --mem=14000
 #SBATCH --cpus-per-task=6
 #SBATCH --ntasks=1
@@ -25,12 +26,14 @@ fi
 
 cd ${SCRIPTDIR}
 ./tri-train.py   \
-    --init-seed 42       \
-    --oversample             \
-    --without-replacement        \
-    --min-learner-disagreement 1  \
-    --subset-size 800k            \
-    --augment-size 25k           \
+    --init-seed %(seed)s       \
+    %(more_options)s   \
+    %(ovs_options)s    \
+    %(wrpl_options)s   \
+    %(disa_options)s   \
+    %(decay_options)s  \
+    --subset-size "100%%"          \
+    --augment-size %(augsize)dk   \
     --deadline 36.0            \
     --stopfile ${WORKDIR}/stop  \
     --model-init compose  \
@@ -38,7 +41,7 @@ cd ${SCRIPTDIR}
     --labelled   en_lines  \
     --continue             \
     --epoch-selection last  \
-    --iterations 20         \
+    --iterations %(iterations)d  \
     --workdir ${WORKDIR}     \
     2> ${WORKDIR}/stderr.txt  \
     >  ${WORKDIR}/stdout.txt
