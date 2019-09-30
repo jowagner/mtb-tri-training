@@ -614,7 +614,8 @@ def main():
         opt_model_init_type, opt_init_seed, 0,
         opt_workdir, opt_manually_train, opt_continue,
         opt_verbose,
-        monitoring_datasets = monitoring_datasets
+        monitoring_datasets = monitoring_datasets,
+        deadline = opt_deadline, stopfile = opt_stopfile,
     )
 
     # evaluate models using all dev sets (and test sets if --final-test)
@@ -863,7 +864,8 @@ def main():
             opt_model_init_type, opt_init_seed, training_round,
             opt_workdir, opt_manually_train, opt_continue,
             opt_verbose,
-            monitoring_datasets = monitoring_datasets
+            monitoring_datasets = monitoring_datasets,
+            deadline = opt_deadline, stopfile = opt_stopfile,
         )
 
         print('\nEvaluating new models:')
