@@ -21,10 +21,12 @@ template = open('run-tri-train.job', 'rb').read()
 
 for augment_size_code in range(10):
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
+    subsetsize = 16 * augsize
     iterations = int(0.5+2*204.585/augsize)
     for major_code, more_options in [
         (3, ''),
-        (9, '--learners 9'),
+        (5, '--learners 5'),
+        #(9, '--learners 9'),
     ]:
         seed = '%d%d' %(major_code, augment_size_code)
         for ovs_code, ovs_options in [
@@ -46,8 +48,8 @@ for augment_size_code in range(10):
                         ('y', '--last-k 5'),
                         #('z', '--last-decay 0.5'),
                     ]:
-                        name = 'tt%s%s%s%s%s' %(ovs_code, wrpl_code, disa_code, decay_code, seed)
-                        f = open('run-%s.job' %name, 'wb')
+                        name = 'ga%s%s%s%s%s' %(ovs_code, wrpl_code, disa_code, decay_code, seed)
+                        f = open('r-%s.job' %name, 'wb')
                         f.write(template %locals())
                         f.close()
 

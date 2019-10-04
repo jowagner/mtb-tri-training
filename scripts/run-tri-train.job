@@ -32,13 +32,13 @@ cd ${SCRIPTDIR}
     %(wrpl_options)s   \
     %(disa_options)s   \
     %(decay_options)s  \
-    --subset-size "100%%"          \
+    --subset-size "%(subsetsize)dk"          \
     --augment-size %(augsize)dk   \
     --deadline 36.0            \
     --stopfile ${WORKDIR}/stop  \
     --model-init compose  \
-    --unlabelled en_ewt    \
-    --labelled   en_lines  \
+    --unlabelled ga_wp17    \
+    --labelled   ga_idt  \
     --continue             \
     --epoch-selection last  \
     --iterations %(iterations)d  \
