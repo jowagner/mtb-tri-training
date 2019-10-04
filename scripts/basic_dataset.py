@@ -295,6 +295,7 @@ class Sample(Dataset):
 
     def __init__(self, dataset, rng, size = None, percentage = None,
         with_replacement = True,
+        unique_sentences = False,
         sentence_modifier = None,
         diversify_attempts = 1,
         disprefer = {}
@@ -307,8 +308,10 @@ class Sample(Dataset):
         self.is_vectorised = False
         self.sentence_modifier = sentence_modifier
         self.with_replacement  = with_replacement
-        self.reset_sample(rng, size, diversify_attempts, disprefer)
-
+        self.reset_sample(
+            rng, size, diversify_attempts, disprefer,
+            unique_sentences,
+        )
 
     def _get_preferred_d_indices(self, d_size, size, disprefer):
         if size >= d_size or not disprefer:
@@ -345,7 +348,8 @@ class Sample(Dataset):
     def reset_sample(
         self, rng, size = None,
         diversify_attempts = 1,
-        disprefer = {}
+        disprefer = {},
+        unique_sentences = False,
     ):
         if self.with_replacement and disprefer:
             # not clear how this should be implemented,
@@ -363,6 +367,8 @@ class Sample(Dataset):
             rng.shuffle(permutation)
         self.sentences = []
         remaining = size
+        if unique_sentences:
+            so_far = {}
         while remaining:
             candidates = []
             for attempt in range(diversify_attempts):
@@ -379,6 +385,15 @@ class Sample(Dataset):
             candidates.sort()
             d_index = candidates[0][-1]
             self.sentences.append(d_index)
+            if unique_sentences:
+                # check that the new sentence is different from all so far:
+                f = StringIO()
+                self.write_sentence(f, sentence)
+                f.seek(0)
+                candidate = hashlib.sha256(f.read()).digest()[:12]
+                if candidate in so_far:
+                    continue
+                so_far[candidate] = None
             remaining -= 1
 
     def _nearest_neighbour_distance(self, d_index):

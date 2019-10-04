@@ -677,6 +677,7 @@ def main():
             unlabelled_data, target_size,
             random, opt_subset_attempts,
             with_replacement = False,
+            unique_sentences = True,
             diversify_attempts = opt_diversify_attempts,
             disprefer = previously_picked,
             sentence_modifier = drop_all_targets,
@@ -1169,6 +1170,7 @@ def get_remaining(dataset, rng, write_file = None):
 
 def get_subset(
     dataset, target_size, rng, attempts = 5, with_replacement = True,
+    unique_sentences = False,
     write_file = None, prefer_smaller = False,
     sentence_modifier = None,
     diversify_attempts = 1,
@@ -1181,6 +1183,7 @@ def get_subset(
         candidate = basic_dataset.Sample(
             dataset, rng, n_sentences,
             with_replacement = with_replacement,
+            unique_sentences = unique_sentences,
             sentence_modifier = sentence_modifier,
             diversify_attempts = diversify_attempts,
             disprefer = disprefer
