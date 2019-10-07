@@ -369,9 +369,9 @@ class Sample(Dataset):
             rng.shuffle(permutation)
         self.sentences = []
         remaining = size
+        rejected = 0
         if unique_sentences:
             so_far = {}
-            rejected = 0
             last_verbose = 0.0
         while remaining:
             candidates = []
@@ -379,7 +379,7 @@ class Sample(Dataset):
                 if self.with_replacement:
                     d_index = rng.randrange(d_size)
                 else:
-                    d_index = permutation[(size-remaining) % p_size]
+                    d_index = permutation[(size+rejected-remaining) % p_size]
                 if diversify_attempts == 1 or not self.sentences:
                     # no choice
                     priority = 0
