@@ -388,7 +388,7 @@ class Sample(Dataset):
             if unique_sentences:
                 # check that the new sentence is different from all so far:
                 f = StringIO()
-                self.write_sentence(f, sentence)
+                self.write_sentence(f, self[-1])
                 f.seek(0)
                 candidate = hashlib.sha256(f.read()).digest()[:12]
                 if candidate in so_far:
