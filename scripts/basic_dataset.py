@@ -392,6 +392,7 @@ class Sample(Dataset):
                 f.seek(0)
                 candidate = hashlib.sha256(f.read()).digest()[:12]
                 if candidate in so_far:
+                    del self.sentences[-1]
                     continue
                 so_far[candidate] = None
             remaining -= 1
