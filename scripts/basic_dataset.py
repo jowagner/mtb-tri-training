@@ -369,6 +369,8 @@ class Sample(Dataset):
         remaining = size
         if unique_sentences:
             so_far = {}
+            rejected = 0
+            last_verbose = 0.0
         while remaining:
             candidates = []
             for attempt in range(diversify_attempts):
@@ -386,6 +388,9 @@ class Sample(Dataset):
             d_index = candidates[0][-1]
             self.sentences.append(d_index)
             if unique_sentences:
+                if time.time() > last_verbose + 1.0:
+                    sys.stderr.write('%d left, %d rejected\r' %(remaining, rejected))
+                    last_verbose = time.time()
                 # check that the new sentence is different from all so far:
                 f = StringIO()
                 self.write_sentence(f, self[-1])
@@ -393,6 +398,7 @@ class Sample(Dataset):
                 candidate = hashlib.sha256(f.read()).digest()[:12]
                 if candidate in so_far:
                     del self.sentences[-1]
+                    rejected += 1
                     continue
                 so_far[candidate] = None
             remaining -= 1
