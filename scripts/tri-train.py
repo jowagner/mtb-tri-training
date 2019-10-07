@@ -522,7 +522,7 @@ def main():
     print('opt_subset_size', opt_subset_size)
     print('opt_augment_size', opt_augment_size)
 
-    print('\n== Selection of Seed Data ==\n')
+    print('\n== Selection of Seed Data ==\n', flush=True)
 
     if opt_init_seed:
         random.seed(int(hashlib.sha512('seed selection %s' %(
@@ -541,7 +541,7 @@ def main():
         )
         print('Learner %d has seed data with %d items in %d sentences' %(
             learner_rank, seed_set.get_number_of_items(), len(seed_set),
-        ))
+        ), flush=True)
         write_dataset(
             seed_set,
             '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank)
@@ -584,7 +584,7 @@ def main():
         for name in opt_model_modules:
             model_modules.append(importlib.import_module(name))
     if opt_baselines and not opt_manually_train:
-        print('\n== Baseline(s) ==\n')
+        print('\n== Baseline(s) ==\n', flush=True)
         write_dataset(training_data, '%s/training-set-%s%s' %(
             opt_workdir,
             get_prediction_fingerprint(opt_init_seed, training_data)[:20],
@@ -607,7 +607,7 @@ def main():
             opt_deadline, opt_stopfile,
         )
 
-    print('\n== Training of Seed Models ==\n')
+    print('\n== Training of Seed Models ==\n', flush=True)
 
     models = train_models(
         opt_learners, seed_sets, epoch_selection_sets, model_modules,
@@ -644,7 +644,7 @@ def main():
         training_round = training_index + 1
         print('\n== Tri-training Iteration %d of %d ==' %(
             training_round, opt_iterations
-        ))
+        ), flush=True)
 
         if opt_baselines and not opt_manually_train:
             print('\nBaseline(s):')
@@ -667,7 +667,7 @@ def main():
             random.seed(int(hashlib.sha512('round %d: %s' %(
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
-        print('\nSelecting subset of unlabelled data:')
+        print('\nSelecting subset of unlabelled data:', flush=True)
         if opt_allow_oversampling_of_subset:
             target_size = opt_subset_size
         else:
@@ -686,14 +686,14 @@ def main():
         print('Size of subset: %d items in %d sentences' %(
             unlabelled_subset.get_number_of_items(),
             len(unlabelled_subset)
-        ))
+        ), flush=True)
         for d_index in unlabelled_subset.indices():
             try:
                 previously_picked[d_index] += 1
             except KeyError:
                 previously_picked[d_index] = 1
 
-        print('\nMaking predictions:')
+        print('\nMaking predictions:', flush=True)
 
         predictions = make_predictions(
             models, unlabelled_subset,
@@ -714,7 +714,7 @@ def main():
             )
             sys.exit(0)
 
-        print('\nTeaching (knowledge transfer):')
+        print('\nTeaching (knowledge transfer):', flush=True)
 
         # TODO: provide options to control column weights;
         # for now, any difference triggers a disagreement
@@ -758,7 +758,7 @@ def main():
             new_datasets[training_index][learner_index].append(merged_prediction)
         print_event_counter(event_counter)
 
-        print('\nCompiling new datasets:')
+        print('\nCompiling new datasets:', flush=True)
 
         new_training_sets = []
         for learner_index in range(opt_learners):
@@ -859,7 +859,7 @@ def main():
             )
             new_training_sets.append(new_training_set)
 
-        print('\nTraining new models:')
+        print('\nTraining new models:', flush=True)
         models = train_models(
             opt_learners, new_training_sets, epoch_selection_sets, model_modules,
             opt_model_init_type, opt_init_seed, training_round,
@@ -869,7 +869,7 @@ def main():
             deadline = opt_deadline, stopfile = opt_stopfile,
         )
 
-        print('\nEvaluating new models:')
+        print('\nEvaluating new models:', flush=True)
         evaluate(
             models,
             dev_sets + unl_dev_sets,
