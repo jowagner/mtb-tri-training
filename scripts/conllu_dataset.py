@@ -119,8 +119,10 @@ class ConlluDataset(basic_dataset.Dataset):
             sentence.append(line)
         return sentence
 
-    def write_sentence(self, f_out, sentence):
+    def write_sentence(self, f_out, sentence, remove_comments = False):
         for row in sentence.rows:
+            if remove_comments and row[0].startswith('#'):
+                continue
             # incomplete sentences should be completed by the caller,
             # e.g. save_to_file(), see basic_dataset.SentenceCompleter
             if '@@MISSING@@' in row:

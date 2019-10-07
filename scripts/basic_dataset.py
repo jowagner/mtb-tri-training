@@ -152,7 +152,7 @@ class Dataset(collections.Sequence):
         h = hashlib.sha512()
         for sentence in self:
             f = StringIO()
-            self.write_sentence(f, sentence)
+            self.write_sentence(f, sentence, remove_comments = True)
             f.seek(0)
             h.update(f.read())
         return h.hexdigest()
@@ -160,7 +160,7 @@ class Dataset(collections.Sequence):
     def read_sentence(self, f_in):
         raise NotImplementedError
 
-    def write_sentence(self, f_out, sentence):
+    def write_sentence(self, f_out, sentence, remove_comments = False):
         raise NotImplementedError
 
     def get_number_of_items(self):
@@ -289,8 +289,8 @@ class Concat(Dataset):
     def load_or_map_file(self, *args):
         raise ValueError('Cannot load data into concatenation')
 
-    def write_sentence(self, f_out, sentence):
-        self.datasets[0].write_sentence(f_out, sentence)
+    def write_sentence(self, f_out, sentence, remove_comments = False):
+        self.datasets[0].write_sentence(f_out, sentence, remove_comments)
 
 
 class Sample(Dataset):
@@ -395,7 +395,7 @@ class Sample(Dataset):
                     last_verbose = time.time()
                 # check that the new sentence is different from all so far:
                 f = StringIO()
-                self.write_sentence(f, self[-1])
+                self.write_sentence(f, self[-1], remove_comments = True)
                 f.seek(0)
                 candidate = hashlib.sha256(f.read()).digest()[:12]
                 if candidate in so_far:
@@ -476,8 +476,8 @@ class Sample(Dataset):
                 self.sentences.append(d_index)
         self.shuffle(rng)
 
-    def write_sentence(self, f_out, sentence):
-        self.dataset.write_sentence(f_out, sentence)
+    def write_sentence(self, f_out, sentence, remove_comments = False):
+        self.dataset.write_sentence(f_out, sentence, remove_comments)
 
 
 def load_or_map_from_filename(data, filename, mode = 'load'):
