@@ -82,6 +82,8 @@ hostname > training.start
 python ${PARSER_DIR}/ud_parser.py \
     --seed ${SEED}                \
     --logdir ./                   \
+    --min_epoch_batches 1         \
+    --epochs "5:1e-3,2:6e-4,2:4e-4,2:3e-4,2:2e-4,3:1e-4"  \
     ${FAKE_TBID}                  \
     2> stderr.txt     \
     > stdout.txt
