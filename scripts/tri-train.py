@@ -268,6 +268,10 @@ Options:
                             features of items, e.g. in depdendency parsing
                             make independent decisions for heads and labels.
 
+    --cumulative-ensemble   Also evaluate ensemble of models of all iterations
+                            (Default: only evaluate ensemble for current
+                            iteration and individual models)
+
     --deadline  HOURS       Do not train another model after HOURS hours
                             and quit script. Prediction and evaluation may
                             continue on.
@@ -319,6 +323,7 @@ def main():
     opt_last_k = 0
     opt_last_decay = 1.0
     opt_last_decay_attempts = 5
+    opt_cumulative_ensemble = False
     opt_epoch_selection = 'dev+remaining'
     opt_iteration_selection = 'last'
     opt_max_selection_size = '50k'
@@ -420,6 +425,8 @@ def main():
         elif option == '--last-decay-attempts':
             opt_last_decay_attempts = int(sys.argv[1])
             del sys.argv[1]
+        elif option == '--cumulative-ensemble':
+            opt_cumulative_ensemble = True
         elif option == '--epoch-selection':
             opt_epoch_selection = sys.argv[1]
             del sys.argv[1]
@@ -615,7 +622,9 @@ def main():
             filename_extension, opt_continue, opt_manually_train, opt_verbose,
             all_baseline_prediction_fingerprints,
             all_baseline_prediction_paths,
-            opt_deadline, opt_stopfile,
+            opt_cumulative_ensemble = opt_cumulative_ensemble,
+            opt_deadline = opt_deadline,
+            opt_stopfile = opt_stopfile,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -642,6 +651,7 @@ def main():
         opt_continue = opt_continue,
         all_prediction_paths = all_prediction_paths,
         all_prediction_fingerprints = all_prediction_fingerprints,
+        opt_cumulative_ensemble = opt_cumulative_ensemble,
         opt_verbose = opt_verbose
     )
 
@@ -674,7 +684,9 @@ def main():
                 opt_continue, opt_manually_train, opt_verbose,
                 all_baseline_prediction_fingerprints,
                 all_baseline_prediction_paths,
-                opt_deadline, opt_stopfile,
+                opt_cumulative_ensemble = opt_cumulative_ensemble,
+                opt_deadline = opt_deadline,
+                opt_stopfile = opt_stopfile,
             )
         if opt_init_seed:
             random.seed(int(hashlib.sha512('round %d: %s' %(
@@ -902,6 +914,7 @@ def main():
             opt_continue = opt_continue,
             all_prediction_paths = all_prediction_paths,
             all_prediction_fingerprints = all_prediction_fingerprints,
+            opt_cumulative_ensemble = opt_cumulative_ensemble,
             opt_verbose = opt_verbose
         )
 
@@ -990,6 +1003,7 @@ def evaluate(
     opt_verbose  = False,
     all_prediction_paths = {},
     all_prediction_fingerprints = {},
+    opt_cumulative_ensemble = False,
     prefix = '',
     deadline = None, stopfile = None,
 ):
@@ -1051,7 +1065,7 @@ def evaluate(
                 output_path, gold_path
             )
             print('Score:', score_s)
-            if not is_first:
+            if opt_cumulative_ensemble and not is_first:
                 print('Evaluating ensemble of all non-ensemble past predictions')
                 check_deadline(deadline, stopfile)
                 pred_paths = all_prediction_paths[gold_path]
@@ -1078,6 +1092,7 @@ def train_and_evaluate_baselines(
     opt_workdir, filename_extension, opt_continue, opt_manually_train,
     opt_verbose, all_baseline_prediction_fingerprints,
     all_baseline_prediction_paths,
+    opt_cumulative_ensemble,
     opt_deadline, opt_stopfile,
 ):
     models = train_models(
@@ -1102,6 +1117,7 @@ def train_and_evaluate_baselines(
         all_prediction_paths = all_baseline_prediction_paths,
         all_prediction_fingerprints = all_baseline_prediction_fingerprints,
         opt_verbose = opt_verbose,
+        opt_cumulative_ensemble = opt_cumulative_ensemble,
         prefix = 'baseline-',
         deadline = opt_deadline, stopfile = opt_stopfile,
     )
