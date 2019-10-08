@@ -1029,9 +1029,10 @@ def evaluate(
                 learner_rank = learner_index + 1
                 print('Evaluating learner %d on %s:' %(learner_rank, name))
                 prediction_fingerprint, prediction_path = predictions[learner_index]
-                dataset_module.evaluate(
+                score, score_s = dataset_module.evaluate(
                     prediction_path, gold_path
                 )
+                print('Score:', score_s)
                 pred_paths.append(prediction_path)
                 pred_fingerprints.append(prediction_fingerprint)
                 all_prediction_paths[gold_path].append(prediction_path)
@@ -1047,9 +1048,10 @@ def evaluate(
                 filename_extension
             )
             dataset_module.combine(pred_paths, output_path)
-            dataset_module.evaluate(
+            score, score_s = dataset_module.evaluate(
                 output_path, gold_path
             )
+            print('Score:', score_s)
             if not is_first:
                 print('Evaluating ensemble of all non-ensemble past predictions')
                 check_deadline(deadline, stopfile)
@@ -1064,9 +1066,10 @@ def evaluate(
                     filename_extension
                 )
                 dataset_module.combine(pred_paths, output_path)
-                dataset_module.evaluate(
+                score, score_s = dataset_module.evaluate(
                     output_path, gold_path
                 )
+                print('Score:', score_s)
 
 def train_and_evaluate_baselines(
     training_data, opt_learners, training_round, dataset_module,
