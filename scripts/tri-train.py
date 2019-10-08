@@ -104,6 +104,9 @@ Options:
                             combine with --help to see module-specific options
                             (default: conllu_dataset)
 
+    --dataset-basedir  PATH  Use PATH with the dataset module's load function
+                            (Default: locate datasets in some other way)
+
     --model-module  NAME    train models using the module NAME;
                             combine with --help to see module-specific options;
                             specify 3 times to mix different models in
@@ -298,6 +301,7 @@ def main():
     opt_labelled_ids = []
     opt_unlabelled_ids = []
     opt_dataset_module = 'conllu_dataset'
+    opt_dataset_basedir = None
     opt_model_modules  = []
     opt_model_init_type = None
     opt_seed_size = '100.0%'
@@ -367,6 +371,9 @@ def main():
             del sys.argv[1]
         elif option == '--dataset-module':
             opt_dataset_module = sys.argv[1]
+            del sys.argv[1]
+        elif option == '--dataset-basedir':
+            opt_dataset_basedir = sys.argv[1]
             del sys.argv[1]
         elif option == '--model-module':
             opt_model_modules.append(sys.argv[1])
@@ -469,7 +476,8 @@ def main():
     test_sets = []
     for dataset_id in opt_labelled_ids:
         tr, dev, test = dataset_module.load(
-            dataset_id, load_test = opt_final_test
+            dataset_id, load_test = opt_final_test,
+            dataset_basedir = opt_dataset_basedir
         )
         #print('Dataset %r: %r, %r, %r' %(dataset_id, tr, dev, test))
         training_data_sets.append(tr)
@@ -490,7 +498,8 @@ def main():
     unl_test_sets = []
     for dataset_id in opt_unlabelled_ids:
         tr, dev, test = dataset_module.load(
-            dataset_id, load_test = opt_final_test
+            dataset_id, load_test = opt_final_test,
+            dataset_basedir = opt_dataset_basedir
         )
         #print('Dataset %r: %r' %(dataset_id, tr))
         unlabelled_data_sets.append(tr)

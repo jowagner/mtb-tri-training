@@ -495,7 +495,8 @@ def load_or_map_from_filename(data, filename, mode = 'load'):
 
 def load(dataset_id,
     load_tr = True, load_dev = True, load_test = True,
-    mode = 'load'
+    mode = 'load',
+    dataset_basedir = None,
 ):
     raise NotImplementedError
 

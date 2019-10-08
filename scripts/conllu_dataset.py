@@ -189,10 +189,10 @@ def get_tbname(tbid, treebank_dir, tbmapfile = None):
         raise ValueError('TBID %r not found in %r' %(tbid, tbmapfile))
     if treebank_dir:
         # scan treebank folder
-        lcode = tbid.split('_')[1]
+        tcode = tbid.split('_')[1]
         for entry in os.listdir(treebank_dir):
             # is this a good candidate entry?
-            if entry.startswith('UD_') and lcode in entry.lower():
+            if entry.startswith('UD_') and tcode in entry.lower():
                 # look inside
                 if os.path.exists('%s/%s/%s-ud-test.conllu' %(
                     treebank_dir, entry, tbid
@@ -201,17 +201,50 @@ def get_tbname(tbid, treebank_dir, tbmapfile = None):
         raise ValueError('TBID %r not found in %r (must have test set)' %(tbid, treebank_dir))
     raise ValueError('TBID %r not found (need map file or treebank dir)' %tbid)
 
+def load_conll2017(lcode, name, dataset_basedir, node = 'load'):
+    if not dataset_basedir:
+        dataset_basedir = os.environ['CONLL2017_DIR']
+    # scan the dataset folder
+    datasets = []
+    for entry in os.listdir(dataset_basedir):
+        index = 0
+        while True:
+            filename = '%s/%s/%s-%s-%03d.conllu' %(
+                dataset_basedir, entry, lcode, name, index
+            )
+            if os.path.exists(filename):
+                data = basic_dataset.load_or_map_from_filename(
+                    ConlluDataset(), filename, mode
+                )
+                datasets.append(data)
+                index += 1
+            else:
+                break
+        if index:
+            print('Loaded %d CoNLL-2017 file(s) for %s %s' %(index, lcode, name))
+            # no need to check for another folder with files for
+            # the same lcode
+            break
+    return basic_dataset.Concat(datasets)
+
 def load(dataset_id,
-    treebank_dir = None,
     tbname = None,
     tbmapfile = None,
     load_tr = True, load_dev = True, load_test = True,
     mode = 'load',
+    dataset_basedir = None,
     only_get_path = False
 ):
+    lcode = dataset_id.split('_')[0]
+    if dataset_id.endswith('_cc17'):
+        return load_conll2017(lcode, 'common_crawl', dataset_basedir, mode), None, None
+    if dataset_id.endswith('_wp17'):
+        return load_conll2017(lcode, 'wikipedia', dataset_basedir, mode), None, None
     tbid = dataset_id
     tr, dev, test = None, None, None
-    if not treebank_dir:
+    if dataset_basedir:
+        treebank_dir = dataset_basedir
+    else:
         treebank_dir = os.environ['UD_TREEBANK_DIR']
     if not tbname:
         tbname = get_tbname(tbid, treebank_dir, tbmapfile)
