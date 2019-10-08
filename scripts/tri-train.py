@@ -706,7 +706,7 @@ def main():
             models, unlabelled_subset,
             training_round = training_round,
             opt_workdir = opt_workdir,
-            # dataset_name = 'subset',    # TODO: add name when renames files ready
+            dataset_name = 'subset',
             filename_extension = filename_extension,
             opt_continue = opt_continue,
             opt_manually_predict = opt_manually_predict,
@@ -946,15 +946,6 @@ def make_predictions(
                 dataset_name,
                 prediction_fingerprint[:20], filename_extension
         )
-        # TODO: remove the following when all running jobs have been updated
-        old_prediction_path = '%s/prediction-%02d-%d-%s%s%s' %(
-            opt_workdir,
-            training_round, learner_rank,
-            dataset_name,
-            prediction_fingerprint[:20], filename_extension
-        )
-        if os.path.exists(old_prediction_path):
-            os.rename(old_prediction_path, old_prediction_path)
         print('Prediction output path:', prediction_path)
         if os.path.exists(prediction_path):
             if not opt_continue:
