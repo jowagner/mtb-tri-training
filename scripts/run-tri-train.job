@@ -11,11 +11,10 @@
 
 source ${HOME}/tri-training/mtb-tri-training/config/locations.sh
 
-echo "Setting: ${SETTING}"
-echo "Treebanks: ${UD_TREEBANK_DIR}"
-
 SCRIPTDIR=${PRJ_DIR}/scripts
 WORKDIR=${PRJ_DIR}/workdirs/%(name)s
+
+#export PYTHONUNBUFFERED=x
 
 mkdir -p ${WORKDIR}
 
@@ -39,6 +38,7 @@ cd ${SCRIPTDIR}
     --model-init compose  \
     --unlabelled ga_wp17    \
     --labelled   ga_idt  \
+    --final-test          \
     --continue             \
     --epoch-selection last  \
     --iterations %(iterations)d  \

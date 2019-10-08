@@ -998,13 +998,11 @@ def evaluate(
         (dev_sets,  '-dev',  set_names),
         (test_sets, '-test', set_names),
     ]:
-        print('Evaluating %s sets' %(suffix[1:]))
         for d_index, dataset in enumerate(set_list):
             check_deadline(deadline, stopfile)
             if dataset is None:
                 continue
             name = names[d_index] + suffix
-            print('Evaluating on', name)
             predictions = make_predictions(
                 models, dataset,
                 training_round = training_round,
