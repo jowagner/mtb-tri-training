@@ -201,7 +201,7 @@ def get_tbname(tbid, treebank_dir, tbmapfile = None):
         raise ValueError('TBID %r not found in %r (must have test set)' %(tbid, treebank_dir))
     raise ValueError('TBID %r not found (need map file or treebank dir)' %tbid)
 
-def load_conll2017(lcode, name, dataset_basedir, node = 'load'):
+def load_conll2017(lcode, name, dataset_basedir, mode = 'load'):
     if not dataset_basedir:
         dataset_basedir = os.environ['CONLL2017_DIR']
     # scan the dataset folder
