@@ -341,7 +341,6 @@ def main():
             del sys.argv[1]
         elif option == '--final-test':
             opt_final_test = True
-            del sys.argv[1]
         elif option == '--workdir':
             opt_workdir = sys.argv[1]
             del sys.argv[1]
