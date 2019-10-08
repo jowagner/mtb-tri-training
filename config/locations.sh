@@ -41,6 +41,9 @@ case "${SETTING}" in
     export CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
     ;;
 "jwagner@g0-debian-9")
+    echo "CPU nodes not supported"
+    exit 1
+    ;;
 "jwagner@g0-debian-10")
     echo "CPU nodes not supported"
     exit 1
