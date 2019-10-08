@@ -1024,13 +1024,12 @@ def evaluate(
                 is_first = False
             pred_paths = []
             pred_fingerprints = []
-            for learner_index, model in enumerate(models):
+            for learner_index in range(len(models)):
                 check_deadline(deadline, stopfile)
                 learner_rank = learner_index + 1
                 print('Evaluating learner %d on %s:' %(learner_rank, name))
-                model_fingerprint, model_path, model_module = model
                 prediction_fingerprint, prediction_path = predictions[learner_index]
-                model_module.evaluate(
+                dataset_module.evaluate(
                     prediction_path, gold_path
                 )
                 pred_paths.append(prediction_path)
@@ -1048,7 +1047,7 @@ def evaluate(
                 filename_extension
             )
             dataset_module.combine(pred_paths, output_path)
-            model_module.evaluate(
+            dataset_module.evaluate(
                 output_path, gold_path
             )
             if not is_first:
@@ -1065,7 +1064,7 @@ def evaluate(
                     filename_extension
                 )
                 dataset_module.combine(pred_paths, output_path)
-                model_module.evaluate(
+                dataset_module.evaluate(
                     output_path, gold_path
                 )
 

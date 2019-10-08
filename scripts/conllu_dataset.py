@@ -140,6 +140,34 @@ class ConlluDataset(basic_dataset.Dataset):
             f_out.write('\n')
         f_out.write('\n')
 
+def evaluate(prediction_path, gold_path, outname = None):
+    if not outname:
+        outname = prediction_path[:-7] + '.eval.txt'
+    command = []
+    command.append('./conll18_ud_eval.py')
+    command.append('--output')
+    command.append(outname)
+    command.append('--verbose')
+    command.append(gold_path)
+    command.append(prediction_path)
+    print('Running', command)
+    sys.stderr.flush()
+    sys.stdout.flush()
+    subprocess.call(command)
+    score = (0.0, 'N/A')
+    with open(outname, 'rb') as f:
+        for line in f:
+            fields = line.split()
+            if not fields:
+                continue
+            # [0]       [1] [2]         [3] [4]         [5] [6]         [7] [8]
+            # LAS        |  79.756753596 |  79.756753596 |  79.756753596 |  79.756753596
+            if fields[0] == 'LAS':
+                score = fields[6]
+                score = (float(score), score)
+                break
+    return score
+
 def get_tbname(tbid, treebank_dir, tbmapfile = None):
     if not tbmapfile:
         candidate_file = '%s/tbnames.tsv' %treebank_dir
