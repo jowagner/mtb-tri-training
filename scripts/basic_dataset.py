@@ -372,7 +372,7 @@ class Sample(Dataset):
         rejected = 0
         if unique_sentences:
             so_far = {}
-            last_verbose = 0.0
+            last_verbose = time.time()
             interval = 60.0
         while remaining:
             candidates = []
