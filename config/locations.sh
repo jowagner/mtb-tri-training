@@ -13,6 +13,8 @@
 # Reduce hostname to first 2 characters as we don't want to write a
 # configuration for each node on the cluster.
 SIMPLEHOST=`echo ${HOSTNAME} | cut -c-2 | tr '23456789' '11111111'`
+
+# Need detail on the OS to dinstinguish old and new grove cluster
 source /etc/os-release
 SETTING=${USER}@${SIMPLEHOST}
 if [ -e /etc/os-release ]; then
