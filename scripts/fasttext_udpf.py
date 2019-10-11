@@ -57,34 +57,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-#!/bin/bash
-  
-export CUDA_VISIBLE_DEVICES=0    # okia has only 1 GPU
-
-
-touch $WDIR/fasttext.start
-echo $(hostname) $(date) >> $WDIR/fasttext.start
-
-for L in 1 2 3 ; do 
-
-done
-
-['./udpipe_future-train.sh', '/home/jwagner/tri-training/mtb-tri-training/workdirs/no-embeddings/new-training-set-01-1.conllu', '30101', '/home/jwagner/tri-training/mtb-tri-training/workdirs/no-embeddings/model-01-1-LqJAV5nefve3Bb4rAe47', '/scratch/jwagner/ud-parsing/ud-treebanks-v2.3/UD_Irish-IDT/ga_idt-ud-test.conllu']
-21.7 hours to deadline
-Learner: 2
-
-for T in 01 02 ; do
-for L in 1 2 3 ; do 
-
-./fasttext_udpf-train.sh \
-    $WDIR/new-training-set-${T}-${L}.conllu \
-    30${L}${T} \
-    $WDIR/model-${T}-${L}-fasttext \
-    $NPZ \
-    $TDIR/ga_idt-ud-test.conllu
-
-done
-done
-
-touch $WDIR/fasttext.end
-

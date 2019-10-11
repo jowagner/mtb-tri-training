@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:rtx2080ti:1
 #SBATCH -J %(name)s    # name for the job
 #SBATCH -d singleton
-#SBATCH --mem=14000
+#SBATCH --mem=18000
 #SBATCH --cpus-per-task=6
 #SBATCH --ntasks=1
 #SBATCH -N 1-1
@@ -39,8 +39,8 @@ cd ${SCRIPTDIR}
     --deadline 36.0            \
     --stopfile ${WORKDIR}/stop  \
     --model-init compose  \
-    --unlabelled %(lcode)_wp17    \
-    --unlabelled %(lcode)_cc17    \
+    --unlabelled %(lcode)s_wp17    \
+    --unlabelled %(lcode)s_cc17    \
     --labelled   %(tbid)s  \
     --final-test          \
     --continue             \
