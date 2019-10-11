@@ -48,8 +48,28 @@ for augment_size_code in range(10):
                         ('y', '--last-k 5'),
                         #('z', '--last-decay 0.5'),
                     ]:
-                        name = 'ga%s%s%s%s%s' %(ovs_code, wrpl_code, disa_code, decay_code, seed)
-                        f = open('r-%s.job' %name, 'wb')
-                        f.write(template %locals())
-                        f.close()
+                        for short_lcode, lcode, tbid  in [
+                            #('c', 'cs', 'cs_pdt'),
+                            #('d', 'de', 'de_gsd'),
+                            #('e', 'en', 'en_ewt'),
+                            #('f', 'fr', 'fr_gsd'),
+                            ('g', 'ga', 'ga_idt'),
+                        ]:
+                            for parser_code, model_module in [
+                                #('a', 'allennlp'),
+                                ('f', 'udpipe_future'),
+                                ('g', 'fasttext_udpf'),
+                                ('h', 'elmo_udpf'),
+                                #('i', 'mbert_udpf'),
+                                #('u', 'uuparser'),
+                                #('v', 'fasttext_uup'),
+                                #('x', 'elmo_uup'),
+                                #('m', 'mixed'),
+                                #('n', 'fasttext_mx'),
+                                #('o', 'elmo_mx'),
+                            ]:
+                                name = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed)
+                                f = open('r-%s.job' %name, 'wb')
+                                f.write(template %locals())
+                                f.close()
 
