@@ -34,15 +34,21 @@ case "${SETTING}" in
     export CONDA_HOME=${HOME}/anaconda3
     export UDPIPE_FUTURE_CONDA=udpf
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
+    export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
+    export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-allennlp-py36
+    export EFML_MODEL_DIR=${HOME}/data/elmo
     ;;
 "jwagner@ok-opensuse-leap-15.1")
     SCRATCH=/scratch/${USER}
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${SCRATCH}/ud-parsing/ud-treebanks-v2.3
-    export CONLL2017_DIR=${SCRATCH}/conll2017
+    export CONLL2017_DIR=${SCRATCH}/bert/corpora/CoNLL-2017
     export UDPIPE_FUTURE_DIR=${HOME}/bert/UDPipe-Future
     export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-tf114-py36
     export CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
+    export EFML_TOOL_DIR=${HOME}/tbemb/ELMoForManyLangs
+    export EFML_ENV=${HOME}/tbemb/allennlp-py36
+    export EFML_MODEL_DIR=${HOME}/elmo
     ;;
 "jwagner@g0-debian-9")
     echo "CPU nodes not supported"
@@ -61,6 +67,9 @@ case "${SETTING}" in
     export CONDA_HOME=${HOME}/anaconda3
     export UDPIPE_FUTURE_CONDA=udpf
     export CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
+    export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
+    export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-allennlp-py36
+    export EFML_MODEL_DIR=${HOME}/data/elmo
     ;;
 "jwagner@g1-debian-10")
     SPINNING=/spinning/${USER}
@@ -71,6 +80,9 @@ case "${SETTING}" in
     export UDPIPE_FUTURE_LIB_PATH=/home/support/nvidia/cuda10/lib64:/home/support/nvidia/cudnn/cuda10_cudnn7_7.5/lib64
     export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-tf114-py36
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
+    export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
+    export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-allennlp-py36
+    export EFML_MODEL_DIR=${HOME}/data/elmo
     ;;
 root*)
     # inside udocker

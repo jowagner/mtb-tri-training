@@ -71,6 +71,7 @@ if opt_elmoformanylanguages:
             sent = '\t'.join(tokens)
             sent = sent.replace('.', '$period$')
             sent = sent.replace('/', '$backslash$')
+            i = len(sentences)
             sentences.append((i, len(tokens), sent))
             tokens = []
         elif not line.startswith('#'):
@@ -122,7 +123,7 @@ else:
 
 npz_data = {}
 for i, key in enumerate(keys):
-    vectors = token_rep[key]
+    vectors = token_rep[key][()]
     npz_key = 'arr_%d' %i
     npz_data[npz_key] = vectors
 
