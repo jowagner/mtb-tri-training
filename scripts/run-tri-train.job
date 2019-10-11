@@ -18,7 +18,9 @@ WORKDIR=${PRJ_DIR}/workdirs/%(name)s
 
 mkdir -p ${WORKDIR}
 
-echo $(hostname) $(date) >> ${WORKDIR}/run.start
+cd ${WORKDIR}
+touch run.start
+echo $(hostname) $(date) >> run.start
 if [ -e run.end ]; then
     mv run.end run.prev-end
 fi
