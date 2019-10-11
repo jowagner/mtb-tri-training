@@ -19,14 +19,16 @@ import sys
 def train(
     dataset_filename, seed, model_dir,
     epoch_selection_dataset = None,
-    monitoring_datasets = []
+    monitoring_datasets = [],
+    lcode = 'ga',
 ):
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
     command = []
-    command.append('./udpipe_future-train.sh')
+    command.append('./fasttext_udpf-train.sh')
     command.append(dataset_filename)
     command.append(seed)
+    command.append(lcode)
     command.append(model_dir)
     for i in range(2):
         if len(monitoring_datasets) > i:
@@ -36,9 +38,11 @@ def train(
     sys.stdout.flush()
     subprocess.call(command)
 
-def predict(model_path, input_path, prediction_output_path):
+def predict(
+    model_path, input_path, prediction_output_path,
+):
     command = []
-    command.append('./udpipe_future-predict.sh')
+    command.append('./fasttext_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
     command.append(prediction_output_path)
@@ -57,21 +61,11 @@ if __name__ == "__main__":
   
 export CUDA_VISIBLE_DEVICES=0    # okia has only 1 GPU
 
-NPZ=/home/jwagner/bert/UDPipe-Future/ud-lowercase-notrain-fasttext.npz
-WDIR=/home/jwagner/tri-training/mtb-tri-training/workdirs/no-embeddings
-TDIR=/scratch/jwagner/ud-parsing/ud-treebanks-v2.3/UD_Irish-IDT
 
 touch $WDIR/fasttext.start
 echo $(hostname) $(date) >> $WDIR/fasttext.start
 
 for L in 1 2 3 ; do 
-
-./fasttext_udpf-train.sh \
-    $WDIR/seed-set-${L}.conllu \
-    30${L}00 \
-    $WDIR/model-00-${L}-fasttext \
-    $NPZ \
-    $TDIR/ga_idt-ud-test.conllu
 
 done
 

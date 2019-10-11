@@ -46,6 +46,7 @@ case "${SETTING}" in
     export UDPIPE_FUTURE_DIR=${HOME}/bert/UDPipe-Future
     export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-tf114-py36
     export CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
+    export FASTTEXT_NPZ_DIR=${HOME}/bert/UDPipe-Future
     export EFML_TOOL_DIR=${HOME}/tbemb/ELMoForManyLangs
     export EFML_ENV=${HOME}/tbemb/allennlp-py36
     export EFML_MODEL_DIR=${HOME}/elmo

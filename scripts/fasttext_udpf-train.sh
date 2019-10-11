@@ -13,19 +13,18 @@ test -z $2 && echo "Missing seed"
 test -z $2 && exit 1
 SEED=$2
 
-test -z $3 && echo "Missing model output folder"
+test -z $3 && echo "Missing language code"
 test -z $3 && exit 1
-MODELDIR=$(realpath $3)
+LCODE=$3
+
+test -z $4 && echo "Missing model output folder"
+test -z $4 && exit 1
+MODELDIR=$(realpath $4)
 
 if [ -e "$MODELDIR" ]; then
     echo "Refusing to overwrite output folder"
     exit 1
 fi
-
-test -z $4 && echo "Missing fasttext npz file"
-test -z $4 && exit 1
-NPZ=$(realpath $4)
-
 
 # optional args:
 TEST_SET=$5
@@ -41,6 +40,8 @@ fi
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 source ${PRJ_DIR}/config/locations.sh
+
+NPZ=${FASTTEXT_NPZ_DIR}/fasttext_${LCODE}.npz
 
 PARSER_NAME=udpipe-future
 PARSER_DIR=${UDPIPE_FUTURE_DIR}
@@ -70,6 +71,13 @@ mkdir -p ${MODELDIR}
 
 cp ${TRAIN_CONLLU} $MODELDIR/${FAKE_TBID}-ud-train.conllu
 cd $MODELDIR
+
+if [ -e "${NPZ}" ]; then
+    ln -s ${NPZ} fasttext.npz
+else
+    echo "Missing ${NPZ}"
+    exit 1
+fi
 
 if [ -n "$TEST_SET" ]; then
     ln -s ${REAL_TEST_SET} ${FAKE_TBID}-ud-test.conllu
