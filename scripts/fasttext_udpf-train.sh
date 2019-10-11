@@ -41,7 +41,7 @@ test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 source ${PRJ_DIR}/config/locations.sh
 
-NPZ=${FASTTEXT_NPZ_DIR}/fasttext_${LCODE}.npz
+NPZ=${FASTTEXT_NPZ_DIR}/fasttext-${LCODE}.npz
 
 PARSER_NAME=udpipe-future
 PARSER_DIR=${UDPIPE_FUTURE_DIR}
