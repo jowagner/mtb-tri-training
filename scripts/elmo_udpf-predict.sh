@@ -20,6 +20,7 @@ OUTPUT=$3
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 WORKDIR=$(realpath "${OUTPUT}")-workdir
+mkdir -p "${WORKDIR}"
 
 LANG_CODE=$(cat ${MODELDIR}/elmo-lcode.txt)
 
@@ -64,7 +65,6 @@ REAL_MODELDIR=$(realpath $MODELDIR)
 REAL_INPUT=$(realpath $INPUT)
 REAL_OUTPUT=$(realpath $OUTPUT)
 
-mkdir -p "${WORKDIR}"
 cd ${WORKDIR}
 
 for ENTRY in   \
