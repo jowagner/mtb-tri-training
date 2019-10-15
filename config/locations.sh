@@ -50,6 +50,8 @@ case "${SETTING}" in
     export EFML_TOOL_DIR=${HOME}/tbemb/ELMoForManyLangs
     export EFML_ENV=${HOME}/tbemb/allennlp-py36
     export EFML_MODEL_DIR=${HOME}/elmo
+    export EFML_CACHE_DIR=${SCRATCH}/elmo/cache
+    export EFML_MAX_CACHE_ENTRIES=20
     ;;
 "jwagner@g0-debian-9")
     echo "CPU nodes not supported"
