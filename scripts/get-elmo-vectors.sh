@@ -25,9 +25,15 @@ test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 source ${PRJ_DIR}/config/locations.sh
 
+cachelog()
+{
+    echo `date +%%Y-%%m-%%dT%%H:%%M:%%S` "["$$"]" $* >> ${EFML_CACHE_DIR}/log
+}
+
 if [ -n "$EFML_CACHE_DIR" ]; then
     CACHE_ENTRY=${LANG_CODE}-$(sha256sum ${TRAIN_CONLLU})
     if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
+        cachelog "hit ${CACHE_ENTRY}"
         CACHE_ENTRY_SIZE=$(cat ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size)
         cp --reflink=auto ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
             ${OUTPUTDIR}/${HDF5_NAME} 2> /dev/null
@@ -41,8 +47,11 @@ if [ -n "$EFML_CACHE_DIR" ]; then
             exit 0
         else
             # cannot use file with wrong size
+            cachelog "wrong size for ${CACHE_ENTRY}"
             rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
         fi
+    else
+        cachelog "miss ${CACHE_ENTRY}"
     fi
 fi
 
@@ -89,13 +98,14 @@ if [ -n "$EFML_CACHE_DIR" ]; then
     if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
         # a parallel process was faster
         # --> nothing to do
-        echo > /dev/null
+        cachelog "not updating existing ${CACHE_ENTRY}"
     else
         CACHE_ENTRY_SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME})
         cp --reflink=auto ${OUTPUTDIR}/${HDF5_NAME} \
             ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
         # signal that entry is ready
         echo ${CACHE_ENTRY_SIZE} > ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size
+        cachelog "updated ${CACHE_ENTRY}"
         # don't let cache grow too much
         NUM_FILES=$(find ${EFML_CACHE_DIR}/ -name "*.size" | wc -l)
         if [ "$NUM_FILES" -gt "$EFML_MAX_CACHE_ENTRIES" ]; then
@@ -104,6 +114,7 @@ if [ -n "$EFML_CACHE_DIR" ]; then
             rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}
             HDF5=$(basename ${EXPIRED_ENTRY} .size).hdf5
             rm ${EFML_CACHE_DIR}/${HDF5}
+            cachelog "expired ${EXPIRED_ENTRY}"
         fi
     fi
 fi
