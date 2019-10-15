@@ -46,6 +46,13 @@ NPZ=${FASTTEXT_NPZ_DIR}/fasttext-${LCODE}.npz
 PARSER_NAME=udpipe-future
 PARSER_DIR=${UDPIPE_FUTURE_DIR}
 
+FINAL_MODELDIR=$MODELDIR
+MODELDIR=${MODELDIR}-workdir
+
+mkdir -p ${MODELDIR}
+
+hostname > ${MODELDIR}/training.start
+
 if [ -n "$UDPIPE_FUTURE_LIB_PATH" ]; then
     export LD_LIBRARY_PATH=${UDPIPE_FUTURE_LIB_PATH}:${LD_LIBRARY_PATH}
 fi
@@ -61,10 +68,6 @@ fi
 
 FAKE_TBID=xx_xxx
 
-FINAL_MODELDIR=$MODELDIR
-MODELDIR=${MODELDIR}-workdir
-
-mkdir -p ${MODELDIR}
 
 # The model is not complete without the conllu file as
 # the checkpoint does not contain the vocabularies.
@@ -90,7 +93,7 @@ if [ -n "$DEV_SET" ]; then
     ln -s ${REAL_DEV_SET} ${FAKE_TBID}-ud-dev.conllu
 fi
 
-hostname > training.start
+touch parser-training.start
 
 python ${PARSER_DIR}/ud_parser.py \
     --embeddings ${NPZ}           \

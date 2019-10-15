@@ -49,6 +49,8 @@ test -e ${MODELDIR} && exit 1
 #fi
 mkdir -p ${MODELDIR}
 
+hostname > ${MODELDIR}/training.start
+
 ELMO_FILE_PREFIX=elmo
 
 ${PRJ_DIR}/scripts/get-elmo-vectors.sh  \
@@ -141,7 +143,7 @@ if [ -n "$DEV_SET" ]; then
     ln -s ${REAL_DEV_SET} ${FAKE_TBID}-ud-dev.conllu
 fi
 
-hostname > training.start
+touch parser-training.start
 
 python ${PARSER_DIR}/ud_parser.py \
     --elmo ${ELMO_FILE_PREFIX}    \
