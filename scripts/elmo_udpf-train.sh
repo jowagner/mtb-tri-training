@@ -131,6 +131,7 @@ cp ${TRAIN_CONLLU} $MODELDIR/${FAKE_TBID}-ud-train.conllu
 cd $MODELDIR
 
 echo ${LANG_CODE} > elmo-lcode.txt
+ln -s ${FASTTEXT_NPZ} fasttext.npz
 
 if [ -n "$TEST_SET" ]; then
     ln -s ${REAL_TEST_SET} ${FAKE_TBID}-ud-test.conllu
@@ -147,7 +148,7 @@ touch parser-training.start
 
 python ${PARSER_DIR}/ud_parser.py \
     --elmo ${ELMO_FILE_PREFIX}    \
-    --embeddings ${FASTTEXT_NPZ}  \
+    --embeddings fasttext.npz     \
     --seed ${SEED}                \
     --logdir ./                   \
     --epochs "30:1e-3,5:6e-4,5:4e-4,5:3e-4,5:2e-4,10:1e-4"  \
@@ -158,6 +159,7 @@ python ${PARSER_DIR}/ud_parser.py \
 #    --min_epoch_batches 3000      \
 #    --epochs "4:1e-3,2:1e-4"      \
 
+rm ${ELMO_FILE_PREFIX}*.npz
 
 touch training.end
 
