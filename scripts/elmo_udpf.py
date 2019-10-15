@@ -19,13 +19,15 @@ import sys
 def train(
     dataset_filename, seed, model_dir,
     epoch_selection_dataset = None,
-    monitoring_datasets = []
+    monitoring_datasets = [],
+    lcode = 'ga',
 ):
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
     command = []
-    command.append('./udpipe_future-train.sh')
+    command.append('./elmo_udpf-train.sh')
     command.append(dataset_filename)
+    command.append(lcode)
     command.append(seed)
     command.append(model_dir)
     for i in range(2):
@@ -38,7 +40,7 @@ def train(
 
 def predict(model_path, input_path, prediction_output_path):
     command = []
-    command.append('./udpipe_future-predict.sh')
+    command.append('./elmo_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
     command.append(prediction_output_path)
@@ -52,43 +54,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-#!/bin/bash
-  
-export CUDA_VISIBLE_DEVICES=0    # okia has only 1 GPU
-
-FASTTEXT_NPZ=/home/jwagner/bert/UDPipe-Future/ud-lowercase-notrain-fasttext.npz
-WDIR=/home/jwagner/tri-training/mtb-tri-training/workdirs/no-embeddings
-TDIR=/scratch/jwagner/ud-parsing/ud-treebanks-v2.3/UD_Irish-IDT
-
-touch $WDIR/elmo.start
-echo $(hostname) $(date) >> $WDIR/fasttext.start
-
-for L in 2 3 ; do 
-
-./elmo_udpf-train.sh           \
-    $WDIR/seed-set-${L}.conllu  \
-    ga                          \
-    30${L}00                    \
-    $WDIR/model-00-${L}-elmo    \
-    $FASTTEXT_NPZ               \
-    $TDIR/ga_idt-ud-test.conllu
-
-done
-
-for T in 01 02 ; do
-for L in 1 2 3 ; do 
-
-./elmo_udpf-train.sh                        \
-    $WDIR/new-training-set-${T}-${L}.conllu  \
-    ga                                       \
-    30${L}${T}                               \
-    $WDIR/model-${T}-${L}-elmo               \
-    $FASTTEXT_NPZ                            \
-    $TDIR/ga_idt-ud-test.conllu
-
-done
-done
-
-touch $WDIR/elmo.end
 

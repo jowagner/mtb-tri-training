@@ -26,13 +26,9 @@ if [ -e "$MODELDIR" ]; then
     exit 1
 fi
 
-test -z $5 && echo "Missing fasttext npz file"
-test -z $5 && exit 1
-FASTTEXT_NPZ=$(realpath $5)
-
 # optional args:
-TEST_SET=$6
-DEV_SET=$7
+TEST_SET=$5
+DEV_SET=$6
 
 if [ -n "$TEST_SET" ]; then
     REAL_TEST_SET=$(realpath ${TEST_SET})
@@ -106,6 +102,8 @@ fi
 
 source ${PRJ_DIR}/config/locations.sh
 
+FASTTEXT_NPZ=${FASTTEXT_NPZ_DIR}/fasttext-${LANG_CODE}.npz
+
 PARSER_NAME=udpipe-future
 PARSER_DIR=${UDPIPE_FUTURE_DIR}
 
@@ -129,6 +127,8 @@ FAKE_TBID=xx_xxx
 
 cp ${TRAIN_CONLLU} $MODELDIR/${FAKE_TBID}-ud-train.conllu
 cd $MODELDIR
+
+echo ${LANG_CODE} > elmo-lcode.txt
 
 if [ -n "$TEST_SET" ]; then
     ln -s ${REAL_TEST_SET} ${FAKE_TBID}-ud-test.conllu
