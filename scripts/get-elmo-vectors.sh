@@ -113,7 +113,7 @@ if [ -n "$EFML_CACHE_DIR" ]; then
         # don't let cache grow too much
         NUM_FILES=$(find ${EFML_CACHE_DIR}/ -name "*.size" | wc -l)
         if [ "$NUM_FILES" -gt "$EFML_MAX_CACHE_ENTRIES" ]; then
-            PICK_FROM=$(expr ${EFML_MAX_CACHE_ENTRIES} 2)
+            PICK_FROM=$(expr ${EFML_MAX_CACHE_ENTRIES} / 2)
             EXPIRED_ENTRY=$(ls -t ${EFML_CACHE_DIR}/ | fgrep .size | tail -n ${PICK_FROM} | shuf | head -n 1)
             rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}
             HDF5=$(basename ${EXPIRED_ENTRY} .size).hdf5
