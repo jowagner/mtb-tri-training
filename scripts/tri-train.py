@@ -289,6 +289,32 @@ Options:
 
 """)
 
+
+# For the moment, we support embeddings only via additional model modules
+# that load embeddings according to environment variable settings.
+# Below an idea for an interface to train embeddings at experiment time
+# from the unlabelled data and to only need one model module for all
+# embeddings variants.
+
+embedding_options = """
+    --external-embedding-module  NAME
+                            Provide an external embedding table for use with
+                            model modules that support using one.
+                            Specify 3 times to use different external
+                            embeddings for each tri-learner.
+                            (Default: no external embedding)
+
+    --contextual-embedding-module  NAME(S)
+                            Enrich items with contextual embeddings for use
+                            with model modules that support them.
+                            A conlon-separated list of module names specifies
+                            to use a concatenation of embeddings.
+                            Specify 3 times to use different embeddings for
+                            each tri-learner.
+                            (Default: no contextual embedding)
+"""
+
+
 def main():
     opt_help  = False
     opt_verbose = False
@@ -541,6 +567,8 @@ def main():
     sys.stdout.flush()
 
     if opt_init_seed:
+        # For why using sha512, see Joachim's answer on
+        # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
         random.seed(int(hashlib.sha512('seed selection %s' %(
             opt_init_seed,
         )).hexdigest(), 16))
@@ -846,9 +874,13 @@ def main():
                         )
                     )
                 last_k_datasets.append(new_dataset)
-                print('Taking %s items in %d sentences from round %d.' %(
-                    new_dataset.get_number_of_items(), len(new_dataset),
-                    t_index+1
+                new_dataset_num_items = new_dataset.get_number_of_items()
+                new_dataset_sentences = len(new_dataset)
+                print('Taking %s items in %d sentences from round %d.'
+                      ' Average sentence length is %.1f items.' %(
+                    new_dataset_num_items, new_dataset_sentences,
+                    t_index+1,
+                    new_dataset_num_items / float(new_dataset_sentences),
                 ))
             last_k_datasets = basic_dataset.Concat(last_k_datasets)
             print('Subtotal: %s items in %d sentences.' %(
@@ -878,8 +910,12 @@ def main():
                     random, target_columns, target_labelsets
                 )
             )
-            print('Total: %s items in %d sentences.' %(
-                new_training_set.get_number_of_items(), len(new_training_set)
+            new_tr_num_items = new_training_set.get_number_of_items()
+            new_tr_sentences = len(new_training_set)
+            print('Total: %s items in %d sentences.'
+                  ' Average sentence length is %.1f items.' %(
+                new_tr_num_items, new_tr_sentences,
+                new_tr_num_items / float(new_tr_sentences),
             ))
             write_dataset(
                 new_training_set,
