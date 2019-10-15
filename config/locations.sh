@@ -70,22 +70,23 @@ case "${SETTING}" in
     export CONDA_HOME=${HOME}/anaconda3
     export UDPIPE_FUTURE_CONDA=udpf
     export CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
+    export FASTTEXT_NPZ_DIR=${HOME}/data/UDPipe-Future
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-allennlp-py36
-    export EFML_MODEL_DIR=${HOME}/data/elmo
+    export EFML_MODEL_DIR=${HOME}/elmo
     ;;
 "jwagner@g1-debian-10")
     SPINNING=/spinning/${USER}
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
-    export UD_TREEBANK_DIR=${SPINNING}/tbemb/ud-treebanks-v2.3
+    export UD_TREEBANK_DIR=${SPINNING}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${SPINNING}/data/conll2017
     export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
-    export UDPIPE_FUTURE_LIB_PATH=/home/support/nvidia/cuda10/lib64:/home/support/nvidia/cudnn/cuda10_cudnn7_7.5/lib64
-    export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-tf114-py36
+    export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-udpf
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
+    export FASTTEXT_NPZ_DIR=${HOME}/data/UDPipe-Future
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
-    export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-allennlp-py36
-    export EFML_MODEL_DIR=${HOME}/data/elmo
+    export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
+    export EFML_MODEL_DIR=${HOME}/elmo
     ;;
 root*)
     # inside udocker
