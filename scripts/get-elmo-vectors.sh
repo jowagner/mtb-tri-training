@@ -27,22 +27,21 @@ source ${PRJ_DIR}/config/locations.sh
 
 if [ -n "$EFML_CACHE_DIR" ]; then
     CACHE_ENTRY=${LANG_CODE}-$(sha256sum ${TRAIN_CONLLU})
-
     if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
         CACHE_ENTRY_SIZE=$(cat ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size)
-	cp --reflink=auto ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
+        cp --reflink=auto ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
             ${OUTPUTDIR}/${HDF5_NAME} 2> /dev/null
-	# ensure file exists in case cp failed
-	touch ${OUTPUTDIR}/${HDF5_NAME}
+        # ensure file exists in case cp failed
+        touch ${OUTPUTDIR}/${HDF5_NAME}
         SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME})
-	if [ "$SIZE" == "$CACHE_ENTRY_SIZE" ]; then
-	    # update last usage information
-	    touch ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
-	    # all done
-	    exit 0
-	else
-	    # cannot use file with wrong size
-	    rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
+        if [ "$SIZE" == "$CACHE_ENTRY_SIZE" ]; then
+            # update last usage information
+            touch ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
+            # all done
+            exit 0
+        else
+            # cannot use file with wrong size
+            rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
         fi
     fi
 fi
@@ -88,24 +87,24 @@ mv ${TMP_TOKREPFILE}*ly${LAYER}.hdf5 ${OUTPUTDIR}/${HDF5_NAME}
 if [ -n "$EFML_CACHE_DIR" ]; then
     # add output to cache
     if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
-	# a parallel process was faster
-	# --> nothing to do
-	echo > /dev/null
+        # a parallel process was faster
+        # --> nothing to do
+        echo > /dev/null
     else
         CACHE_ENTRY_SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME})
-	cp --reflink=auto ${OUTPUTDIR}/${HDF5_NAME} \
+        cp --reflink=auto ${OUTPUTDIR}/${HDF5_NAME} \
             ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
-	# signal that entry is ready
+        # signal that entry is ready
         echo ${CACHE_ENTRY_SIZE} > ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size
-	# don't let cache grow too much
-	NUM_FILES=$(find ${EFML_CACHE_DIR}/ -name "*.size" | wc -l)
-	if [ "$NUM_FILES" -gt "$EFML_MAX_CACHE_ENTRIES" ]; then
-	    PICK_FROM=$(expr ${EFML_MAX_CACHE_ENTRIES} 2)
-	    EXPIRED_ENTRY=$(ls -t ${EFML_CACHE_DIR}/ | fgrep .size | head -n ${PICK_FROM} | shuf | head -n 1)
-	    rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}
-	    HDF5=$(basename ${EXPIRED_ENTRY} .size).hdf5
-	    rm ${EFML_CACHE_DIR}/${HDF5}
-	fi
+        # don't let cache grow too much
+        NUM_FILES=$(find ${EFML_CACHE_DIR}/ -name "*.size" | wc -l)
+        if [ "$NUM_FILES" -gt "$EFML_MAX_CACHE_ENTRIES" ]; then
+            PICK_FROM=$(expr ${EFML_MAX_CACHE_ENTRIES} 2)
+            EXPIRED_ENTRY=$(ls -t ${EFML_CACHE_DIR}/ | fgrep .size | tail -n ${PICK_FROM} | shuf | head -n 1)
+            rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}
+            HDF5=$(basename ${EXPIRED_ENTRY} .size).hdf5
+            rm ${EFML_CACHE_DIR}/${HDF5}
+        fi
     fi
 fi
 
