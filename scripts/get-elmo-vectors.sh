@@ -114,10 +114,11 @@ if [ -n "$EFML_CACHE_DIR" ]; then
         NUM_FILES=$(find ${EFML_CACHE_DIR}/ -name "*.size" | wc -l)
         if [ "$NUM_FILES" -gt "$EFML_MAX_CACHE_ENTRIES" ]; then
             PICK_FROM=$(expr ${EFML_MAX_CACHE_ENTRIES} / 2)
-            EXPIRED_ENTRY=$(ls -t ${EFML_CACHE_DIR}/ | fgrep .hdf5 | tail -n ${PICK_FROM} | shuf | head -n 1)
-            rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}
-            SIZEFILE=$(basename ${EXPIRED_ENTRY} .hdf5).size
-            rm ${EFML_CACHE_DIR}/${SIZEFILE}
+            EXPIRED_ENTRY=$(ls -t ${EFML_CACHE_DIR}/ | fgrep .hdf5 |
+                tail -n ${PICK_FROM} | shuf | head -n 1)
+            EXPIRED_ENTRY=$(basename ${EXPIRED_ENTRY} .hdf5)
+            rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}.size
+            rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}.hdf5
             cachelog "${EXPIRED_ENTRY} expired, cleaned up"
         fi
     fi
