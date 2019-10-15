@@ -37,7 +37,7 @@ if [ -n "$EFML_CACHE_DIR" ]; then
         cp --reflink=auto ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
             ${OUTPUTDIR}/${HDF5_NAME} 2> /dev/null
 	if [ -e ${OUTPUTDIR}/${HDF5_NAME} ]; then
-            SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME})
+            SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME} | cut -d' ' -f1)
             if [ "$SIZE" == "$CACHE_ENTRY_SIZE" ]; then
                 # update last usage information
                 touch ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
@@ -104,7 +104,7 @@ if [ -n "$EFML_CACHE_DIR" ]; then
         # --> nothing to do
         cachelog "not updating existing ${CACHE_ENTRY}"
     else
-        CACHE_ENTRY_SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME})
+        CACHE_ENTRY_SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME} | cut -d' ' -f1)
         cp --reflink=auto ${OUTPUTDIR}/${HDF5_NAME} \
             ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
         # signal that entry is ready
