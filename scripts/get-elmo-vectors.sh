@@ -102,14 +102,14 @@ if [ -n "$EFML_CACHE_DIR" ]; then
     if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
         # a parallel process was faster
         # --> nothing to do
-        cachelog "not updating existing ${CACHE_ENTRY}"
+        cachelog "${CACHE_ENTRY} exists, not updating"
     else
         CACHE_ENTRY_SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME} | cut -d' ' -f1)
         cp --reflink=auto ${OUTPUTDIR}/${HDF5_NAME} \
             ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
         # signal that entry is ready
         echo ${CACHE_ENTRY_SIZE} > ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size
-        cachelog "updated ${CACHE_ENTRY}"
+        cachelog "${CACHE_ENTRY} added"
         # don't let cache grow too much
         NUM_FILES=$(find ${EFML_CACHE_DIR}/ -name "*.size" | wc -l)
         if [ "$NUM_FILES" -gt "$EFML_MAX_CACHE_ENTRIES" ]; then
