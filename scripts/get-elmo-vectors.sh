@@ -31,7 +31,7 @@ cachelog()
 }
 
 if [ -n "$EFML_CACHE_DIR" ]; then
-    CACHE_ENTRY=${LANG_CODE}-$(sha256sum ${TRAIN_CONLLU})
+    CACHE_ENTRY=${LANG_CODE}-$(sha256sum ${TRAIN_CONLLU} | cut -c-64)
     if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
         cachelog "hit ${CACHE_ENTRY}"
         CACHE_ENTRY_SIZE=$(cat ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size)
