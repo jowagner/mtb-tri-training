@@ -33,25 +33,29 @@ cachelog()
 if [ -n "$EFML_CACHE_DIR" ]; then
     CACHE_ENTRY=${LANG_CODE}-$(sha256sum ${TRAIN_CONLLU} | cut -c-64)
     if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
-        cachelog "hit ${CACHE_ENTRY}"
         CACHE_ENTRY_SIZE=$(cat ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size)
         cp --reflink=auto ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
             ${OUTPUTDIR}/${HDF5_NAME} 2> /dev/null
-        # ensure file exists in case cp failed
-        touch ${OUTPUTDIR}/${HDF5_NAME}
-        SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME})
-        if [ "$SIZE" == "$CACHE_ENTRY_SIZE" ]; then
-            # update last usage information
-            touch ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
-            # all done
-            exit 0
+	if [ -e ${OUTPUTDIR}/${HDF5_NAME} ]; then
+            SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME})
+            if [ "$SIZE" == "$CACHE_ENTRY_SIZE" ]; then
+                # update last usage information
+                touch ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
+                # all done
+                cachelog "${CACHE_ENTRY} hit"
+                exit 0
+            else
+                # cannot use file with wrong size
+                cachelog "${CACHE_ENTRY} wrong size ${SIZE}, expected ${CACHE_ENTRY_SIZE}, cleaning up"
+                rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.*
+            fi
         else
-            # cannot use file with wrong size
-            cachelog "wrong size for ${CACHE_ENTRY}"
-            rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
+            # cannot use cache entry with missing data
+            cachelog "${CACHE_ENTRY} is missing data, cleaning up"
+            rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.*
         fi
     else
-        cachelog "miss ${CACHE_ENTRY}"
+        cachelog "${CACHE_ENTRY} miss"
     fi
 fi
 
@@ -114,7 +118,7 @@ if [ -n "$EFML_CACHE_DIR" ]; then
             rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}
             HDF5=$(basename ${EXPIRED_ENTRY} .size).hdf5
             rm ${EFML_CACHE_DIR}/${HDF5}
-            cachelog "expired ${EXPIRED_ENTRY}"
+            cachelog "${EXPIRED_ENTRY} expired, cleaned up ${EXPIRED_ENTRY} and ${HDF5}"
         fi
     fi
 fi
