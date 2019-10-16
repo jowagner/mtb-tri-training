@@ -132,6 +132,9 @@ cd Irish/
 unxz *.xz
 ```
 
+The tri-training script loads CoNNL-2017 Wikipedia data for language `xx` if the
+treebank ID `xx_wp17` is used and CoNNL-2017 Common Crawl data for `xx_cc17`.
+
 # Configration
 
 `config/locations.sh`
