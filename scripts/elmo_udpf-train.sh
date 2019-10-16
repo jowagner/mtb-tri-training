@@ -63,7 +63,7 @@ ${PRJ_DIR}/scripts/get-elmo-vectors.sh  \
 
 #rm -f ${MODELDIR}/${ELMO_FILE_PREFIX}-train.npz
 
-${PRJ_DIR}/scripts/elmo-hdf5-to-npz.py        \
+${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
     --elmoformanylang ${TRAIN_CONLLU}          \
     ${MODELDIR}/${ELMO_FILE_PREFIX}-train.hdf5  \
     ${MODELDIR}/${ELMO_FILE_PREFIX}-train.npz
@@ -79,7 +79,7 @@ if [ -n "$TEST_SET" ]; then
         2> ${MODELDIR}/elmo-stderr-test.txt  \
         >  ${MODELDIR}/elmo-stdout-test.txt
     #rm -f ${MODELDIR}/${ELMO_FILE_PREFIX}-test.npz
-    ${PRJ_DIR}/scripts/elmo-hdf5-to-npz.py        \
+    ${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
         --elmoformanylang ${TEST_SET}          \
         ${MODELDIR}/${ELMO_FILE_PREFIX}-test.hdf5  \
         ${MODELDIR}/${ELMO_FILE_PREFIX}-test.npz
@@ -95,7 +95,7 @@ if [ -n "$DEV_SET" ]; then
         2> ${MODELDIR}/elmo-stderr-dev.txt  \
         >  ${MODELDIR}/elmo-stdout-dev.txt
     #rm -f ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.npz
-    ${PRJ_DIR}/scripts/elmo-hdf5-to-npz.py        \
+    ${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
         --elmoformanylang ${DEV_SET}          \
         ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.hdf5  \
         ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.npz

@@ -34,7 +34,7 @@ ${PRJ_DIR}/scripts/get-elmo-vectors.sh  \
     2> ${WORKDIR}/elmo-stderr-test.txt  \
     >  ${WORKDIR}/elmo-stdout-test.txt
 
-${PRJ_DIR}/scripts/elmo-hdf5-to-npz.py       \
+${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
     --elmoformanylang ${INPUT}                \
     ${WORKDIR}/${ELMO_FILE_PREFIX}-test.hdf5  \
     ${WORKDIR}/${ELMO_FILE_PREFIX}-test.npz
