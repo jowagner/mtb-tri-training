@@ -86,6 +86,8 @@ case "${SETTING}" in
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
+    export EFML_CACHE_DIR=${HOME}/data/elmo-cache
+    export EFML_MAX_CACHE_ENTRIES=100
     ;;
 root*)
     # inside udocker
