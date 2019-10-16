@@ -94,6 +94,16 @@ to `bin/activate`, e.g. `/usr/local/cuda-10.1/lib64`.
 source venv-efml/bin/activate
 pip install torch torchvision
 pip install allennlp
+```
+
+TODO: Do we need to run `python setup.py install`?
+I don't think I did but James's readme says so.
+The command `python -m elmoformanylangs test`
+in `get-elmo-vectors.sh` may simple
+work because we `cd`'ed into the efml folder.
+
+
+```
 cd
 mkdir elmo
 cd elmo/
