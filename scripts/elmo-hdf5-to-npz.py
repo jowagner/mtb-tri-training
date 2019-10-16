@@ -21,7 +21,7 @@ import time
 
 
 """
-Usage: ./elmo-hdf5-to-npz.p [--elmoformanylang input.conllu] input-tok-rep.hdf5 output-tok-rep.hdf5
+Usage: ./elmo-hdf5-to-npz.py [--elmoformanylang input.conllu] input-tok-rep.hdf5 output-tok-rep.hdf5
 """
 
 opt_elmoformanylanguages = None

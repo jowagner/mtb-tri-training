@@ -124,5 +124,5 @@ if [ -n "$EFML_CACHE_DIR" ]; then
     fi
 fi
 
-touch ${OUTPUTDIR}/training.end
+touch ${OUTPUTDIR}/elmo.end
 
