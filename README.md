@@ -18,6 +18,8 @@ pip3 install --user virtualenv
 ## Main Tri-training Scripts
 
 ```
+mkdir tri-training
+cd tri-training
 git clone ssh://git@gogs.adaptcentre.ie:2100/jwagner/mtb-tri-training.git
 ```
 
@@ -94,6 +96,7 @@ to `bin/activate`, e.g. `/usr/local/cuda-10.1/lib64`.
 source venv-efml/bin/activate
 pip install torch torchvision
 pip install allennlp
+pip install h5py
 ```
 
 TODO: Do we need to run `python setup.py install`?
