@@ -21,6 +21,8 @@ pip3 install --user virtualenv
 git clone ssh://git@gogs.adaptcentre.ie:2100/jwagner/mtb-tri-training.git
 ```
 
+TODO: make repo public when paper is accepted and made available
+
 Check under what name the cluster is detected: (You may then need to add a new
 section to the file below.)
 ```
@@ -135,3 +137,5 @@ unxz *.xz
 `config/locations.sh`
 
 # Training
+
+`gen-run-tri-tain-jobs.py` or `tri-train.py --help`
