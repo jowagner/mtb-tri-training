@@ -22,5 +22,5 @@ if [ -n "$EFML_ENV" ]; then
     source ${EFML_ENV}/bin/activate
 fi
 
-elmo-hdf5-to-npz.py "$@"
+${PRJ_DIR}/scripts/elmo-hdf5-to-npz.py "$@"
 
