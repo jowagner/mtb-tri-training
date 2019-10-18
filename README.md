@@ -142,7 +142,18 @@ cd CoNLL-2017
 tar -xf ~/Downloads/Irish-annotated-conll17.tar
 mv -i [LR]* Irish/
 cd Irish/
-unxz *.xz
+```
+
+To reduce disk usage, we remove `#` comments and predicted fields from the unlabelled data
+and, optionally, stochastically reduce the dataset to a fraction e.g. 25%:
+```
+for I in *.xz ; do
+    echo == $I ==
+    unxz < $I | \
+        ~/tri-training/mtb-tri-training/scripts/clean-unlabelled-conllu.py \
+        --fraction 0.25  \
+        > $(basename $I .xz)
+done
 ```
 
 The tri-training script loads CoNNL-2017 Wikipedia data for language `xx` if the
