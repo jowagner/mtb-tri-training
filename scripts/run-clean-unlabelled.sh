@@ -42,14 +42,14 @@ for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.02  \
+        --fraction 0.003  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 for I in $L/??-wiki*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.10  \
+        --fraction 0.032 \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 
