@@ -137,7 +137,8 @@ class Dataset(collections.Sequence):
 
     def save_to_file(self, f_out,
         sentence_filter    = None,
-        sentence_completer = None
+        sentence_completer = None,
+        remove_comments    = False,
     ):
         for sentence in self:
             if sentence_filter is not None \
@@ -146,7 +147,7 @@ class Dataset(collections.Sequence):
                 continue
             if sentence_completer is not None:
                 sentence = sentence_completer(sentence)
-            self.write_sentence(f_out, sentence)
+            self.write_sentence(f_out, sentence, remove_comments)
 
     def hexdigest(self):
         h = hashlib.sha512()
@@ -221,17 +222,24 @@ class SentenceFilter:
     def __init__(self, target_columns,
         min_labelled = None, max_unlabelled = None,
         min_percentage_labelled = None,
-        max_percentage_unlabelled = None
+        max_percentage_unlabelled = None,
+        min_length = None, max_length = None,
     ):
         self.target_columns = target_columns
         self.min_labelled   = min_labelled
         self.max_unlabelled = max_unlabelled
         self.min_percentage = min_percentage_labelled
         self.max_percentage = max_percentage_unlabelled
+        self.min_length     = min_length
+        self.max_length     = max_length
 
     def __call__(self, sentence):
         ''' returns True if the sentence should be skipped '''
         num_items = len(sentence)
+        if self.min_length and num_items < self.min_length:
+            return True
+        if self.max_length and num_items > self.max_length:
+            return True
         for tc_index, column in enumerate(self.target_columns):
             num_labelled = 0
             for item_index in range(num_items):
