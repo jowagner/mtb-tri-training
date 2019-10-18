@@ -19,13 +19,16 @@ import os
 
 template = open('run-tri-train.job', 'rb').read()
 
-for augment_size_code in range(10):
+if not os.path.exists('jobs'):
+    os.mkdir('jobs')
+
+for augment_size_code in range(0,10,2):
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
     subsetsize = 16 * augsize
     iterations = int(0.5+2*204.585/augsize)
     for major_code, more_options in [
         (3, ''),
-        (5, '--learners 5'),
+        #(5, '--learners 5'),
         #(9, '--learners 9'),
     ]:
         seed = '%d%d' %(major_code, augment_size_code)
@@ -34,26 +37,30 @@ for augment_size_code in range(10):
             ('o', '--oversample'),
         ]:
             for wrpl_code, wrpl_options in [
-                ('-', ''),
-                ('w', '--without-replacement'),
+                #('-', ''),
+                #('w', '--without-replacement'),
                 ('x', '--without-replacement --seed-size "250%"'),
             ]:
                 for disa_code, disa_options in [
                     ('-', ''),
-                    ('d', '--min-learner-disagreement 1'),
+                    #('d', '--min-learner-disagreement 1'),
                     #('e', '--min-learner-disagreement 2'),
                 ]:
                     for decay_code, decay_options in [
                         ('-', ''),
-                        ('y', '--last-k 5'),
+                        #('y', '--last-k 5'),
                         #('z', '--last-decay 0.5'),
                     ]:
+                        if decay_code != '-' and augment_size_code < 6:
+                            continue
                         for short_lcode, lcode, tbid  in [
                             #('c', 'cs', 'cs_pdt'),
                             #('d', 'de', 'de_gsd'),
                             #('e', 'en', 'en_ewt'),
                             #('f', 'fr', 'fr_gsd'),
-                            ('g', 'ga', 'ga_idt'),
+                            #('g', 'ga', 'ga_9010idt'),
+                            ('h', 'hu', 'hu_szeged'),
+                            ('u', 'ug', 'ug_udt'),
                         ]:
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
@@ -69,7 +76,7 @@ for augment_size_code in range(10):
                                 #('o', 'elmo_mx'),
                             ]:
                                 name = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed)
-                                f = open('r-%s.job' %name, 'wb')
+                                f = open('jobs/%s.job' %name, 'wb')
                                 f.write(template %locals())
                                 f.close()
 
