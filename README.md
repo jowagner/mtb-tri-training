@@ -139,22 +139,17 @@ and placed in a folder per language, for example:
 ```
 mkdir CoNLL-2017
 cd CoNLL-2017
-tar -xf ~/Downloads/Irish-annotated-conll17.tar
-mv -i [LR]* Irish/
-cd Irish/
-```
-
-To reduce disk usage, we remove `#` comments and predicted fields from the unlabelled data
-and, optionally, stochastically reduce the dataset to a fraction e.g. 25%:
-```
-for I in *.xz ; do
-    echo == $I ==
-    unxz < $I | \
-        ~/tri-training/mtb-tri-training/scripts/clean-unlabelled-conllu.py \
-        --fraction 0.25  \
-        > $(basename $I .xz)
+for L in Irish Uyghur Hungarian Vietnamese English ; do
+    echo == $L ==
+    tar -xf ${L}*.tar
+    mv -i LICENSE* README $L/
 done
 ```
+
+To use this data directly, uncompress the `.xz` files. However, as the ouput
+is very big, we remove `#` comments and predicted fields from the unlabelled data
+and, for the larger data sets, stochastically reduce the dataset to a fraction.
+Helper script: `run-clean-unlabelled.sh`
 
 The tri-training script loads CoNNL-2017 Wikipedia data for language `xx` if the
 treebank ID `xx_wp17` is used and CoNNL-2017 Common Crawl data for `xx_cc17`.
