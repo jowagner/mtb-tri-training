@@ -224,6 +224,7 @@ class SentenceFilter:
         min_percentage_labelled = None,
         max_percentage_unlabelled = None,
         min_length = None, max_length = None,
+        skip_prob = 0.0, rng = None,
     ):
         self.target_columns = target_columns
         self.min_labelled   = min_labelled
@@ -232,9 +233,13 @@ class SentenceFilter:
         self.max_percentage = max_percentage_unlabelled
         self.min_length     = min_length
         self.max_length     = max_length
+        self.skip_prob      = skip_prob
+        self.rng            = rng
 
     def __call__(self, sentence):
         ''' returns True if the sentence should be skipped '''
+        if self.skip_prob and self.rng.random() < self.skip_prob:
+            continue
         num_items = len(sentence)
         if self.min_length and num_items < self.min_length:
             return True

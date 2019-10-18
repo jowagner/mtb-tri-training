@@ -8,6 +8,7 @@
 
 # Author: Joachim Wagner
 
+import random
 import sys
 
 import conllu_dataset
@@ -33,6 +34,15 @@ Options:
     --keep-comments         Don't remove comments.
                             (Default: lines starting with '#' will not be
                             copied)
+
+    --fraction  NUMBER      In addition to other filters, stochastically
+                            only keep a fraction of the sentences.
+                            (Default: 1.0 = no stochastic dropping of
+                            sentences)
+
+    --init-seed  STRING     Initialise random number generator for stochastic
+                            filtering with STRING.
+                            (Default: use system seed)
 """)
 
 def main():
@@ -42,6 +52,8 @@ def main():
     opt_min_length = 5
     opt_max_length = 40
     opt_keep_comments = False
+    opt_skip = 0.0
+    opt_init_seed = None
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
@@ -57,6 +69,12 @@ def main():
             del sys.argv[1]
         elif option == '--keep-comments':
             opt_keep_comments = False
+        elif option == '--fraction':
+            opt_skip = 1.0 - float(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--init-seed':
+            opt_init_seed = sys.argv[1]
+            del sys.argv[1]
         elif option == '--verbose':
             opt_verbose = True
         elif option == '--debug':
@@ -72,6 +90,11 @@ def main():
     if opt_help:
         print_usage()
         sys.exit(0)
+
+    if opt_init_seed:
+        # For why using sha512, see Joachim's answer on
+        # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
+        random.seed(int(hashlib.sha512(opt_init_seed).hexdigest(), 16))
 
     columns_to_blank = conllu_dataset.get_target_columns()
     blank_columns = basic_dataset.SentenceDropout(
@@ -95,6 +118,8 @@ def main():
             sentence_filter    = length_filter,
             sentence_completer = blank_columns,
             remove_comments    = not opt_keep_comments,
+            skip_prob          = opt_skip,
+            rng                = random.random,
         )
 
 if __name__ == "__main__":
