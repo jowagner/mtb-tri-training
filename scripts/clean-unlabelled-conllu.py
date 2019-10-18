@@ -43,7 +43,9 @@ Options:
 
     --init-seed  STRING     Initialise random number generator for stochastic
                             filtering with STRING.
-                            (Default: use system seed)
+                            With an empty string as seed, a system seed will
+                            be used.
+                            (Default: 42)
 """)
 
 def main():
@@ -54,7 +56,7 @@ def main():
     opt_max_length = 40
     opt_keep_comments = False
     opt_skip = 0.0
-    opt_init_seed = None
+    opt_init_seed = '42'
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
