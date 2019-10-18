@@ -8,6 +8,7 @@
 
 # Author: Joachim Wagner
 
+import hashlib
 import random
 import sys
 
