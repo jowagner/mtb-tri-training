@@ -21,15 +21,15 @@ done
 L=Irish
 
 mkdir ${OUTPUT_DIR}/${L}
-for I in ??-common*.xz ; do
-    echo == $L/$I ==
+for I in $L/??-common*.xz ; do
+    echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
         --fraction 0.25  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
-for I in ??-wiki*.xz ; do
-    echo == $L/$I ==
+for I in $L/??-wiki*.xz ; do
+    echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
@@ -38,15 +38,15 @@ done
 L=Hungarian
 
 mkdir ${OUTPUT_DIR}/${L}
-for I in ??-common*.xz ; do
-    echo == $L/$I ==
+for I in $L/??-common*.xz ; do
+    echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
         --fraction 0.02  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
-for I in ??-wiki*.xz ; do
-    echo == $L/$I ==
+for I in $L/??-wiki*.xz ; do
+    echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
         --fraction 0.10  \
@@ -56,18 +56,36 @@ done
 L=Vietnamese
 
 mkdir ${OUTPUT_DIR}/${L}
-for I in ??-common*.xz ; do
-    echo == $L/$I ==
+for I in $L/??-common*.xz ; do
+    echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
         --fraction 0.005  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
-for I in ??-wiki*.xz ; do
-    echo == $L/$I ==
+for I in $L/??-wiki*.xz ; do
+    echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
         --fraction 0.125  \
+        > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
+done
+
+L=English
+
+mkdir ${OUTPUT_DIR}/${L}
+for I in $L/??-common*.xz ; do
+    echo == $I ==
+    unxz < $I | \
+        ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
+        --fraction 0.004  \
+        > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
+done
+for I in $L/??-wiki*.xz ; do
+    echo == $I ==
+    unxz < $I | \
+        ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
+        --fraction 0.015  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 
