@@ -239,7 +239,7 @@ class SentenceFilter:
     def __call__(self, sentence):
         ''' returns True if the sentence should be skipped '''
         if self.skip_prob and self.rng.random() < self.skip_prob:
-            continue
+            return True
         num_items = len(sentence)
         if self.min_length and num_items < self.min_length:
             return True

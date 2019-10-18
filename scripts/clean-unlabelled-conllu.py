@@ -11,6 +11,7 @@
 import random
 import sys
 
+import basic_dataset
 import conllu_dataset
 
 def print_usage():
@@ -100,12 +101,14 @@ def main():
     blank_columns = basic_dataset.SentenceDropout(
         random, 
         target_columns = columns_to_blank,
-        len(columns_to_blank) * [1.0],   # dropout probabilities
+        dropout_probabilities = len(columns_to_blank) * [1.0],
     )
     length_filter = basic_dataset.SentenceFilter(
         [],                              # no specific target columns
         min_length = opt_min_length,
         max_length = opt_max_length,
+        skip_prob  = opt_skip,
+        rng        = random,
     )
     while True:
         conllu = conllu_dataset.ConlluDataset()
@@ -118,8 +121,6 @@ def main():
             sentence_filter    = length_filter,
             sentence_completer = blank_columns,
             remove_comments    = not opt_keep_comments,
-            skip_prob          = opt_skip,
-            rng                = random.random,
         )
 
 if __name__ == "__main__":
