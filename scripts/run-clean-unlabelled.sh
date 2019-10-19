@@ -25,7 +25,7 @@ for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.25  \
+        --fraction 0.33074  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 for I in $L/??-wiki*.xz ; do
@@ -42,14 +42,14 @@ for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.003  \
+        --fraction 0.00495  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 for I in $L/??-wiki*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.032 \
+        --fraction 0.03576  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 
@@ -60,14 +60,14 @@ for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.005  \
+        --fraction 0.00209  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 for I in $L/??-wiki*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.125  \
+        --fraction 0.05440  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 
@@ -78,14 +78,14 @@ for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.004  \
+        --fraction 0.00115  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 for I in $L/??-wiki*.xz ; do
     echo == $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/clean-unlabelled-conllu.py \
-        --fraction 0.015  \
+        --fraction 0.00205  \
         > ${OUTPUT_DIR}/${L}/$(basename $I .xz)
 done
 
