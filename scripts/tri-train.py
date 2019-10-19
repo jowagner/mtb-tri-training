@@ -44,6 +44,17 @@ Options:
                             the module specified with --dataset-module
                             interprets these IDs to load the data
 
+    --simulate-size  NUMBER  Reduce labelled training data to approximately
+                            NUMBER items to simulate a low resource
+                            scenario. Sentences are always selected fully or
+                            not at all.
+                            (Default: use all labelled data)
+
+    --simulate-attempts  NUMBER  Create NUMBER data sets and pick the one
+                            that is closest to the desired size to simulate
+                            a low resource scenario.
+                            (Default: 5)
+
     --init-seed  STRING     initialise random number generator with STRING;
                             (default or empty string: use system seed)
 
@@ -330,6 +341,8 @@ def main():
     opt_baselines = False
     opt_labelled_ids = []
     opt_unlabelled_ids = []
+    opt_simulate_size = None
+    opt_simulate_attempts = 5
     opt_dataset_module = 'conllu_dataset'
     opt_dataset_basedir = None
     opt_model_modules  = []
@@ -399,6 +412,12 @@ def main():
                     opt_labelled_ids.append(tbid)
                 else:
                     opt_unlabelled_ids.append(tbid)
+            del sys.argv[1]
+        elif option == '--simulate-size':
+            opt_simulate_size = sys.argv[1]
+            del sys.argv[1]
+        elif option == '--simulate-attempts':
+            opt_simulate_attempts = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--dataset-module':
             opt_dataset_module = sys.argv[1]
@@ -518,6 +537,24 @@ def main():
         test_sets.append(test)
     training_data = basic_dataset.Concat(training_data_sets)
 
+    training_data_size = training_data.get_number_of_items()
+    print('labelled training data with %d items in %d sentences' %(
+        training_data_size, len(training_data)
+    ))
+    if opt_simulate_size:
+        opt_simulate_size = adjust_size(opt_simulate_size, training_data_size)
+        if opt_simulate_size < training_data_size:
+            training_data = get_subset(
+                training_data, opt_simluate_size, random, opt_simulate_attempts,
+                with_replacement = False
+            )
+            training_data_size = training_data.get_number_of_items()
+            print('labelled training data reduced to %d items in %d sentences for simulation' %(
+                training_data_size, len(training_data)
+            ))
+        else:
+            print('size within limit specified for simulation')
+
     target_labelsets = []
     for column in target_columns:
         labelset = {}
@@ -545,16 +582,11 @@ def main():
         if dataset is not None:
             monitoring_datasets.append(dataset)
 
-    training_data_size = training_data.get_number_of_items()
     unlabelled_data_size = unlabelled_data.get_number_of_items()
     opt_seed_size    = adjust_size(opt_seed_size,    training_data_size)
     opt_subset_size  = adjust_size(opt_subset_size,  unlabelled_data_size)
     opt_augment_size = adjust_size(opt_augment_size, unlabelled_data_size)
 
-    tr_size = training_data.get_number_of_items()
-    print('labelled training data with %d items in %d sentences' %(
-        tr_size, len(training_data)
-    ))
     print('opt_seed_size', opt_seed_size)
     print('unlabelled training data with %d items in %d sentences' %(
         unlabelled_data.get_number_of_items(),
