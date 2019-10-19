@@ -55,6 +55,12 @@ Options:
                             a low resource scenario.
                             (Default: 5)
 
+    --simulate-seed  STRING  initialise random number generator with STRING
+                            for picking the labelled data for simulation of
+                            a low resource scenario
+                            (Default: use the same initialisation as
+                            specified with --init-seed, see below)
+
     --init-seed  STRING     initialise random number generator with STRING;
                             (default or empty string: use system seed)
 
@@ -343,6 +349,7 @@ def main():
     opt_unlabelled_ids = []
     opt_simulate_size = None
     opt_simulate_attempts = 5
+    opt_simulate_seed = None
     opt_dataset_module = 'conllu_dataset'
     opt_dataset_basedir = None
     opt_model_modules  = []
@@ -418,6 +425,9 @@ def main():
             del sys.argv[1]
         elif option == '--simulate-attempts':
             opt_simulate_attempts = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--simulate-seed':
+            opt_simulate_seed = sys.argv[1]
             del sys.argv[1]
         elif option == '--dataset-module':
             opt_dataset_module = sys.argv[1]
@@ -544,6 +554,15 @@ def main():
     if opt_simulate_size:
         opt_simulate_size = adjust_size(opt_simulate_size, training_data_size)
         if opt_simulate_size < training_data_size:
+            seed = None
+            if opt_simluate_seed:
+                seed = opt_simluate_seed
+            elif opt_init_seed:
+                seed = 'sim:' + opt_init_seed
+            if seed:
+                # For why using sha512, see Joachim's answer on
+                # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
+                random.seed(int(hashlib.sha512(seed).hexdigest(), 16))
             training_data = get_subset(
                 training_data, opt_simluate_size, random, opt_simulate_attempts,
                 with_replacement = False
