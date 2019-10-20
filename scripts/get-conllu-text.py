@@ -56,7 +56,7 @@ def main():
     opt_max_length = 0
     opt_pass = 1
     opt_num_passes = 1
-    opt_init_seed = None
+    opt_init_seed = '42'
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
