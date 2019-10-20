@@ -50,10 +50,10 @@ def main():
             opt_help = True
             break
         elif option == '--min-length':
-            opt_min_length = sys.argv[1]
+            opt_min_length = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--max-length':
-            opt_max_length = sys.argv[1]
+            opt_max_length = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--verbose':
             opt_verbose = True
