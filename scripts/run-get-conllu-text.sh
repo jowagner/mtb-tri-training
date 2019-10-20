@@ -8,13 +8,13 @@ OUTPUT_DIR=text
 
 mkdir -p ${OUTPUT_DIR}
 
-NUM_PASSES=5
+NUM_PASSES=24
 
 L=Uyghur
 
 rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
+echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
 {
 for I in $L/*.xz ; do
     unxz < $I | \
@@ -31,7 +31,7 @@ L=Irish
 
 rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
+echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
 {
 for I in $L/??-common*.xz ; do
     unxz < $I | \
@@ -50,7 +50,7 @@ L=Hungarian
 
 rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
+echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
 {
 for I in $L/??-common*.xz ; do
     unxz < $I | \
@@ -69,7 +69,7 @@ L=Vietnamese
 
 rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
+echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
 {
 for I in $L/??-common*.xz ; do
     unxz < $I | \
@@ -88,7 +88,7 @@ L=English
 
 rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
+echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
 {
 for I in $L/??-common*.xz ; do
     unxz < $I | \
