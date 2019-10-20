@@ -12,7 +12,7 @@ NUM_PASSES=100
 
 L=Uyghur
 
-rm ${OUTPUT_DIR}/${L}.txt
+rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/*.xz ; do
@@ -26,7 +26,7 @@ done
 
 L=Irish
 
-rm ${OUTPUT_DIR}/${L}.txt
+rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
@@ -46,7 +46,7 @@ done
 
 L=Hungarian
 
-rm ${OUTPUT_DIR}/${L}.txt
+rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
@@ -66,7 +66,7 @@ done
 
 L=Vietnamese
 
-rm ${OUTPUT_DIR}/${L}.txt
+rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
@@ -86,7 +86,7 @@ done
 
 L=English
 
-rm ${OUTPUT_DIR}/${L}.txt
+rm -f ${OUTPUT_DIR}/${L}.txt
 for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
