@@ -68,6 +68,8 @@ def main():
         if option in ('--help', '-h'):
             opt_help = True
             break
+        elif option == '--info':
+            del sys.argv[1]
         elif option == '--pass':
             opt_pass = int(sys.argv[1])
             del sys.argv[1]
