@@ -65,7 +65,7 @@ def main():
             opt_help = True
             break
         elif option == '--pass':
-            opt_pass = itn(sys.argv[1])
+            opt_pass = int(sys.argv[1])
             del sys.argv[1]
         elif option in ('--passes', '--num-passes'):
             opt_num_passes = int(sys.argv[1])
