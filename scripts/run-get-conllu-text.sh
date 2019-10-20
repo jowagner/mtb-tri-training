@@ -10,7 +10,6 @@ mkdir -p ${OUTPUT_DIR}
 
 L=Uyghur
 
-mkdir ${OUTPUT_DIR}/${L}
 for I in $L/*.xz ; do
     echo == $I ==
     unxz < $I | \
@@ -20,7 +19,6 @@ done
 
 L=Irish
 
-mkdir ${OUTPUT_DIR}/${L}
 for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
@@ -36,7 +34,6 @@ done
 
 L=Hungarian
 
-mkdir ${OUTPUT_DIR}/${L}
 for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
@@ -52,7 +49,6 @@ done
 
 L=Vietnamese
 
-mkdir ${OUTPUT_DIR}/${L}
 for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
@@ -68,7 +64,6 @@ done
 
 L=English
 
-mkdir ${OUTPUT_DIR}/${L}
 for I in $L/??-common*.xz ; do
     echo == $I ==
     unxz < $I | \
