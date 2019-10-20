@@ -13,7 +13,7 @@ NUM_PASSES=100
 L=Uyghur
 
 rm ${OUTPUT_DIR}/${L}.txt
-for PASS in {1..${NUM_PASSES}} ; do
+for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
@@ -27,7 +27,7 @@ done
 L=Irish
 
 rm ${OUTPUT_DIR}/${L}.txt
-for PASS in {1..${NUM_PASSES}} ; do
+for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
@@ -47,7 +47,7 @@ done
 L=Hungarian
 
 rm ${OUTPUT_DIR}/${L}.txt
-for PASS in {1..${NUM_PASSES}} ; do
+for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
@@ -67,7 +67,7 @@ done
 L=Vietnamese
 
 rm ${OUTPUT_DIR}/${L}.txt
-for PASS in {1..${NUM_PASSES}} ; do
+for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
@@ -87,7 +87,7 @@ done
 L=English
 
 rm ${OUTPUT_DIR}/${L}.txt
-for PASS in {1..${NUM_PASSES}} ; do
+for PASS in $(seq 1 ${NUM_PASSES}) ; do
 {
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
