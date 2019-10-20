@@ -14,92 +14,93 @@ L=Uyghur
 
 rm ${OUTPUT_DIR}/${L}.txt
 for PASS in {1..${NUM_PASSES}} ; do
+{
 for I in $L/*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
+} | shuf >> ${OUTPUT_DIR}/${L}.txt
 done
 
 L=Irish
 
 rm ${OUTPUT_DIR}/${L}.txt
 for PASS in {1..${NUM_PASSES}} ; do
+{
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
+} | shuf >> ${OUTPUT_DIR}/${L}.txt
 done
 
 L=Hungarian
 
 rm ${OUTPUT_DIR}/${L}.txt
 for PASS in {1..${NUM_PASSES}} ; do
+{
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
+} | shuf >> ${OUTPUT_DIR}/${L}.txt
 done
 
 L=Vietnamese
 
 rm ${OUTPUT_DIR}/${L}.txt
 for PASS in {1..${NUM_PASSES}} ; do
+{
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
+} | shuf >> ${OUTPUT_DIR}/${L}.txt
 done
 
 L=English
 
 rm ${OUTPUT_DIR}/${L}.txt
 for PASS in {1..${NUM_PASSES}} ; do
+{
 for I in $L/??-common*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     echo == Pass ${PASS} of ${NUM_PASSES} for $I ==
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}  \
-        >> ${OUTPUT_DIR}/${L}.txt
+	--pass ${PASS} --passes ${NUM_PASSES}
 done
+} | shuf >> ${OUTPUT_DIR}/${L}.txt
 done
 
