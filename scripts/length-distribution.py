@@ -8,11 +8,11 @@
 
 # Author: Joachim Wagner
 
+from __future__ import print_function
+
 import hashlib
 import random
 import sys
-
-from __future__ import print_function
 
 import basic_dataset
 import conllu_dataset
