@@ -46,6 +46,9 @@ Options:
     --init-seed  STRING     Initialise random number generator for stochastic
                             partitioning with STRING.
                             (Default: 42)
+
+    --prefix  STRING        Prefix each output line with STRING
+                            (Default: no prefix)
 """)
 
 def main():
@@ -57,6 +60,7 @@ def main():
     opt_pass = 1
     opt_num_passes = 1
     opt_init_seed = '42'
+    opt_prefix = ''
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
@@ -78,6 +82,9 @@ def main():
             del sys.argv[1]
         elif option == '--init-seed':
             opt_init_seed = sys.argv[1]
+            del sys.argv[1]
+        elif option == '--prefix':
+            opt_prefix = sys.argv[1]
             del sys.argv[1]
         elif option == '--verbose':
             opt_verbose = True
@@ -116,7 +123,7 @@ def main():
         tokens = []
         for item in sentence:
             tokens.append(item[1])
-        print(' '.join(tokens))
+        print(opt_prefix + (' '.join(tokens)))
 
 if __name__ == "__main__":
     main()
