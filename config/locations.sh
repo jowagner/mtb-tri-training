@@ -42,7 +42,7 @@ case "${SETTING}" in
     SCRATCH=/scratch/${USER}
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${SCRATCH}/ud-parsing/ud-treebanks-v2.3
-    export CONLL2017_DIR=${SCRATCH}/bert/corpora/CoNLL-2017
+    export CONLL2017_DIR=${HOME}/data/CoNLL-2017/clean
     export UDPIPE_FUTURE_DIR=${HOME}/bert/UDPipe-Future
     export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-tf114-py36
     export CONLLU_COMBINER_DIR=${HOME}/tbemb/ADAPT-DCU/combination
