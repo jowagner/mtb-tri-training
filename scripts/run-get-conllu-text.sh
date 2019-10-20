@@ -19,11 +19,13 @@ echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
 for I in $L/*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 } | shuf >> ${OUTPUT_DIR}/${L}.txt
 done
+
+# for debugging, add:
+# --prefix "[Pass:${PASS}:${I}] "  \
 
 L=Irish
 
@@ -34,13 +36,11 @@ echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
 for I in $L/??-common*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 } | shuf >> ${OUTPUT_DIR}/${L}.txt
@@ -55,13 +55,11 @@ echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
 for I in $L/??-common*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 } | shuf >> ${OUTPUT_DIR}/${L}.txt
@@ -76,13 +74,11 @@ echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
 for I in $L/??-common*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 } | shuf >> ${OUTPUT_DIR}/${L}.txt
@@ -97,13 +93,11 @@ echo == Pass ${PASS} of ${NUM_PASSES} for $L ==
 for I in $L/??-common*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 for I in $L/??-wiki*.xz ; do
     unxz < $I | \
         ${SCRIPT_DIR}/get-conllu-text.py \
-	--prefix "[Pass:${PASS}:${I}] "  \
 	--pass ${PASS} --passes ${NUM_PASSES}
 done
 } | shuf >> ${OUTPUT_DIR}/${L}.txt
