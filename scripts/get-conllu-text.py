@@ -21,16 +21,16 @@ def print_usage():
     print('Usage: %s [options]' %(os.path.split(sys.argv[0])[-1]))
     print("""
 
-Processes conllu data from stdin and output sentence length distribution
+Processes conllu data from stdin and output tokenised text.
 
 Options:
 
-    --min-length  NUMBER    Only count sentences with at least NUMBER tokens
+    --min-length  NUMBER    Only copy sentences with at least NUMBER tokens
                             (not containing tokens with an index containing
                             '.' or '-')
                             (Default: 0 = no limit)
 
-    --max-length  NUMBER    Only count sentences with at most NUMBER tokens
+    --max-length  NUMBER    Only copy sentences with at most NUMBER tokens
                             (not containing tokens with an index containing
                             '.' or '-')
                             (Default: 0 = no limit)
@@ -83,22 +83,10 @@ def main():
             continue
         if opt_max_length and length < opt_max_length:
             continue
-        try:
-            counts[length] += 1
-        except:
-            counts[length] = 1
-        if length > max_length:
-            max_length = length
-    max_count = float(max(counts.values()))
-    for length in range(opt_min_length, max_length+1):
-        try:
-            count = counts[length]
-        except:
-            count = 0
-        bar = int(0.5+80*count/max_count)
-        print('%d\t%d\t%s' %(
-            length, count, bar * '*'
-        ))
+        tokens = []
+        for item in sentence:
+            tokens.append(item[1])
+        print(' '.join(tokens))
 
 if __name__ == "__main__":
     main()
