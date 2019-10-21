@@ -11,10 +11,10 @@ mkdir -p ${OUTPUT_DIR}
 MAX_JOBS=12
 
 for L in \
-    English \
     Uyghur \
     Irish \
     Hungarian \
+    English \
     Vietnamese \
 ; do
     echo "== $L started $(date) =="
