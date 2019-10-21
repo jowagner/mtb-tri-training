@@ -67,16 +67,41 @@ TODO: Could we use the provided script?
 
 TODO:
 * pointer to where to get FastText
-* current commands to install it.
+* current commands to install it. https://fasttext.cc/docs/en/support.html
 * steps to train the embeddings
+
+### Extract tokenised text
+
+Adjust and run the following script. Set `TMP_DIR` inside the script to a
+suitable location with at least 240 GB free space if, as often, your `/tmp`
+is smaller than that.
+```
+run-get-conllu-text.sh
+```
+
+For Irish, we observed that the udpipe tokeniser fails to separate neutral
+double quotes as they do not occur in the treebank. However, for consistency
+with other languages, we do not address this issue here.
+
+We use truecase as UDpipe-future recently added supports both truecase and
+we expect the character-based fasttext embeddings to learn the relationship
+between lowercase and uppercase letters.
+
+### Train fastext
+
+$ ./fasttext skipgram -input data.txt -output model
+
+### Conversion to UDPipe-future .npz format
+
+The `.vec` files can be converted with `convert.py` provided with
+UDPipe-future.
 
 We assume all FastText embeddings in the `.npz` format for UDPipe-future are
 in a single folder with filenames `fasttext-xx.npz` where `xx` is a language code.
 
-
 ```
 cd UDPipe-Future/
-ln -s /spinning/$USER/UDPipe-Future/ud-lowercase-notrain-fasttext.npz fasttext-ga.npz
+ln -s /spinning/$USER/UDPipe-Future/ud-truecase-fasttext.npz fasttext-ga.npz
 ```
 
 ## ELMo For Many Languages
