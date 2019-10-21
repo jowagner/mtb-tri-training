@@ -11,7 +11,9 @@
 from __future__ import print_function
 
 import hashlib
+import os
 import random
+import string
 import sys
 
 import basic_dataset
@@ -49,6 +51,13 @@ Options:
 
     --prefix  STRING        Prefix each output line with STRING
                             (Default: no prefix)
+
+    --random-prefix         Prefix each output line with a random string of
+                            letters and digits and a tab
+
+    --info  STRING          No change of behaviour. Can be used to add
+                            information to the command line viewed e.g. in
+                            top/htop.
 """)
 
 def main():
@@ -61,6 +70,7 @@ def main():
     opt_num_passes = 1
     opt_init_seed = '42'
     opt_prefix = ''
+    opt_random_prefix = False
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
@@ -88,6 +98,8 @@ def main():
         elif option == '--prefix':
             opt_prefix = sys.argv[1]
             del sys.argv[1]
+        elif option == '--random-prefix':
+            opt_random_prefix = True
         elif option == '--verbose':
             opt_verbose = True
         elif option == '--debug':
@@ -104,12 +116,19 @@ def main():
         print_usage()
         sys.exit(0)
 
+    if opt_random_prefix and opt_prefix:
+        raise ValueError('Cannot combine --prefix with --random-prefix')
+
     # For why using sha512, see Joachim's answer on
     # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
     random.seed(int(hashlib.sha512(opt_init_seed).hexdigest(), 16))
 
     max_length = opt_min_length
 
+    if opt_random_prefix:
+        index = 0
+        letters = string.ascii_letters + string.digits
+        k = len(letters)
     while True:
         conllu = conllu_dataset.ConlluDataset()
         sentence = conllu.read_sentence(sys.stdin)
@@ -125,7 +144,16 @@ def main():
         tokens = []
         for item in sentence:
             tokens.append(item[1])
-        print(opt_prefix + (' '.join(tokens)))
+        sentence = ' '.join(tokens)
+        if opt_random_prefix:
+            opt_prefix = hashlib.sha224('%d:%s:%s:%s' %(
+                index,
+                ''.join(random.sample(letters, k=k)),
+                opt_init_seed,
+                sentence,
+            )).hexdigest() + '\t'
+            index += 1
+        print(opt_prefix + sentence)
 
 if __name__ == "__main__":
     main()

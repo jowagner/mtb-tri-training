@@ -4,104 +4,40 @@ test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 SCRIPT_DIR=${PRJ_DIR}/scripts
 
-OUTPUT_DIR=text
+OUTPUT_DIR=text3
 
 mkdir -p ${OUTPUT_DIR}
 
-NUM_PASSES=24
+MAX_JOBS=12
 
-L=English
+for L in \
+    English \
+    Uyghur \
+    Irish \
+    Hungarian \
+    Vietnamese \
+; do
+    echo "== $L started $(date) =="
+    for I in $L/*.conllu.xz ; do
+        TMP=/tmp/$$-$L-$(basename $I .conllu.xz).tsv
+        unxz < $I | \
+            ${SCRIPT_DIR}/get-conllu-text.py \
+            --info $I  \
+	    --random-prefix | \
+            LC_ALL=C sort -S 1G > ${TMP} &
 
-rm -f ${OUTPUT_DIR}/${L}.txt
-for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
-{
-for I in $L/??-common*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--info $I  \
-	--pass ${PASS} --passes ${NUM_PASSES}
+        # limit number of tasks
+        while [ `jobs -r | wc -l | tr -d " "` -ge ${MAX_JOBS} ]; do
+            sleep 5
+        done
+    done
+    echo "Waiting for $L jobs to finish..."
+    wait
+    echo "Merging data for ${L}..."
+    LC_ALL=C sort --merge --batch-size=5 /tmp/$$-$L-*.tsv | \
+        cut -f2- > ${OUTPUT_DIR}/$L.txt
+    echo "Cleaning up..."
+    rm -f /tmp/$$-$L-*.tsv
 done
-for I in $L/??-wiki*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--info $I  \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-} | shuf >> ${OUTPUT_DIR}/${L}.txt
-done
-
-L=Uyghur
-
-rm -f ${OUTPUT_DIR}/${L}.txt
-for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
-{
-for I in $L/*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-} | shuf >> ${OUTPUT_DIR}/${L}.txt
-done
-
-# for debugging, add:
-# --prefix "[Pass:${PASS}:${I}] "  \
-
-L=Irish
-
-rm -f ${OUTPUT_DIR}/${L}.txt
-for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
-{
-for I in $L/??-common*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-for I in $L/??-wiki*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-} | shuf >> ${OUTPUT_DIR}/${L}.txt
-done
-
-L=Hungarian
-
-rm -f ${OUTPUT_DIR}/${L}.txt
-for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
-{
-for I in $L/??-common*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-for I in $L/??-wiki*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-} | shuf >> ${OUTPUT_DIR}/${L}.txt
-done
-
-L=Vietnamese
-
-rm -f ${OUTPUT_DIR}/${L}.txt
-for PASS in $(seq 1 ${NUM_PASSES}) ; do
-echo == Pass ${PASS} of ${NUM_PASSES} for $L started at $(date) ==
-{
-for I in $L/??-common*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-for I in $L/??-wiki*.xz ; do
-    unxz < $I | \
-        ${SCRIPT_DIR}/get-conllu-text.py \
-	--pass ${PASS} --passes ${NUM_PASSES}
-done
-} | shuf >> ${OUTPUT_DIR}/${L}.txt
-done
+echo "== finished $(date) =="
 
