@@ -20,8 +20,10 @@ def train(
     dataset_filename, seed, model_dir,
     epoch_selection_dataset = None,
     monitoring_datasets = [],
-    lcode = 'ga',
+    lcode = None,
 ):
+    if lcode is None:
+        raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
     command = []

@@ -53,7 +53,7 @@ for augment_size_code in range(0,10,2):
                     ]:
                         if decay_code != '-' and augment_size_code < 6:
                             continue
-                        for short_lcode, lcode, tbid  in [
+                        for short_lcode, lcode, tbid in [
                             #('c', 'cs', 'cs_pdt'),
                             #('d', 'de', 'de_gsd'),
                             #('e', 'en', 'en_ewt'),
@@ -61,6 +61,7 @@ for augment_size_code in range(0,10,2):
                             #('g', 'ga', 'ga_9010idt'),
                             ('h', 'hu', 'hu_szeged'),
                             ('u', 'ug', 'ug_udt'),
+                            ('v', 'vi', 'vi_vtb'),
                         ]:
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
@@ -70,11 +71,15 @@ for augment_size_code in range(0,10,2):
                                 #('i', 'mbert_udpf'),
                                 #('u', 'uuparser'),
                                 #('v', 'fasttext_uup'),
-                                #('x', 'elmo_uup'),
+                                #('w', 'elmo_uup'),
                                 #('m', 'mixed'),
                                 #('n', 'fasttext_mx'),
                                 #('o', 'elmo_mx'),
                             ]:
+                                if parser_code in 'afum':
+                                    model_keyword_options = ''
+                                else:
+                                    model_keyword_options = '--model-keyword lcode ga'
                                 name = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed)
                                 f = open('jobs/%s.job' %name, 'wb')
                                 f.write(template %locals())

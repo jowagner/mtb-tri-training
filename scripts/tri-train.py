@@ -130,6 +130,13 @@ Options:
                             tri-training
                             (default: udpipe_future)
 
+    --model-keyword  KEY  VALUE
+                            Pass additional key-value pair as keyword
+                            arguments to the train() function of each model
+                            module.
+                            Can be specified multiple times to specify more
+                            than one non-standard argument.
+
     --seed-size  NUMBER     How many tokens to sample (with replacement) from
                             the labelled data for each learner.
                             As full sentences are selected the actual number
@@ -354,6 +361,7 @@ def main():
     opt_dataset_basedir = None
     opt_model_modules  = []
     opt_model_init_type = None
+    opt_model_kwargs = {}
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
     opt_seed_with_replacement = True
@@ -437,6 +445,12 @@ def main():
             del sys.argv[1]
         elif option == '--model-module':
             opt_model_modules.append(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--model-keyword':
+            key = sys.argv[1]
+            value = sys.argv[2]
+            opt_model_kwargs[key] = value
+            del sys.argv[1]   # consume two args
             del sys.argv[1]
         elif option == '--seed-size':
             opt_seed_size = sys.argv[1]
@@ -704,6 +718,7 @@ def main():
             opt_cumulative_ensemble = opt_cumulative_ensemble,
             opt_deadline = opt_deadline,
             opt_stopfile = opt_stopfile,
+            opt_model_kwargs = opt_model_kwargs,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -716,6 +731,7 @@ def main():
         opt_verbose,
         monitoring_datasets = monitoring_datasets,
         deadline = opt_deadline, stopfile = opt_stopfile,
+        opt_model_kwargs = opt_model_kwargs,
     )
 
     # evaluate models using all dev sets (and test sets if --final-test)
@@ -766,6 +782,7 @@ def main():
                 opt_cumulative_ensemble = opt_cumulative_ensemble,
                 opt_deadline = opt_deadline,
                 opt_stopfile = opt_stopfile,
+                opt_model_kwargs = opt_model_kwargs,
             )
         if opt_init_seed:
             random.seed(int(hashlib.sha512('round %d: %s' %(
@@ -985,6 +1002,7 @@ def main():
             opt_verbose,
             monitoring_datasets = monitoring_datasets,
             deadline = opt_deadline, stopfile = opt_stopfile,
+            opt_model_kwargs = opt_model_kwargs,
         )
 
         print('\nEvaluating new models:')
@@ -1181,6 +1199,7 @@ def train_and_evaluate_baselines(
     all_baseline_prediction_paths,
     opt_cumulative_ensemble,
     opt_deadline, opt_stopfile,
+    opt_model_kwargs = {},
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -1191,6 +1210,7 @@ def train_and_evaluate_baselines(
         monitoring_datasets = monitoring_datasets,
         prefix = 'baseline-',
         deadline = opt_deadline, stopfile = opt_stopfile,
+        opt_model_kwargs = opt_model_kwargs,
     )
     evaluate(
         models,
@@ -1544,6 +1564,7 @@ def train_models(
     monitoring_datasets = [],
     prefix = '',
     deadline = None, stopfile = None,
+    opt_model_kwargs = {},
 ):
     retval = []
     manual_training_needed = []
@@ -1586,6 +1607,7 @@ def train_models(
             model_module.train(
                 training_set.filename, model_init_seed, model_path,
                 epoch_selection_set, monitoring_datasets,
+                **opt_model_kwargs
             )
         retval.append((model_fingerprint, model_path, model_module))
     if manual_training_needed:
