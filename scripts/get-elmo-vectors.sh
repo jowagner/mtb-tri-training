@@ -27,7 +27,7 @@ source ${PRJ_DIR}/config/locations.sh
 
 cachelog()
 {
-    echo `date +%Y-%m-%dT%H:%M:%S` "["$$"]" $* >> ${EFML_CACHE_DIR}/log
+    echo `date +%Y-%m-%dT%H:%M:%S` "["$(hostname):$$"]" $* >> ${EFML_CACHE_DIR}/log
 }
 
 if [ -n "$EFML_CACHE_DIR" ]; then
