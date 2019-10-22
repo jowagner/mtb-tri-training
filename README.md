@@ -107,6 +107,8 @@ The `.vec` files can be converted with `convert.py` provided with
 UDPipe-future.
 We assume all FastText embeddings in the `.npz` format for UDPipe-future are
 in a single folder with filenames `fasttext-xx.npz` where `xx` is a language code.
+As Straka et al. (2019), we limit the vocabulary to the 1 million most frequent
+types.
 
 ```
 for LCODE in ga ug ; do
@@ -117,6 +119,8 @@ done
 ```
 
 ## ELMo For Many Languages
+
+https://github.com/HIT-SCIR/ELMoForManyLangs
 
 ```
 git clone git@github.com:HIT-SCIR/ELMoForManyLangs.git
@@ -142,6 +146,20 @@ The command `python -m elmoformanylangs test`
 in `get-elmo-vectors.sh` may simple
 work because we `cd`'ed into the efml folder.
 
+After extracting the elmoformanylangs model files, the
+`config_path` variable in the `config.json` files has
+to be adjusted.
+
+```
+mkdir ug_model
+cd ug_model
+unzip ../downloads/175.zip
+vi config.json
+```
+
+We assume that the elmo configuration and models are in a single
+folder and to be able to re-use the same `.json` files
+on different systems, we use symlinks:
 
 ```
 cd
@@ -197,4 +215,5 @@ treebank ID `xx_wp17` is used and CoNNL-2017 Common Crawl data for `xx_cc17`.
 
 # Training
 
-`gen-run-tri-tain-jobs.py` or `tri-train.py --help`
+* `gen-run-tri-tain-jobs.py` writes job files to a new folder `jobs`
+* `tri-train.py --help`
