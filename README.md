@@ -105,20 +105,15 @@ to train. The Uyghur model takes only a few minutes.)
 
 The `.vec` files can be converted with `convert.py` provided with
 UDPipe-future.
-
-```
-for VEC in model*.vec ; do
-    python3 ~/tri-training/UDPipe-Future/embeddings/sources/convert.py \
-        --max_words 1000000 $VEC $(basename $VEC .vec).npz
-done
-```
-
 We assume all FastText embeddings in the `.npz` format for UDPipe-future are
 in a single folder with filenames `fasttext-xx.npz` where `xx` is a language code.
 
 ```
-cd UDPipe-Future/
-ln -s /spinning/$USER/UDPipe-Future/ud-truecase-fasttext.npz fasttext-ga.npz
+for LCODE in ga ug ; do
+    echo "== $LCODE =="
+    python3 ~/tri-training/UDPipe-Future/embeddings/sources/convert.py \
+        --max_words 1000000 model_$LCODE.vec fasttext-$LCODE.npz
+done
 ```
 
 ## ELMo For Many Languages
