@@ -89,12 +89,29 @@ between lowercase and uppercase letters.
 
 ### Train fastext
 
-$ ./fasttext skipgram -input data.txt -output model
+As Straka et al. (2019), we run fasttext with `-minCount 5 -epoch 10 -neg 10`, e.g.
+```
+fasttext skipgram -minCount 5 -epoch 10 -neg 10 -input Irish.txt -output model_ga
+```
+
+Job script example: `run-fasttext-en.job`
+(Note that fasttext uses only a few GB of RAM. We request a lot of RAM
+only as a workaround to request a CPU with AVX support as year of purchase
+and amount of RAM are correlated. The English model takes about 2 1/2 days
+to train. The Uyghur model takes only a few minutes.)
+
 
 ### Conversion to UDPipe-future .npz format
 
 The `.vec` files can be converted with `convert.py` provided with
 UDPipe-future.
+
+```
+for VEC in model*.vec ; do
+    python3 ~/tri-training/UDPipe-Future/embeddings/sources/convert.py \
+        --max_words 1000000 $VEC $(basename $VEC .vec).npz
+done
+```
 
 We assume all FastText embeddings in the `.npz` format for UDPipe-future are
 in a single folder with filenames `fasttext-xx.npz` where `xx` is a language code.
