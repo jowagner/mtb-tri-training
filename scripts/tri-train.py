@@ -616,6 +616,8 @@ def main():
             monitoring_datasets.append(dataset)
 
     unlabelled_data_size = unlabelled_data.get_number_of_items()
+    if unlabelled_data_size == 0 and opt_iterations > 0:
+        raise ValueError('Missing unlabelled data for tri-training iterations')
     opt_seed_size    = adjust_size(opt_seed_size,    training_data_size)
     opt_subset_size  = adjust_size(opt_subset_size,  unlabelled_data_size)
     opt_augment_size = adjust_size(opt_augment_size, unlabelled_data_size)
