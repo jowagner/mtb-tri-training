@@ -65,8 +65,8 @@ for augment_size_code in range(0,10,2):
                         ]:
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
-                                ('f', 'udpipe_future'),
-                                ('g', 'fasttext_udpf'),
+                                #('f', 'udpipe_future'),
+                                #('g', 'fasttext_udpf'),
                                 ('h', 'elmo_udpf'),
                                 #('i', 'mbert_udpf'),
                                 #('u', 'uuparser'),
@@ -79,7 +79,7 @@ for augment_size_code in range(0,10,2):
                                 if parser_code in 'afum':
                                     model_keyword_options = ''
                                 else:
-                                    model_keyword_options = '--model-keyword lcode ga'
+                                    model_keyword_options = '--model-keyword lcode %s' %lcode
                                 name = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed)
                                 f = open('jobs/%s.job' %name, 'wb')
                                 f.write(template %locals())
