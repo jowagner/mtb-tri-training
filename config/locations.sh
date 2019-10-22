@@ -36,7 +36,7 @@ case "${SETTING}" in
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
     export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
-    export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-allennlp-py36
+    export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_MAX_CACHE_ENTRIES=100
