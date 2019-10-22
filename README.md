@@ -15,6 +15,13 @@ pip3 install --user --upgrade pip
 pip3 install --user virtualenv
 ```
 
+Append to `.bashrc`:
+```
+# virtualenv installed with `pip install --user`
+export PATH=$HOME/.local/bin:$PATH
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.local/lib
+```
+
 ## Main Tri-training Scripts
 
 ```
@@ -49,10 +56,15 @@ virtualenv -p /usr/bin/python3.7 venv-udpf
 vi venv-udpf/bin/activate
 ```
 
-Add `LD_LIBRARY_PATH` for a recent CUDA that works with TensorFlow 1.15 to `bin/activate`,
+Note: Some of our experiments were run on a second cluster using Python 3.6 instead of 3.7.
+
+Add `LD_LIBRARY_PATH` for a recent CUDA that works with TensorFlow 1.14 to `bin/activate`,
 e.g.
-`/home/support/nvidia/cuda10/lib64:/home/support/nvidia/cudnn/cuda10_cudnn7_7.5/lib64`.
-We used CUDA 10.0 and matching CUDNN.
+```
+LD_LIBRARY_PATH=/home/support/nvidia/cuda10/lib64:/home/support/nvidia/cudnn/cuda10_cudnn7_7.5/lib64:"$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH
+```
+As in this command, we used CUDA 10.0 and matching CUDNN.
 
 ```
 source venv-udpf/bin/activate
@@ -61,14 +73,21 @@ pip install cython
 pip install git+https://github.com/andersjo/dependency_decoding
 ```
 
-TODO: Could we use the provided script?
+TODO: Could we use the script provided by udpipe-future? What is the `venv` module that it uses?
 
 ## FastText Embeddings for UDPipe-future
 
-TODO:
-* pointer to where to get FastText
-* current commands to install it. https://fasttext.cc/docs/en/support.html
-* steps to train the embeddings
+Needed only if not re-using the fasttext `.npz` word embeddings
+of our experiment.
+
+### Installation
+
+As of writing,
+(FastText)[https://fasttext.cc/docs/en/support.html] is installed by
+cloning the repository, `cd`-ing into it, running `make` and copying
+the `fasttext` binary to a folder in your `PATH`, e.g. `$HOME/.local/bin`.
+As the binary is built with `-march=native`, it needs to be built
+on a machine supporting all desired CPU features, e.g. AVX.
 
 ### Extract tokenised text
 
@@ -87,7 +106,7 @@ We use truecase as UDpipe-future recently added supports both truecase and
 we expect the character-based fasttext embeddings to learn the relationship
 between lowercase and uppercase letters.
 
-### Train fastext
+### Train FastText
 
 As Straka et al. (2019), we run fasttext with `-minCount 5 -epoch 10 -neg 10`, e.g.
 ```
@@ -140,11 +159,10 @@ pip install allennlp
 pip install h5py
 ```
 
-TODO: Do we need to run `python setup.py install`?
-I don't think I did but James's readme says so.
+It is not necessary to run `python setup.py install`:
 The command `python -m elmoformanylangs test`
-in `get-elmo-vectors.sh` may simple
-work because we `cd`'ed into the efml folder.
+in `get-elmo-vectors.sh` work because we `cd`
+into the efml folder.
 
 After extracting the elmoformanylangs model files, the
 `config_path` variable in the `config.json` files has
@@ -168,8 +186,6 @@ cd elmo/
 ln -s $HOME/tri-training/ELMoForManyLangs/configs/
 ln -s /spinning/$USER/elmo/ga_model/
 ```
-
-TODO: virtualenv example
 
 # Data
 
