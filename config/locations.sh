@@ -36,7 +36,7 @@ case "${SETTING}" in
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-allennlp-py36
-    export EFML_MODEL_DIR=${HOME}/data/elmo
+    export EFML_MODEL_DIR=${HOME}/elmo
     ;;
 "jwagner@ok-opensuse-leap-15.1")
     SCRATCH=/scratch/${USER}
