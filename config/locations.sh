@@ -82,7 +82,7 @@ case "${SETTING}" in
     export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
     export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-udpf
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
-    export FASTTEXT_NPZ_DIR=${HOME}/data/UDPipe-Future
+    export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
