@@ -34,6 +34,10 @@ Options:
                             (not containing tokens with an index containing
                             '.' or '-')
                             (Default: 0 = no limit)
+
+    --bar-length  NUMBER    How many stars to print for the highest
+                            frequency in the bar graph.
+                            (Default: 80)
 """)
 
 def main():
@@ -42,6 +46,7 @@ def main():
     opt_debug   = False
     opt_min_length = 0
     opt_max_length = 0
+    opt_bar_length = 80
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
@@ -54,6 +59,9 @@ def main():
             del sys.argv[1]
         elif option == '--max-length':
             opt_max_length = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--bar-length':
+            opt_bar_length = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--verbose':
             opt_verbose = True
@@ -95,7 +103,7 @@ def main():
             count = counts[length]
         except:
             count = 0
-        bar = int(0.5+80*count/max_count)
+        bar = int(0.5+opt_bar_length*count/max_count)
         print('%d\t%d\t%s' %(
             length, count, bar * '*'
         ))
