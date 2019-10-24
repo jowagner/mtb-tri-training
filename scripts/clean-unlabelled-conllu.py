@@ -49,6 +49,10 @@ Options:
                             With an empty string as seed, a system seed will
                             be used.
                             (Default: 42)
+
+    --info  STRING          No change of behaviour. Can be used to add
+                            information to the command line viewed e.g. in
+                            top/htop.
 """)
 
 def main():
@@ -67,6 +71,8 @@ def main():
         if option in ('--help', '-h'):
             opt_help = True
             break
+        elif option == '--info':
+            del sys.argv[1]
         elif option == '--min-length':
             opt_min_length = int(sys.argv[1])
             del sys.argv[1]
