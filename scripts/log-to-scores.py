@@ -74,7 +74,7 @@ sys.stdout.write('\n')
 
 # table body
 
-for key in key2scores:
+for key in sorted(key2scores):
     sys.stdout.write('\t'.join(key))
     sys.stdout.write('\t')
     sys.stdout.write('\t'.join(key2scores[key]))
