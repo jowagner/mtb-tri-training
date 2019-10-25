@@ -66,7 +66,7 @@ while True:
 
 sys.stdout.write('\t'.join([
     'Language', 'Method', 'NumberOfLearners', 'AugmentSizeIndex',
-    'Learner', 'TestSetIndex',
+    'Learner', 'TestSetIndex', 'Rounds'
 ]))
 for i in range(max_rounds+1):
     sys.stdout.write('\t%d' %i)
@@ -76,7 +76,8 @@ sys.stdout.write('\n')
 
 for key in sorted(key2scores):
     sys.stdout.write('\t'.join(key))
-    sys.stdout.write('\t')
-    sys.stdout.write('\t'.join(key2scores[key]))
+    scores = key2scores[key]
+    sys.stdout.write('\t%d\t' %len(scores))
+    sys.stdout.write('\t'.join(scores))
     sys.stdout.write('\n')
 
