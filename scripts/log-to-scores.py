@@ -58,6 +58,8 @@ while True:
     if score_index == num_learners:
         score_index = 0
         test_set_index += 1
+    else:
+        score_index += 1
 
 # table header
 
