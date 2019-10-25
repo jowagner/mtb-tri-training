@@ -64,7 +64,7 @@ while True:
 sys.stdout.write('\t'.join([
     'Language', 'Method', 'NumberOfLearners', 'AugmentSizeIndex',
     'Learner', 'TestSetIndex',
-])
+]))
 for i in range(max_rounds+1):
     sys.stdout.write('\t%d' %i)
 sys.stdout.write('\n')
