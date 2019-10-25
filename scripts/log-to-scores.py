@@ -41,25 +41,26 @@ while True:
             ))
         score_index = 0
         test_set_index = 0
+    else:
         if tt_round > max_rounds:
             max_rounds = tt_round
-    score = fields[-1]
-    if score_index < num_learners:
-        learner = 'L%d' %(score_index+1)
-    else:
-        learner = 'Ensemble'
-    key = (
-        lang, method, '%d' %num_learners, '%d' %augment_size_index,
-        learner, '%d' %test_set_index
-    )
-    if not key in key2scores:
-        key2scores[key] = []
-    key2scores[key].append(score)
-    if score_index == num_learners:
-        score_index = 0
-        test_set_index += 1
-    else:
-        score_index += 1
+        score = fields[-1]
+        if score_index < num_learners:
+            learner = 'L%d' %(score_index+1)
+        else:
+            learner = 'Ensemble'
+        key = (
+            lang, method, '%d' %num_learners, '%d' %augment_size_index,
+            learner, '%d' %test_set_index
+        )
+        if not key in key2scores:
+            key2scores[key] = []
+        key2scores[key].append(score)
+        if score_index == num_learners:
+            score_index = 0
+            test_set_index += 1
+        else:
+            score_index += 1
 
 # table header
 
