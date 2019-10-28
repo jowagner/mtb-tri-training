@@ -54,6 +54,7 @@ def train(
             train(dataset_filename, seed, model_dir,
                 epoch_selection_dataset = epoch_selection_dataset,
                 monitoring_datasets = monitoring_datasets,
+                lcode = lcode,
                 batch_size = new_batch_size,
             )
     else:
