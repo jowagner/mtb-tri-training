@@ -22,9 +22,15 @@ if [ -e "$MODELDIR" ]; then
     exit 1
 fi
 
+test -z $4 && echo "Missing batch size"
+test -z $4 && exit 1
+BATCH_SIZE=$4
+
+MIN_EPOCH_SENTENCES=9600
+
 # optional args:
-TEST_SET=$4
-DEV_SET=$5
+TEST_SET=$5
+DEV_SET=$6
 
 if [ -n "$TEST_SET" ]; then
     REAL_TEST_SET=$(realpath ${TEST_SET})
@@ -79,15 +85,21 @@ fi
 
 hostname > training.start
 
+MIN_EPOCH_BATCHES=$(expr ${MIN_EPOCH_SENTENCES} / ${BATCH_SIZE})
+echo "Batch size is $BATCH_SIZE" >> training.start
+echo "Minimum number of batches in each epoch: $MIN_EPOCH_BATCHES" >> training.start
+
 python ${PARSER_DIR}/ud_parser.py \
     --seed ${SEED}                \
     --logdir ./                   \
+    --batch_size ${BATCH_SIZE}               \
+    --min_epoch_batches ${MIN_EPOCH_BATCHES}  \
     --epochs "30:1e-3,5:6e-4,5:4e-4,5:3e-4,5:2e-4,10:1e-4"  \
     ${FAKE_TBID}                  \
     2> stderr.txt     \
     > stdout.txt
 
-#    --min_epoch_batches 3000      \
+#    --min_epoch_batches 3000      \ ## --> configure MIN_EPOCH_SENTENCES
 #    --epochs "4:1e-3,2:1e-4"      \
 
 

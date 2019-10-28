@@ -29,6 +29,7 @@ def train(
     command.append(dataset_filename)
     command.append(seed)
     command.append(model_dir)
+    command.append('%d' %batch_size)
     for i in range(2):
         if len(monitoring_datasets) > i:
             command.append(monitoring_datasets[i].filename)
