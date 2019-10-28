@@ -13,6 +13,7 @@
 
 from __future__ import print_function
 
+import os
 import subprocess
 import sys
 
@@ -58,7 +59,7 @@ def train(
         raise ValueError('Model is missing essential files: ' + error_name)
 
 def memory_error(model_dir):
-    if not os_path.exists('%s/stderr.txt' %model_dir):
+    if not os.path.exists('%s/stderr.txt' %model_dir):
         # problem is somewhere in the wrapper script
         return False
     f = open('%s/stderr.txt' %model_dir)
