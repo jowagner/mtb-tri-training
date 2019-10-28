@@ -53,20 +53,20 @@ for augment_size_code in range(0,10,2):
                     ]:
                         if decay_code != '-' and augment_size_code < 6:
                             continue
-                        for short_lcode, lcode, tbid in [
-                            #('c', 'cs', 'cs_pdt'),
-                            #('d', 'de', 'de_gsd'),
-                            #('e', 'en', 'en_ewt'),
-                            #('f', 'fr', 'fr_gsd'),
-                            #('g', 'ga', 'ga_9010idt'),
-                            ('h', 'hu', 'hu_szeged'),
-                            ('u', 'ug', 'ug_udt'),
-                            ('v', 'vi', 'vi_vtb'),
+                        for short_lcode, lcode, tbid, lang_options in [
+                            #('c', 'cs', 'cs_pdt', '--simulate-size 20k --simulate-seed 42'),
+                            #('d', 'de', 'de_gsd', '--simulate-size 20k --simulate-seed 42'),
+                            ('e', 'en', 'en_ewt', '--simulate-size 20k --simulate-seed 42'),
+                            #('f', 'fr', 'fr_gsd', ''),
+                            #('g', 'ga', 'ga_9010idt', ''),
+                            ('h', 'hu', 'hu_szeged', ''),
+                            ('u', 'ug', 'ug_udt', ''),
+                            ('v', 'vi', 'vi_vtb', ''),
                         ]:
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
-                                #('f', 'udpipe_future'),
-                                #('g', 'fasttext_udpf'),
+                                ('f', 'udpipe_future'),
+                                ('g', 'fasttext_udpf'),
                                 ('h', 'elmo_udpf'),
                                 #('i', 'mbert_udpf'),
                                 #('u', 'uuparser'),

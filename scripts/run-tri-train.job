@@ -28,6 +28,7 @@ fi
 cd ${SCRIPTDIR}
 ./tri-train.py   \
     --init-seed %(seed)s       \
+    %(lang_options)s   \
     %(more_options)s   \
     %(ovs_options)s    \
     %(wrpl_options)s   \
