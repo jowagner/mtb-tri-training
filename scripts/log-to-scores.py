@@ -26,7 +26,8 @@ while True:
     if filename != last_filename:
         code = filename.split('/')[-2]
         lang = code[0]
-        method = code[1:6]
+        parser = code[1]
+        method = code[2:6]
         num_learners = int(code[6])
         augment_size_index = int(code[7])
         last_filename = filename
@@ -50,7 +51,9 @@ while True:
         else:
             learner = 'Ensemble'
         key = (
-            lang, method, '%d' %num_learners, '%d' %augment_size_index,
+            lang, parser,
+            '%d' %augment_size_index,
+            method, '%d' %num_learners,
             learner, '%d' %test_set_index
         )
         if not key in key2scores:
@@ -65,7 +68,9 @@ while True:
 # table header
 
 sys.stdout.write('\t'.join([
-    'Language', 'Method', 'NumberOfLearners', 'AugmentSizeIndex',
+    'Language', 'Parser',
+    'AugmentSizeIndex',
+    'Method', 'NumberOfLearners',
     'Learner', 'TestSetIndex', 'Rounds'
 ]))
 for i in range(max_rounds+1):
@@ -77,7 +82,7 @@ sys.stdout.write('\n')
 for key in sorted(key2scores):
     sys.stdout.write('\t'.join(key))
     scores = key2scores[key]
-    sys.stdout.write('\t%d\t' %len(scores))
+    sys.stdout.write('\t%d\t' %(len(scores)-1))
     sys.stdout.write('\t'.join(scores))
     sys.stdout.write('\n')
 
