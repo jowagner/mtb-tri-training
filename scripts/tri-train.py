@@ -569,8 +569,8 @@ def main():
         opt_simulate_size = adjust_size(opt_simulate_size, training_data_size)
         if opt_simulate_size < training_data_size:
             seed = None
-            if opt_simluate_seed:
-                seed = opt_simluate_seed
+            if opt_simulate_seed:
+                seed = opt_simulate_seed
             elif opt_init_seed:
                 seed = 'sim:' + opt_init_seed
             if seed:
@@ -578,7 +578,7 @@ def main():
                 # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
                 random.seed(int(hashlib.sha512(seed).hexdigest(), 16))
             training_data = get_subset(
-                training_data, opt_simluate_size, random, opt_simulate_attempts,
+                training_data, opt_simulate_size, random, opt_simulate_attempts,
                 with_replacement = False
             )
             training_data_size = training_data.get_number_of_items()
