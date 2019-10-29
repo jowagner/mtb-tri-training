@@ -9,6 +9,7 @@
 # Author: Joachim Wagner
 
 import collections
+import hashlib
 import os
 import subprocess
 import sys
