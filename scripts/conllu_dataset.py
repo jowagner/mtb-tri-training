@@ -368,6 +368,33 @@ def combine(prediction_paths, output_path, combiner_dir = None, seed = '42'):
     sys.stdout.flush()
     subprocess.call(command)
 
+class SentenceFilter:
+
+    def __init__(self, max_token_bytes = None):
+        self.max_token_bytes = max_token_bytes
+
+    def __call__(self, sentence):
+        ''' returns True if the sentence should be skipped '''
+        if not self.max_token_bytes:
+            return True
+        for token_row in sentence:
+            if len(token_row[1]) > max_token_bytes:
+                return False
+        return True
+
+def get_filter(**kwargs):
+    for key in ('max_token_bytes',):
+        try:
+            value = kwargs[key]
+            if value and type(value) == str:
+                value = int(value)
+            else:
+                value = 0
+            kwargs[key] = value
+        except KeyError:
+            pass
+    SentenceFilter(**kwargs)
+
 def main():
     import random
     import sys

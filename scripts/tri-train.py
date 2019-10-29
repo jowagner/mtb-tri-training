@@ -166,6 +166,14 @@ Options:
                             replacement.
                             (Default: sample seed sets without replacement)
 
+    --seed-filter-keyword  KEY VALUE
+                            Ask the dataset module for a custom sentence
+                            filter using this key-value pair as keyword
+                            argument and pass the filter object to the Sample
+                            object when creating each labelled seed set.
+                            Can be specified multiple times to specify more
+                            than one keyword argument.
+
     --subset-size  NUMBER   How many items to select from the unlabelled
                             data in each tri-training iteration
                             As full sentences are selected the actual number
@@ -186,6 +194,15 @@ Options:
                             unlabelled data.
                             (Default: Do not create subsets larger than
                             the provided data.)
+
+    --subset-filter-keyword  KEY VALUE
+                            Ask the dataset module for a custom sentence
+                            filter using this key-value pair as keyword
+                            argument and pass the filter object to the Sample
+                            object when creating each subset of unlabelled
+                            data.
+                            Can be specified multiple times to specify more
+                            than one keyword argument.
 
     --augment-size  NUMBER  How many items to add to each learner in each
                             tri-training iteration.
@@ -376,9 +393,11 @@ def main():
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
     opt_seed_with_replacement = True
+    opt_seed_filter_kwargs = {}
     opt_subset_size = '600k'
     opt_subset_attempts = 5
     opt_allow_oversampling_of_subset = False
+    opt_subset_filter_kwargs = {}
     opt_augment_size = '10k'
     opt_augment_attempts = 5
     opt_diversify_attempts = 1
@@ -483,6 +502,12 @@ def main():
             del sys.argv[1]
         elif option in ('--seed-without-replacement', '--without-replacement'):
             opt_seed_with_replacement = False
+        elif option == '--seed-filter-keyword':
+            key = sys.argv[1]
+            value = sys.argv[2]
+            opt_seed_filter_kwargs[key] = value
+            del sys.argv[1]   # consume two args
+            del sys.argv[1]
         elif option == '--subset-size':
             opt_subset_size = sys.argv[1]
             del sys.argv[1]
@@ -491,6 +516,13 @@ def main():
             del sys.argv[1]
         elif option in ('--allow-oversampling-of-subset', '--oversample-subset'):
             opt_allow_oversampling_of_subset = True
+        elif option == '--subset-filter-keyword':
+            key = sys.argv[1]
+            value = sys.argv[2]
+            opt_subset_filter_kwargs[key] = value
+            del sys.argv[1]   # consume two args
+            del sys.argv[1]
+        elif option == '--subset-size':
         elif option == '--augment-size':
             opt_augment_size = sys.argv[1]
             del sys.argv[1]
@@ -570,6 +602,16 @@ def main():
     target_columns = dataset_module.get_target_columns()
     filename_extension = dataset_module.get_filename_extension()
 
+    if opt_seed_filter_kwargs:
+        seed_filter = dataset_module.get_filter(**opt_seed_filter_kwargs)
+    else:
+        seed_filter = None
+
+    if opt_subset_filter_kwargs:
+        subset_filter = dataset_module.get_filter(**opt_subset_filter_kwargs)
+    else:
+        subset_filter = None
+
     training_data_sets = []
     dev_sets = []
     test_sets = []
@@ -603,6 +645,7 @@ def main():
                 random.seed(int(hashlib.sha512(seed).hexdigest(), 16))
             training_data = get_subset(
                 training_data, opt_simulate_size, random, opt_simulate_attempts,
+                sentence_filter = seed_filter,
                 with_replacement = False
             )
             training_data_size = training_data.get_number_of_items()
@@ -673,6 +716,7 @@ def main():
         learner_rank = learner_index + 1
         seed_set = get_subset(
             training_data, opt_seed_size, random, opt_seed_attempts,
+            sentence_filter = seed_filter,
             with_replacement = opt_seed_with_replacement
         )
         print('Learner %d has seed data with %d items in %d sentences' %(
@@ -830,6 +874,7 @@ def main():
             diversify_attempts = opt_diversify_attempts,
             disprefer = previously_picked,
             sentence_modifier = drop_all_targets,
+            sentence_filter = subset_filter,
             write_file = subset_path
         )
         print('Size of subset: %d items in %d sentences' %(
@@ -1338,6 +1383,7 @@ def get_subset(
     sentence_modifier = None,
     diversify_attempts = 1,
     disprefer = {},
+    sentence_filter = None,
 ):
     candidates = []
     ds_size = dataset.get_number_of_items()
@@ -1348,6 +1394,7 @@ def get_subset(
             with_replacement = with_replacement,
             unique_sentences = unique_sentences,
             sentence_modifier = sentence_modifier,
+            sentence_filter   = sentence_filter,
             diversify_attempts = diversify_attempts,
             disprefer = disprefer
         )

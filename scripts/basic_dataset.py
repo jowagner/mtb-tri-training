@@ -318,8 +318,9 @@ class Sample(Dataset):
         with_replacement = True,
         unique_sentences = False,
         sentence_modifier = None,
+        sentence_filter   = None,
         diversify_attempts = 1,
-        disprefer = {}
+        disprefer = {},
     ):
         if size and percentage:
             raise ValueError('Must not specify both size and percentage.')
@@ -328,6 +329,7 @@ class Sample(Dataset):
         self.dataset = dataset
         self.is_vectorised = False
         self.sentence_modifier = sentence_modifier
+        self.sentence_filter   = sentence_filter
         self.with_replacement  = with_replacement
         self.reset_sample(
             rng, size, diversify_attempts, disprefer,
@@ -389,10 +391,11 @@ class Sample(Dataset):
         self.sentences = []
         remaining = size
         rejected = 0
+        filtered = 0
         if unique_sentences:
             so_far = {}
-            last_verbose = time.time()
-            interval = 60.0
+        last_verbose = time.time()
+        interval = 60.0
         while remaining:
             candidates = []
             for attempt in range(diversify_attempts):
@@ -409,14 +412,20 @@ class Sample(Dataset):
             candidates.sort()
             d_index = candidates[0][-1]
             self.sentences.append(d_index)
-            if unique_sentences:
+            if unique_sentences or self.sentence_filter is not None:
                 if time.time() > last_verbose + interval:
-                    print('Sampling %s: %d left, %d rejected' %(
-                        time.ctime(time.time()), remaining, rejected
+                    print('Sampling %s: %d left, %d rejected, %d filtered' %(
+                        time.ctime(time.time()), remaining, rejected, filtered,
                     ))
                     sys.stdout.flush()
                     last_verbose = time.time()
                     interval *= 2.0
+            if self.sentence_filter is not None:
+                if self.sentence_filter(self[-1]):
+                    del self.sentences[-1]
+                    filtered += 1
+                    continue
+            if unique_sentences:
                 # check that the new sentence is different from all so far:
                 f = StringIO()
                 self.write_sentence(f, self[-1], remove_comments = True)
@@ -535,4 +544,13 @@ def combine(prediction_paths, output_path):
         into a single prediction
     '''
     raise NotImplementedError
+
+def get_filter(**kwargs):
+    ''' return a sentence filter object
+        (must support that numerical values can be
+        provided as strings)
+    '''
+    raise NotImplementedError
+    # TODO: convert string to int
+    #return SentenceFilter([], **kwargs)
 
