@@ -236,7 +236,7 @@ def get_tbname(tbid, treebank_dir, tbmapfile = None):
 def load_conll2017(
     lcode, name, dataset_basedir, mode = 'map',
     **kwargs
-)
+):
     if not dataset_basedir:
         dataset_basedir = os.environ['CONLL2017_DIR']
     # scan the dataset folder
