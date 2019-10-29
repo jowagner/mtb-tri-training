@@ -21,6 +21,17 @@ pos_column = 3
 head_column = 6
 label_column = 7
 
+def hex2base62(h):
+    s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    i = int(h, 16)
+    if not i:
+        return '0'
+    digits = []
+    while i:
+        d = i % 62
+        digits.append(s[d])
+        i = int(i/62)
+    return ''.join(digits)
 
 class ConlluSentence(basic_dataset.Sentence):
 
@@ -46,6 +57,17 @@ class ConlluSentence(basic_dataset.Sentence):
             self.token2row,
             self.rows,
         )
+
+    def truncate_tokens(self, truncate_long_tokens = None, **kwargs):
+        if not truncate_long_tokens:
+            return
+        for row_index in self.token2row:
+            row = self.rows[row_index]
+            token = row[1]
+            if len(token) > truncate_long_tokens:
+                fingerprint = hex2base62(hashlib.sha256(token).hexdigest())[:12]
+                row[1] = 'tt:' + fingerprint
+                row[2] = 'tt:' + fingerprint
 
     def append(self, line):
         fields = line.split('\t')
@@ -104,6 +126,14 @@ class ConlluDataset(basic_dataset.Dataset):
             len(self),
         )
 
+    def usable(self, sentence, max_token_bytes = None, **kwargs):
+        if not max_token_bytes:
+            return True
+        for token_row in sentence:
+            if len(token_row[1]) > max_token_bytes:
+                return False
+        return True
+
     def read_sentence(self, f_in):
         sentence = None
         while True:
@@ -117,6 +147,8 @@ class ConlluDataset(basic_dataset.Dataset):
             if line.isspace():
                 break
             sentence.append(line)
+        if 'truncate_long_tokens' in self.load_kwargs:
+            sentence.truncate_tokens(**self.load_kwargs)
         return sentence
 
     def write_sentence(self, f_out, sentence, remove_comments = False):
@@ -201,7 +233,10 @@ def get_tbname(tbid, treebank_dir, tbmapfile = None):
         raise ValueError('TBID %r not found in %r (must have test set)' %(tbid, treebank_dir))
     raise ValueError('TBID %r not found (need map file or treebank dir)' %tbid)
 
-def load_conll2017(lcode, name, dataset_basedir, mode = 'map'):
+def load_conll2017(
+    lcode, name, dataset_basedir, mode = 'map',
+    **kwargs
+)
     if not dataset_basedir:
         dataset_basedir = os.environ['CONLL2017_DIR']
     # scan the dataset folder
@@ -214,7 +249,8 @@ def load_conll2017(lcode, name, dataset_basedir, mode = 'map'):
             )
             if os.path.exists(filename):
                 data = basic_dataset.load_or_map_from_filename(
-                    ConlluDataset(), filename, mode
+                    ConlluDataset(), filename, mode,
+                    **kwargs
                 )
                 datasets.append(data)
                 index += 1
@@ -233,13 +269,30 @@ def load(dataset_id,
     load_tr = True, load_dev = True, load_test = True,
     mode = 'map',
     dataset_basedir = None,
-    only_get_path = False
+    only_get_path = False,
+    **kwargs,
 ):
+    # correct type of args passed with --load-data-keyword
+    for key in ('max_token_bytes', 'truncate_long_tokens'):
+        if key in kwargs:
+            value = kwargs[key]
+            if value and type(value) is str:
+                kwargs = int(value)
+    # CoNNL 2017 data sets
     lcode = dataset_id.split('_')[0]
     if dataset_id.endswith('_cc17'):
-        return load_conll2017(lcode, 'common_crawl', dataset_basedir, mode), None, None
+        data = load_conll2017(
+            lcode, 'common_crawl', dataset_basedir, mode,
+            **kwargs,
+        )
+        return data, None, None
     if dataset_id.endswith('_wp17'):
-        return load_conll2017(lcode, 'wikipedia', dataset_basedir, mode), None, None
+        data = load_conll2017(
+            lcode, 'wikipedia', dataset_basedir, mode,
+            **kwargs,
+        )
+        return data, None, None
+    # UD data sets
     tbid = dataset_id
     tr, dev, test = None, None, None
     if dataset_basedir:
@@ -254,7 +307,8 @@ def load(dataset_id,
             tr = filename
         elif os.path.exists(filename):
             tr = basic_dataset.load_or_map_from_filename(
-                ConlluDataset(), filename, mode
+                ConlluDataset(), filename, mode,
+                **kwargs,
             )
         else:
             print('Warning: %r not found' %filename)
@@ -264,7 +318,8 @@ def load(dataset_id,
             dev = filename
         elif os.path.exists(filename):
             dev = basic_dataset.load_or_map_from_filename(
-                ConlluDataset(), filename, mode
+                ConlluDataset(), filename, mode,
+                **kwargs,
             )
         else:
             print('Warning: %r not found' %filename)
@@ -274,7 +329,8 @@ def load(dataset_id,
             test = filename
         elif os.path.exists(filename):
             test = basic_dataset.load_or_map_from_filename(
-                ConlluDataset(), filename, mode
+                ConlluDataset(), filename, mode,
+                **kwargs,
             )
         else:
             print('Warning: %r not found' %filename)

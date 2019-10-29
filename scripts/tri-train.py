@@ -44,6 +44,15 @@ Options:
                             the module specified with --dataset-module
                             interprets these IDs to load the data
 
+    --load-labelled-data-keyword  KEY  VALUE
+    --load-unlabelled-data-keyword  KEY  VALUE
+                            Pass additional key-value pair as keyword
+                            arguments to the load() function of each dataset
+                            module when loading the above labelled or
+                            unlabelled data.
+                            Can be specified multiple times to specify more
+                            than one non-standard argument.
+
     --simulate-size  NUMBER  Reduce labelled training data to approximately
                             NUMBER items to simulate a low resource
                             scenario. Sentences are always selected fully or
@@ -354,6 +363,8 @@ def main():
     opt_baselines = False
     opt_labelled_ids = []
     opt_unlabelled_ids = []
+    opt_load_labelled_data_kwargs = {}
+    opt_load_unlabelled_data_kwargs = {}
     opt_simulate_size = None
     opt_simulate_attempts = 5
     opt_simulate_seed = None
@@ -427,6 +438,18 @@ def main():
                     opt_labelled_ids.append(tbid)
                 else:
                     opt_unlabelled_ids.append(tbid)
+            del sys.argv[1]
+        elif option == '--load-labelled-data-keyword':
+            key = sys.argv[1]
+            value = sys.argv[2]
+            opt_load_labelled_data_kwargs[key] = value
+            del sys.argv[1]   # consume two args
+            del sys.argv[1]
+        elif option == '--load-unlabelled-data-keyword':
+            key = sys.argv[1]
+            value = sys.argv[2]
+            opt_load_unlabelled_data_kwargs[key] = value
+            del sys.argv[1]   # consume two args
             del sys.argv[1]
         elif option == '--simulate-size':
             opt_simulate_size = sys.argv[1]
@@ -553,7 +576,8 @@ def main():
     for dataset_id in opt_labelled_ids:
         tr, dev, test = dataset_module.load(
             dataset_id, load_test = opt_final_test,
-            dataset_basedir = opt_dataset_basedir
+            dataset_basedir = opt_dataset_basedir,
+            **opt_load_labelled_data_kwargs
         )
         #print('Dataset %r: %r, %r, %r' %(dataset_id, tr, dev, test))
         training_data_sets.append(tr)
@@ -602,7 +626,8 @@ def main():
     for dataset_id in opt_unlabelled_ids:
         tr, dev, test = dataset_module.load(
             dataset_id, load_test = opt_final_test,
-            dataset_basedir = opt_dataset_basedir
+            dataset_basedir = opt_dataset_basedir,
+            **opt_load_unlabelled_data_kwargs
         )
         #print('Dataset %r: %r' %(dataset_id, tr))
         unlabelled_data_sets.append(tr)

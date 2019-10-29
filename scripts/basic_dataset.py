@@ -98,13 +98,13 @@ class Dataset(collections.Sequence):
     def shuffle(self, rng):
         rng.shuffle(self.sentences)
 
-    def load_file(self, f_in, max_sentences = None):
+    def load_file(self, f_in, max_sentences = None, **kwargs):
         """ Append up to `max_sentences` sentences from file `f_in`
             to the data set. No limit if `max_sentences` is `None`.
         """
-        self.load_or_map_file(f_in, max_sentences, 'load')
+        self.load_or_map_file(f_in, max_sentences, 'load', **kwargs)
 
-    def map_file(self, f_in, max_sentences = None):
+    def map_file(self, f_in, max_sentences = None, **kwargs):
         """ Append up to `max_sentences` sentences from file `f_in`
             to the data set. No limit if `max_sentences` is `None`.
             The file is scanned for start positions of sentences
@@ -112,9 +112,10 @@ class Dataset(collections.Sequence):
             re-read each time it is needed. The file must not be
             modified or closed while it is mapped.
         """
-        self.load_or_map_file(f_in, max_sentences, 'map')
+        self.load_or_map_file(f_in, max_sentences, 'map', **kwargs)
 
-    def load_or_map_file(self, f_in, max_sentences, mode):
+    def load_or_map_file(self, f_in, max_sentences, mode, **kwargs):
+        self.load_kwargs = kwargs
         if mode == 'map':
             f_index = len(self.files)
             self.files.append(f_in)
@@ -131,9 +132,14 @@ class Dataset(collections.Sequence):
                 break
             if mode == 'load':
                 info = sentence
+            if not self.usable(sentence, **kwargs):
+                continue
             self.sentences.append((f_index, info))
             added += 1
         return added
+
+    def usable(self, sentence, **kwargs):
+        return True
 
     def save_to_file(self, f_out,
         sentence_filter    = None,
@@ -498,9 +504,9 @@ class Sample(Dataset):
         self.dataset.write_sentence(f_out, sentence, remove_comments)
 
 
-def load_or_map_from_filename(data, filename, mode = 'load'):
+def load_or_map_from_filename(data, filename, mode = 'load', **kwargs):
     f_in = open(filename, 'r')
-    data.load_or_map_file(f_in, None, mode)
+    data.load_or_map_file(f_in, None, mode, **kwargs)
     if mode == 'load':
         f_in.close()
     data.filename = filename
