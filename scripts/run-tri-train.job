@@ -43,7 +43,7 @@ cd ${SCRIPTDIR}
     --model-init compose  \
     --unlabelled %(lcode)s_wp17    \
     --unlabelled %(lcode)s_cc17    \
-    --load-unlabelled-data-keyword truncate_long_tokens 160  \
+    --subset-filter-keyword max_token_bytes 200  \
     --labelled   %(tbid)s  \
     --final-test          \
     --continue             \
