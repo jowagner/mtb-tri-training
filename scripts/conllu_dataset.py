@@ -277,7 +277,7 @@ def load(dataset_id,
         if key in kwargs:
             value = kwargs[key]
             if value and type(value) is str:
-                kwargs = int(value)
+                kwargs[key] = int(value)
     # CoNNL 2017 data sets
     lcode = dataset_id.split('_')[0]
     if dataset_id.endswith('_cc17'):
