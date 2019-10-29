@@ -41,7 +41,7 @@ def train(
     if incomplete(model_dir):
         if memory_error(model_dir):
             # do not leave erroneous model behind
-            os.rename(model_dir, model_dir+('oom-%d' %batch_size))
+            os.rename(model_dir, model_dir+('-oom-%d' %batch_size))
             # try again with smaller batch size:
             if batch_size == 1:
                 raise ValueError('Cannot train parser even with batch size 1.')
@@ -52,11 +52,11 @@ def train(
                 monitoring_datasets = monitoring_datasets,
                 batch_size = new_batch_size,
             )
-    else:
-        # do not leave incomplete model behind
-        error_name = model_dir + 'incomplete'
-        os.rename(model_dir, error_name)
-        raise ValueError('Model is missing essential files: ' + error_name)
+        else:
+            # do not leave incomplete model behind
+            error_name = model_dir + '-incomplete'
+            os.rename(model_dir, error_name)
+            raise ValueError('Model is missing essential files: ' + error_name)
 
 def memory_error(model_dir):
     if not os.path.exists('%s/stderr.txt' %model_dir):
