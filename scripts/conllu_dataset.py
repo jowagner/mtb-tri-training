@@ -148,7 +148,7 @@ class ConlluDataset(basic_dataset.Dataset):
             if line.isspace():
                 break
             sentence.append(line)
-        if 'truncate_long_tokens' in self.load_kwargs:
+        if sentence is not None and 'truncate_long_tokens' in self.load_kwargs:
             sentence.truncate_tokens(**self.load_kwargs)
         return sentence
 
