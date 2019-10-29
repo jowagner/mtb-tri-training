@@ -522,7 +522,6 @@ def main():
             opt_subset_filter_kwargs[key] = value
             del sys.argv[1]   # consume two args
             del sys.argv[1]
-        elif option == '--subset-size':
         elif option == '--augment-size':
             opt_augment_size = sys.argv[1]
             del sys.argv[1]
