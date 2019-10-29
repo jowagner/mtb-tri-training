@@ -81,7 +81,11 @@ for augment_size_code in range(0,10,2):
                                 else:
                                     model_keyword_options = '--model-keyword lcode %s' %lcode
                                 name = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed)
-                                f = open('jobs/%s.job' %name, 'wb')
-                                f.write(template %locals())
-                                f.close()
+                                for gpu_short, gpu_name in [
+                                    ('tesla', 'tesla'),
+                                    ('rtx',   'rtx2080ti'),
+                                ]:
+                                    f = open('jobs/%s-%s.job' %(name, gpu_short), 'wb')
+                                    f.write(template %locals())
+                                    f.close()
 

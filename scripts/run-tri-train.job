@@ -1,7 +1,7 @@
 #!/bin/bash
   
 #SBATCH -p compute       # which partition to run on
-#SBATCH --gres=gpu:rtx2080ti:1
+#SBATCH --gres=gpu:%(gpu_name)s:1
 #SBATCH -J %(name)s    # name for the job
 #SBATCH -d singleton
 #SBATCH --mem=18000
@@ -38,7 +38,7 @@ cd ${SCRIPTDIR}
     %(model_keyword_options)s           \
     --subset-size "%(subsetsize)dk"          \
     --augment-size %(augsize)dk   \
-    --deadline 36.0            \
+    --deadline 18.0            \
     --stopfile ${WORKDIR}/stop  \
     --model-init compose  \
     --unlabelled %(lcode)s_wp17    \
