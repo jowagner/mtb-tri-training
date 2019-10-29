@@ -270,7 +270,7 @@ def load(dataset_id,
     mode = 'map',
     dataset_basedir = None,
     only_get_path = False,
-    **kwargs,
+    **kwargs
 ):
     # correct type of args passed with --load-data-keyword
     for key in ('max_token_bytes', 'truncate_long_tokens'):
@@ -283,13 +283,13 @@ def load(dataset_id,
     if dataset_id.endswith('_cc17'):
         data = load_conll2017(
             lcode, 'common_crawl', dataset_basedir, mode,
-            **kwargs,
+            **kwargs
         )
         return data, None, None
     if dataset_id.endswith('_wp17'):
         data = load_conll2017(
             lcode, 'wikipedia', dataset_basedir, mode,
-            **kwargs,
+            **kwargs
         )
         return data, None, None
     # UD data sets
@@ -308,7 +308,7 @@ def load(dataset_id,
         elif os.path.exists(filename):
             tr = basic_dataset.load_or_map_from_filename(
                 ConlluDataset(), filename, mode,
-                **kwargs,
+                **kwargs
             )
         else:
             print('Warning: %r not found' %filename)
@@ -319,7 +319,7 @@ def load(dataset_id,
         elif os.path.exists(filename):
             dev = basic_dataset.load_or_map_from_filename(
                 ConlluDataset(), filename, mode,
-                **kwargs,
+                **kwargs
             )
         else:
             print('Warning: %r not found' %filename)
@@ -330,7 +330,7 @@ def load(dataset_id,
         elif os.path.exists(filename):
             test = basic_dataset.load_or_map_from_filename(
                 ConlluDataset(), filename, mode,
-                **kwargs,
+                **kwargs
             )
         else:
             print('Warning: %r not found' %filename)
