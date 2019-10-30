@@ -397,6 +397,8 @@ class Sample(Dataset):
             )
             p_size = len(permutation)
             rng.shuffle(permutation)
+        else:
+            p_size = -1
         self.sentences = []
         remaining = size
         rejected = 0
@@ -405,7 +407,7 @@ class Sample(Dataset):
         if unique_sentences:
             so_far = {}
         last_verbose = time.time()
-        interval = 60.0
+        interval = 5.0
         while remaining:
             candidates = []
             for attempt in range(diversify_attempts):
@@ -430,8 +432,9 @@ class Sample(Dataset):
             self.sentences.append(d_index)
             if unique_sentences or self.sentence_filter is not None:
                 if time.time() > last_verbose + interval:
-                    print('Sampling %s: %d left, %d rejected, %d filtered' %(
+                    print('Sampling %s: %d left, %d rejected, %d filtered, %d target size, %d dataset size, %d permutation size' %(
                         time.ctime(time.time()), remaining, rejected, filtered,
+                        size, d_size, p_size,
                     ))
                     sys.stdout.flush()
                     last_verbose = time.time()
