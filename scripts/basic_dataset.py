@@ -337,6 +337,9 @@ class Sample(Dataset):
         )
 
     def _get_preferred_d_indices(self, d_size, size, disprefer):
+        ''' size is the target size,
+            d_size is the size of the existing dataset
+        '''
         if size >= d_size or not disprefer:
             # use all data
             return list(range(d_size))
@@ -358,6 +361,10 @@ class Sample(Dataset):
         # starting with the lowest levels
         retval = []
         level = 0
+        # TODO: when filtering and/or rejecting duplicates, we may need
+        #       more data but currently we are shuffling the data after
+        #       calling this function, meaning that we must not return
+        #       more data
         while len(retval) < size:
             assert level <= max_level, 'Missing some data after stratification.'
             try:
@@ -383,6 +390,8 @@ class Sample(Dataset):
         if size is None:
             size = d_size
         if not self.with_replacement:
+            # TODO: This may not be enough data when filtering sentences
+            #       with long tokens and/or rejecting duplicated.
             permutation = self._get_preferred_d_indices(
                 d_size, size, disprefer
             )
@@ -392,6 +401,7 @@ class Sample(Dataset):
         remaining = size
         rejected = 0
         filtered = 0
+        previous_attempts_offset = 0
         if unique_sentences:
             so_far = {}
         last_verbose = time.time()
@@ -400,9 +410,14 @@ class Sample(Dataset):
             candidates = []
             for attempt in range(diversify_attempts):
                 if self.with_replacement:
+                    # Since we currently do not support sampling with
+                    # replacement together with disprefering some items,
+                    # we can simply sample from all data:
                     d_index = rng.randrange(d_size)
                 else:
-                    d_index = permutation[(size+rejected-remaining) % p_size]
+                    d_index = permutation[(size + previous_attempts_offset + \
+                                           attempt + filtered + \
+                                           rejected - remaining) % p_size]
                 if diversify_attempts == 1 or not self.sentences:
                     # no choice
                     priority = 0
@@ -410,7 +425,8 @@ class Sample(Dataset):
                     priority = -self._nearest_neighbour_distance(d_index)
                 candidates.append((priority, attempt, d_index))
             candidates.sort()
-            d_index = candidates[0][-1]
+            _, attempt, d_index = candidates[0]
+            previous_attempts_offset += attempt
             self.sentences.append(d_index)
             if unique_sentences or self.sentence_filter is not None:
                 if time.time() > last_verbose + interval:
