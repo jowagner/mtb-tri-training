@@ -393,7 +393,7 @@ def get_filter(**kwargs):
             kwargs[key] = value
         except KeyError:
             pass
-    SentenceFilter(**kwargs)
+    return SentenceFilter(**kwargs)
 
 def main():
     import random
