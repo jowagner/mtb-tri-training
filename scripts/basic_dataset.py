@@ -67,6 +67,7 @@ class Dataset(collections.Sequence):
     def __init__(self):
         self.sentences = []    # see __getitem__() below for format
         self.files = []
+        self.load_kwargs = {}
 
     def __getitem__(self, index):
         f_index, info = self.sentences[index]
