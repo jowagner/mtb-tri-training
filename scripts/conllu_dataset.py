@@ -376,11 +376,11 @@ class SentenceFilter:
     def __call__(self, sentence):
         ''' returns True if the sentence should be skipped '''
         if not self.max_token_bytes:
-            return True
+            return False
         for token_row in sentence:
             if len(token_row[1]) > self.max_token_bytes:
-                return False
-        return True
+                return True
+        return False
 
 def get_filter(**kwargs):
     for key in ('max_token_bytes',):
