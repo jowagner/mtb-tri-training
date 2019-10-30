@@ -38,6 +38,10 @@ Options:
     --bar-length  NUMBER    How many stars to print for the highest
                             frequency in the bar graph.
                             (Default: 80)
+
+    --tokens                Show distribution of token length in bytes
+                            (Default: show distribution of sentence length
+                            in number of tokens)
 """)
 
 def main():
@@ -47,6 +51,7 @@ def main():
     opt_min_length = 0
     opt_max_length = 0
     opt_bar_length = 80
+    opt_tokens = False
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
@@ -63,6 +68,8 @@ def main():
         elif option == '--bar-length':
             opt_bar_length = int(sys.argv[1])
             del sys.argv[1]
+        elif option == '--tokens':
+            opt_tokens = True
         elif option == '--verbose':
             opt_verbose = True
         elif option == '--debug':
@@ -86,17 +93,23 @@ def main():
         sentence = conllu.read_sentence(sys.stdin)
         if sentence is None:
             break
-        length = len(sentence)
-        if opt_min_length and length < opt_min_length:
-            continue
-        if opt_max_length and length < opt_max_length:
-            continue
-        try:
-            counts[length] += 1
-        except:
-            counts[length] = 1
-        if length > max_length:
-            max_length = length
+        lengths = []
+        if opt_tokens:
+            for row in sentence:
+                lengths.append(len(row[1]))
+        else:
+            lengths.append(len(sentence))
+        for length in lengths:
+            if opt_min_length and length < opt_min_length:
+                continue
+            if opt_max_length and length < opt_max_length:
+                continue
+            try:
+                counts[length] += 1
+            except:
+                counts[length] = 1
+            if length > max_length:
+                max_length = length
     max_count = float(max(counts.values()))
     for length in range(opt_min_length, max_length+1):
         try:
