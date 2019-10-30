@@ -378,7 +378,7 @@ class SentenceFilter:
         if not self.max_token_bytes:
             return True
         for token_row in sentence:
-            if len(token_row[1]) > max_token_bytes:
+            if len(token_row[1]) > self.max_token_bytes:
                 return False
         return True
 
