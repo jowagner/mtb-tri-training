@@ -343,7 +343,7 @@ class Sample(Dataset):
         '''
         if size >= d_size or not disprefer:
             # use all data
-            return list(range(d_size))
+            return list(range(d_size)), []
         # stratify data according to
         # how strongly items are dispreferred
         level2indices = {}
@@ -374,7 +374,15 @@ class Sample(Dataset):
                 indices = []
             retval += indices
             level += 1
-        return retval
+        extra_data = []
+        while level <= max_level:
+            try:
+                indices = level2indices[level]
+            except KeyError:
+                indices = []
+            extra_data += indices
+            level += 1
+        return retval, extra_data
 
     def reset_sample(
         self, rng, size = None,
@@ -393,7 +401,7 @@ class Sample(Dataset):
         if not self.with_replacement:
             # TODO: This may not be enough data when filtering sentences
             #       with long tokens and/or rejecting duplicated.
-            permutation = self._get_preferred_d_indices(
+            permutation, extra_data = self._get_preferred_d_indices(
                 d_size, size, disprefer
             )
             p_size = len(permutation)
@@ -418,9 +426,15 @@ class Sample(Dataset):
                     # we can simply sample from all data:
                     d_index = rng.randrange(d_size)
                 else:
-                    d_index = permutation[(size + previous_attempts_offset + \
-                                           attempt + filtered + \
-                                           rejected - remaining) % p_size]
+                    p_index = size + previous_attempts_offset + \
+                              attempt + filtered + \
+                              rejected - remaining
+                    if extra_data and p_index >= p_size:
+                        rng.shuffle(extra_data)
+                        permutation += extra_data
+                        p_size = len(permutation)
+                        extra_data = None
+                    d_index = permutation[p_index % p_size]
                 if diversify_attempts == 1 or not self.sentences:
                     # no choice
                     priority = 0
