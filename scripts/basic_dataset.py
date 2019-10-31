@@ -408,6 +408,10 @@ class Sample(Dataset):
             rng.shuffle(permutation)
         else:
             p_size = -1
+        print('Sampling %s: %d target size, %d dataset size, %d permutation size (-1 = with replacement), %d dispreferred items, %d diversify_attempts, unique_sentences = %r' %(
+            time.ctime(time.time()), size, d_size, p_size,
+            len(disprefer), diversify_attempts, unique_sentences
+        ))
         self.sentences = []
         remaining = size
         rejected = 0
@@ -416,7 +420,7 @@ class Sample(Dataset):
         if unique_sentences:
             so_far = {}
         last_verbose = time.time()
-        interval = 5.0
+        interval = 0.1
         while remaining:
             candidates = []
             for attempt in range(diversify_attempts):
@@ -432,8 +436,12 @@ class Sample(Dataset):
                     if extra_data and p_index >= p_size:
                         rng.shuffle(extra_data)
                         permutation += extra_data
+                        old_p_size = p_size
                         p_size = len(permutation)
                         extra_data = None
+                        print('Sampling %s: extended %d permutation size to %d' %(
+                            time.ctime(time.time()), old_p_size, p_size
+                        ))
                     d_index = permutation[p_index % p_size]
                 if diversify_attempts == 1 or not self.sentences:
                     # no choice
