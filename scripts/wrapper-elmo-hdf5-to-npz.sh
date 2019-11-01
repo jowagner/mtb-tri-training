@@ -13,6 +13,11 @@ if [ -n "$EFML_LIB_PATH" ]; then
     export LD_LIBRARY_PATH=${EFML_LIB_PATH}:${LD_LIBRARY_PATH}
 fi
 
+if [ -n "$EFML_ICHEC_CONDA" ]; then
+    module load conda/2
+    source activate ${UDPIPE_FUTURE_ICHEC_CONDA}
+fi
+
 if [ -n "$EFML_CONDA" ]; then
     source ${CONDA_HOME}/etc/profile.d/conda.sh
     conda activate ${EFML_CONDA}

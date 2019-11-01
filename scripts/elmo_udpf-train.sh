@@ -119,6 +119,11 @@ if [ -n "$UDPIPE_FUTURE_LIB_PATH" ]; then
     export LD_LIBRARY_PATH=${UDPIPE_FUTURE_LIB_PATH}:${LD_LIBRARY_PATH}
 fi
 
+if [ -n "$UDPIPE_FUTURE_ICHEC_CONDA" ]; then
+    module load conda/2
+    source activate ${UDPIPE_FUTURE_ICHEC_CONDA}
+fi
+
 if [ -n "$UDPIPE_FUTURE_CONDA" ]; then
     source ${CONDA_HOME}/etc/profile.d/conda.sh
     conda activate ${UDPIPE_FUTURE_CONDA}
