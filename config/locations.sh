@@ -22,7 +22,7 @@ if [ -e /etc/os-release ]; then
 fi
 
 case "${SETTING}" in
-"jwagner@lo")
+"jwagner@n1")
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
