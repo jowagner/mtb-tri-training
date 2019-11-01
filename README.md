@@ -109,6 +109,11 @@ If this is the first time using conda on ICHEC, you need to run
 `conda init bash`, re-login, run `conda config --set auto_activate_base false`
 and re-login again.
 
+TODO: ICHEC support says to use `source activate udpf` instead, not
+requiring initialisation. Test this on next install. (This will also
+require adjustments to most of the shell scripts
+`mtb-tri-training/scripts/*.sh`.
+
 Then:
 ```
 conda activate udpf
@@ -191,7 +196,11 @@ https://github.com/HIT-SCIR/ELMoForManyLangs
 
 ```
 git clone git@github.com:HIT-SCIR/ELMoForManyLangs.git
+```
 
+### Using Virtualenv
+
+```
 cd ELMoForManyLangs/
 virtualenv -p /usr/bin/python3.7 venv-efml
 vi venv-efml/bin/activate
@@ -207,10 +216,25 @@ pip install allennlp
 pip install h5py
 ```
 
+### Using Conda on ICHEC
+
+```
+module load conda/2
+conda create --name efml python=3.7 h5py
+conda activate efml
+pip install torch torchvision
+pip install allennlp
+conda deactivate
+```
+
+### Module Installtion not Required
+
 It is not necessary to run `python setup.py install`:
 The command `python -m elmoformanylangs test`
 in `get-elmo-vectors.sh` work because we `cd`
 into the efml folder.
+
+### Models
 
 After extracting the elmoformanylangs model files, the
 `config_path` variable in the `config.json` files has

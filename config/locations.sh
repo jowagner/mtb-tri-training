@@ -27,11 +27,14 @@ case "${SETTING}" in
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
     export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
-    export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-udpf
+    export CONDA_HOME=/ichec/packages/conda/2
+    export UDPIPE_FUTURE_CONDA=udpf
+    export UDPIPE_FUTURE_LIB_PATH="/ichec/packages/cuda/10.0/lib64":"$HOME/cudnn-for-10.0/lib64"
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
     export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
-    export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
+    export UDPIPE_FUTURE_CONDA=efml
+    export UDPIPE_FUTURE_LIB_PATH="/ichec/packages/cuda/10.1.243/lib64":"$HOME/cudnn-for-10.1/lib64"
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_MAX_CACHE_ENTRIES=100
