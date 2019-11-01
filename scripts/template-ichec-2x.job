@@ -1,0 +1,76 @@
+#!/bin/bash
+  
+#SBATCH -p GpuQ       # which partition to run on
+#SBATCH -J %(name)s    # name for the job
+#SBATCH -d singleton
+#SBATCH --mem=48000
+#SBATCH --cpus-per-task=40
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+source ${HOME}/tri-training/mtb-tri-training/config/locations.sh
+
+SCRIPTDIR=${PRJ_DIR}/scripts
+WORKDIR=${PRJ_DIR}/workdirs/%(name)s
+
+${SCRIPTDIR}/wrapper-ichec.sh  \
+    ${WORKDIR}                 \
+    ${SCRIPTDIR}               \
+    0                          \
+    --init-seed %(seed)s       \
+    %(lang_options)s   \
+    %(more_options)s   \
+    %(ovs_options)s    \
+    %(wrpl_options)s   \
+    %(disa_options)s   \
+    %(decay_options)s  \
+    --model-module %(model_module)s  \
+    %(model_keyword_options)s           \
+    --subset-size "%(subsetsize)dk"          \
+    --augment-size %(augsize)dk   \
+    --deadline 18.0            \
+    --stopfile ${WORKDIR}/stop  \
+    --model-init compose  \
+    --unlabelled %(lcode)s_wp17    \
+    --unlabelled %(lcode)s_cc17    \
+    --subset-filter-keyword max_token_bytes 200  \
+    --labelled   %(tbid)s  \
+    --final-test          \
+    --continue             \
+    --epoch-selection last  \
+    --iterations %(iterations)d  \
+    --workdir ${WORKDIR}  &
+
+SCRIPTDIR=${PRJ_DIR}/scripts
+WORKDIR=${PRJ_DIR}/workdirs/%(name2)s
+
+${SCRIPTDIR}/wrapper-ichec.sh  \
+    ${WORKDIR}                 \
+    ${SCRIPTDIR}               \
+    1                          \
+    --init-seed %(seed2)s       \
+    %(lang_options)s   \
+    %(more_options)s   \
+    %(ovs_options)s    \
+    %(wrpl_options)s   \
+    %(disa_options)s   \
+    %(decay_options)s  \
+    --model-module %(model_module)s  \
+    %(model_keyword_options)s           \
+    --subset-size "%(subsetsize)dk"          \
+    --augment-size %(augsize2)dk   \
+    --deadline 18.0            \
+    --stopfile ${WORKDIR}/stop  \
+    --model-init compose  \
+    --unlabelled %(lcode)s_wp17    \
+    --unlabelled %(lcode)s_cc17    \
+    --subset-filter-keyword max_token_bytes 200  \
+    --labelled   %(tbid)s  \
+    --final-test          \
+    --continue             \
+    --epoch-selection last  \
+    --iterations %(iterations)d  \
+    --workdir ${WORKDIR}  &
+
+wait
+

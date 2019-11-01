@@ -17,13 +17,28 @@ from __future__ import print_function
 
 import os
 
-template = open('run-tri-train.job', 'rb').read()
+if len(sys.argv) > 1 and sys.argv[1] == 'ichec':
+    template = open('template-ichec-2x.job', 'rb').read()
+    augment_offset = 1
+    augment_step = 4
+    gpu_list = [
+        ('v100', 'v100'),
+    ]
+else:
+    template = open('run-tri-train.job', 'rb').read()
+    augment_offset = 0
+    augment_step = 2
+    gpu_list = [
+        ('tesla', 'tesla'),
+        ('rtx',   'rtx2080ti'),
+    ]
 
 if not os.path.exists('jobs'):
     os.mkdir('jobs')
 
-for augment_size_code in range(0,10,2):
+for augment_size_code in range(augment_offset,10,augment_step):
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
+    augsize2 = int(0.5+5*(2.0**0.5)**(augment_size_code+2))
     subsetsize = 16 * augsize
     iterations = int(0.5+2*204.585/augsize)
     for major_code, more_options in [
@@ -32,6 +47,7 @@ for augment_size_code in range(0,10,2):
         #(9, '--learners 9'),
     ]:
         seed = '%d%d' %(major_code, augment_size_code)
+        seed2 = '%d%d' %(major_code, augment_size_code+2)
         for ovs_code, ovs_options in [
             ('-', ''),
             ('o', '--oversample'),
@@ -81,10 +97,8 @@ for augment_size_code in range(0,10,2):
                                 else:
                                     model_keyword_options = '--model-keyword lcode %s' %lcode
                                 name = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed)
-                                for gpu_short, gpu_name in [
-                                    ('tesla', 'tesla'),
-                                    ('rtx',   'rtx2080ti'),
-                                ]:
+                                name2 = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed2)
+                                for gpu_short, gpu_name in gpu_list:
                                     f = open('jobs/%s-%s.job' %(name, gpu_short), 'wb')
                                     f.write(template %locals())
                                     f.close()
