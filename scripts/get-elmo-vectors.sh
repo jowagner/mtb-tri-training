@@ -65,7 +65,7 @@ fi
 
 if [ -n "$EFML_ICHEC_CONDA" ]; then
     module load conda/2
-    source activate ${UDPIPE_FUTURE_ICHEC_CONDA}
+    source activate ${EFML_ICHEC_CONDA}
 fi
 
 if [ -n "$EFML_CONDA" ]; then

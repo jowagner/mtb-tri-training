@@ -33,8 +33,8 @@ case "${SETTING}" in
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
     export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
-    export UDPIPE_FUTURE_ICHEC_CONDA=efml
-    export UDPIPE_FUTURE_LIB_PATH="/ichec/packages/cuda/10.1.243/lib64":"$HOME/cudnn-for-10.1/lib64"
+    export EFML_ICHEC_CONDA=efml
+    export EFML_LIB_PATH="/ichec/packages/cuda/10.1.243/lib64":"$HOME/cudnn-for-10.1/lib64"
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_MAX_CACHE_ENTRIES=100

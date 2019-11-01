@@ -15,7 +15,7 @@ fi
 
 if [ -n "$EFML_ICHEC_CONDA" ]; then
     module load conda/2
-    source activate ${UDPIPE_FUTURE_ICHEC_CONDA}
+    source activate ${EFML_ICHEC_CONDA}
 fi
 
 if [ -n "$EFML_CONDA" ]; then
@@ -27,5 +27,5 @@ if [ -n "$EFML_ENV" ]; then
     source ${EFML_ENV}/bin/activate
 fi
 
-${PRJ_DIR}/scripts/elmo-hdf5-to-npz.py "$@"
+python ${PRJ_DIR}/scripts/elmo-hdf5-to-npz.py "$@"
 
