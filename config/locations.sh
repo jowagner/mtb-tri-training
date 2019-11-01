@@ -22,8 +22,19 @@ if [ -e /etc/os-release ]; then
 fi
 
 case "${SETTING}" in
-"jwagner@n1")
-    export UD_TREEBANK_DIR=/ichec/work/dcu01/jwagner/ud-parsing/ud-treebanks-v2.3
+"jwagner@lo")
+    export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
+    export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
+    export CONLL2017_DIR=${HOME}/data/conll2017/clean
+    export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
+    export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-udpf
+    export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
+    export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
+    export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
+    export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
+    export EFML_MODEL_DIR=${HOME}/elmo
+    export EFML_CACHE_DIR=${HOME}/data/elmo-cache
+    export EFML_MAX_CACHE_ENTRIES=100
     ;;
 "jwagner@bo-scientific-7.6")
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
