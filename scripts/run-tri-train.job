@@ -5,7 +5,7 @@
 #SBATCH -J %(name)s    # name for the job
 #SBATCH -d singleton
 #SBATCH --mem=18000
-#SBATCH --cpus-per-task=6
+#SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
 #SBATCH -N 1-1
 
