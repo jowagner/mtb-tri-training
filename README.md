@@ -10,14 +10,18 @@ Features:
 
 ## New to PIP and virtualenv?
 
+This can be skipped on ICHEC. Due to missing Python header files, some
+non-binary pip packages fail to compile.
+
 ```
-pip3 install --user --upgrade pip
+wget https://bootstrap.pypa.io/get-pip.py
+python3 get-pip.py --user
 pip3 install --user virtualenv
 ```
 
-Append to `.bashrc`:
+Append to `.bashrc` and re-login:
 ```
-# virtualenv installed with `pip install --user`
+# for our own pip and virtualenv:
 export PATH=$HOME/.local/bin:$PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.local/lib
 ```
@@ -39,6 +43,13 @@ source mtb-tri-training/config/locations.sh
 echo $SETTING
 ```
 
+To not have to set `PRJ_DIR` before running any of the tri-training scripts,
+let `$HOME/mtb-tri-training` point to the repository:
+```
+cd
+ln -s /path/to/tri-training/mtb-tri-training/
+```
+
 ## Linear Combiner
 
 ```
@@ -49,6 +60,8 @@ TODO: make a separate release with first accepted paper
 
 ## UDPipe-future
 
+### Using Virtualenv
+
 ```
 git clone git@github.com:CoNLL-UD-2018/UDPipe-Future.git
 cd UDPipe-Future/
@@ -58,13 +71,16 @@ vi venv-udpf/bin/activate
 
 Note: Some of our experiments were run on a second cluster using Python 3.6 instead of 3.7.
 
-Add `LD_LIBRARY_PATH` for a recent CUDA that works with TensorFlow 1.14 to `bin/activate`,
+Add `LD_LIBRARY_PATH` for a recent CUDA with CuDNN
+that works with TensorFlow 1.14 to `bin/activate`,
 e.g.
+on the ADAPT clusters:
 ```
 LD_LIBRARY_PATH=/home/support/nvidia/cuda10/lib64:/home/support/nvidia/cudnn/cuda10_cudnn7_7.5/lib64:"$LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH
 ```
-As in this command, we used CUDA 10.0 and matching CUDNN.
+
+As in the above configuration, we used CUDA 10.0 and matching CuDNN.
 
 ```
 source venv-udpf/bin/activate
@@ -74,6 +90,38 @@ pip install git+https://github.com/andersjo/dependency_decoding
 ```
 
 TODO: Could we use the script provided by udpipe-future? What is the `venv` module that it uses?
+
+### Using Conda
+
+On ICHEC, conda needs to be loaded first:
+```
+module load conda/2
+```
+
+Then:
+```
+conda create --name udpf python=3.7 \
+    tensorflow-gpu==1.14 \
+    cython
+```
+
+If this is the first time using conda on ICHEC, you need to run
+`conda init bash`, re-login, run `conda config --set auto_activate_base false`
+and re-login again.
+
+Then:
+```
+conda activate udpf
+pip install git+https://github.com/andersjo/dependency_decoding
+conda deactivate
+```
+
+If CUDA and CuDNN libraries are not in your library path already, you need to
+set `UDPIPE_FUTURE_LIB_PATH` in `config/locations.sh`, e.g.
+on ICHEC:
+```
+UDPIPE_FUTURE_LIB_PATH="/ichec/packages/cuda/10.0/lib64":"$HOME/cudnn-for-10.0/lib64"
+```
 
 ## FastText Embeddings for UDPipe-future
 
