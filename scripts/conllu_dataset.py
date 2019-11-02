@@ -1,4 +1,14 @@
-#!/usr/bin/env python
+#!/bin/bash
+
+# Workaround for ichec's env not finding python3
+# adapted from
+# https://stackoverflow.com/questions/47882916/how-to-make-the-shebang-be-able-to-choose-the-correct-python-interpreter-between
+""":"
+exec python3 $0 "$@"
+echo "python3 not found" >2
+exit 2
+":"""
+
 # -*- coding: utf-8 -*-
 
 # (C) 2019 Dublin City University
