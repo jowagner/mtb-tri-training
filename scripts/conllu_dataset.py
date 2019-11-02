@@ -177,7 +177,7 @@ def evaluate(prediction_path, gold_path, outname = None):
     if not outname:
         outname = prediction_path[:-7] + '.eval.txt'
     command = []
-    command.append('./conll18_ud_eval.py')
+    command.append('./wrapper-conll18-eval.sh')
     command.append('--output')
     command.append(outname)
     command.append('--verbose')
