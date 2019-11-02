@@ -1,9 +1,5 @@
 #!/bin/bash
   
-   ${WORKDIR}                 \
-    ${SCRIPTDIR}               \
-    0
-
 WORKDIR=$1
 SCRIPTDIR=$2
 CUDA_VISIBLE_DEVICES=$3
