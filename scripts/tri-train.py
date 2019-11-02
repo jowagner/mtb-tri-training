@@ -204,6 +204,15 @@ Options:
                             Can be specified multiple times to specify more
                             than one keyword argument.
 
+    --subset-stratified     Only sample from the next dispreferred level
+                            when the current level is exhaused.
+                            (Default: First sample from most-preferred levels
+                            covering the required number of sentences and, if
+                            needed due to de-duplication and other filters,
+                            sample from the remaining data. This behavior is
+                            depreciated and may be removed from the next
+                            version of this software.)
+
     --augment-size  NUMBER  How many items to add to each learner in each
                             tri-training iteration.
                             If the subset size is too small the augment size
@@ -398,6 +407,7 @@ def main():
     opt_subset_attempts = 5
     opt_allow_oversampling_of_subset = False
     opt_subset_filter_kwargs = {}
+    opt_subset_stratified = False
     opt_augment_size = '10k'
     opt_augment_attempts = 5
     opt_diversify_attempts = 1
@@ -522,6 +532,8 @@ def main():
             opt_subset_filter_kwargs[key] = value
             del sys.argv[1]   # consume two args
             del sys.argv[1]
+        elif option == '--subset-stratified':
+            opt_subset_stratified = True
         elif option == '--augment-size':
             opt_augment_size = sys.argv[1]
             del sys.argv[1]
@@ -874,6 +886,7 @@ def main():
             disprefer = previously_picked,
             sentence_modifier = drop_all_targets,
             sentence_filter = subset_filter,
+            stratified = opt_subset_stratified,
             write_file = subset_path
         )
         print('Size of subset: %d items in %d sentences' %(
@@ -1382,6 +1395,7 @@ def get_subset(
     sentence_modifier = None,
     diversify_attempts = 1,
     disprefer = {},
+    stratified = False,
     sentence_filter = None,
 ):
     candidates = []
@@ -1395,7 +1409,8 @@ def get_subset(
             sentence_modifier = sentence_modifier,
             sentence_filter   = sentence_filter,
             diversify_attempts = diversify_attempts,
-            disprefer = disprefer
+            disprefer = disprefer,
+            stratified = stratified,
         )
         size = candidate.get_number_of_items()
         deviation = abs(size - target_size)

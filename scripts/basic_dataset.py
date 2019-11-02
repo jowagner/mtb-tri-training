@@ -322,6 +322,7 @@ class Sample(Dataset):
         sentence_filter   = None,
         diversify_attempts = 1,
         disprefer = {},
+        stratified = False,
     ):
         if size and percentage:
             raise ValueError('Must not specify both size and percentage.')
@@ -335,9 +336,10 @@ class Sample(Dataset):
         self.reset_sample(
             rng, size, diversify_attempts, disprefer,
             unique_sentences,
+            stratified,
         )
 
-    def _get_preferred_d_indices(self, d_size, size, disprefer):
+    def _get_preferred_d_indices(self, d_size, size, disprefer, stratified = False):
         ''' size is the target size,
             d_size is the size of the existing dataset
         '''
@@ -361,7 +363,13 @@ class Sample(Dataset):
         # select as much data as needed
         # starting with the lowest levels
         retval = []
-        level = 0
+        if stratified:
+            # make sure the first and only iteration of the while loop
+            # below when stratified is true adds at least 1 item to
+            # retval
+            level = min(level2indices.keys())
+        else:
+            level = 0
         # TODO: when filtering and/or rejecting duplicates, we may need
         #       more data but currently we are shuffling the data after
         #       calling this function, meaning that we must not return
@@ -374,14 +382,23 @@ class Sample(Dataset):
                 indices = []
             retval += indices
             level += 1
+            if stratified:
+                break
         extra_data = []
         while level <= max_level:
             try:
                 indices = level2indices[level]
             except KeyError:
                 indices = []
-            extra_data += indices
+            if stratified and indices:
+                extra_data.append(indices)
+            else:
+                extra_data += indices
             level += 1
+        if not stratified:
+            new_extra_data = []
+            new_extra_data.append(extra_data)
+            extra_data = new_extra_data
         return retval, extra_data
 
     def reset_sample(
@@ -389,6 +406,7 @@ class Sample(Dataset):
         diversify_attempts = 1,
         disprefer = {},
         unique_sentences = False,
+        stratified = False,
     ):
         if self.with_replacement and disprefer:
             # not clear how this should be implemented,
@@ -402,14 +420,15 @@ class Sample(Dataset):
             # TODO: This may not be enough data when filtering sentences
             #       with long tokens and/or rejecting duplicated.
             permutation, extra_data = self._get_preferred_d_indices(
-                d_size, size, disprefer
+                d_size, size, disprefer, stratified
             )
             p_size = len(permutation)
             rng.shuffle(permutation)
         else:
             p_size = -1
-        print('Sampling %s: %d target size, %d dataset size, %d permutation size (-1 = with replacement), %d dispreferred items, %d diversify_attempts, unique_sentences = %r' %(
+        print('Sampling %s: %d target size, %d dataset size, %d permutation size, stratified is %r, %d dispreferred items, %d diversify_attempts, unique_sentences is %r' %(
             time.ctime(time.time()), size, d_size, p_size,
+            stratified,
             len(disprefer), diversify_attempts, unique_sentences
         ))
         self.sentences = []
@@ -434,8 +453,10 @@ class Sample(Dataset):
                               attempt + filtered + \
                               rejected - remaining
                     if extra_data and p_index >= p_size:
-                        rng.shuffle(extra_data)
-                        permutation += extra_data
+                        e_data = extra_data[0]
+                        del extra_data[0]
+                        rng.shuffle(e_data)
+                        permutation += e_data
                         old_p_size = p_size
                         p_size = len(permutation)
                         extra_data = None
@@ -466,6 +487,11 @@ class Sample(Dataset):
                 if self.sentence_filter(self[-1]):
                     del self.sentences[-1]
                     filtered += 1
+                    if disprefer:
+                        # push item far down the list but not too far as
+                        # _get_preferred_d_indices() iterates over the full
+                        # range(min, max) of values
+                        disprefer[dindex] += 9
                     continue
             if unique_sentences:
                 # check that the new sentence is different from all so far:
@@ -476,6 +502,11 @@ class Sample(Dataset):
                 if candidate in so_far:
                     del self.sentences[-1]
                     rejected += 1
+                    if disprefer:
+                        # push item far down the list but not too far as
+                        # _get_preferred_d_indices() iterates over the full
+                        # range(min, max) of values
+                        disprefer[dindex] += 9
                     continue
                 so_far[candidate] = None
             remaining -= 1

@@ -19,6 +19,7 @@ ${SCRIPTDIR}/wrapper-ichec.sh  \
     ${WORKDIR}                 \
     ${SCRIPTDIR}               \
     0                          \
+    --subset-stratified        \
     --init-seed %(seed)s       \
     %(lang_options)s   \
     %(more_options)s   \
@@ -50,6 +51,7 @@ ${SCRIPTDIR}/wrapper-ichec.sh  \
     ${WORKDIR}                 \
     ${SCRIPTDIR}               \
     1                          \
+    --subset-stratified        \
     --init-seed %(seed2)s       \
     %(lang_options)s   \
     %(more_options)s   \
