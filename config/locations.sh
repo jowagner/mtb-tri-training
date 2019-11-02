@@ -28,6 +28,7 @@ case "${SETTING}" in
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
     export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
     export CONDA_HOME=/ichec/packages/conda/2
+    export PYTHON3_ICHEC_CONDA=python3
     export UDPIPE_FUTURE_ICHEC_CONDA=udpf
     export UDPIPE_FUTURE_LIB_PATH="/ichec/packages/cuda/10.0/lib64":"$HOME/cudnn-for-10.0/lib64"
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
