@@ -491,7 +491,7 @@ class Sample(Dataset):
                         # push item far down the list but not too far as
                         # _get_preferred_d_indices() iterates over the full
                         # range(min, max) of values
-                        disprefer[dindex] += 9
+                        disprefer[d_index] += 9
                     continue
             if unique_sentences:
                 # check that the new sentence is different from all so far:
@@ -506,7 +506,7 @@ class Sample(Dataset):
                         # push item far down the list but not too far as
                         # _get_preferred_d_indices() iterates over the full
                         # range(min, max) of values
-                        disprefer[dindex] += 9
+                        disprefer[d_index] += 9
                     continue
                 so_far[candidate] = None
             remaining -= 1
