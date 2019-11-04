@@ -839,7 +839,7 @@ def main():
         all_prediction_paths = all_prediction_paths,
         all_prediction_fingerprints = all_prediction_fingerprints,
         opt_cumulative_ensemble = opt_cumulative_ensemble,
-        opt_verbose = opt_verbose
+        opt_verbose = opt_verbose,
         opt_tolerant = opt_tolerant,
     )
 
