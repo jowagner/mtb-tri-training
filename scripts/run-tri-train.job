@@ -52,6 +52,7 @@ cd ${SCRIPTDIR}
     --labelled   %(tbid)s  \
     --final-test          \
     --continue             \
+    --tolerant              \
     --epoch-selection last  \
     --iterations %(iterations)d  \
     --workdir ${WORKDIR}     \

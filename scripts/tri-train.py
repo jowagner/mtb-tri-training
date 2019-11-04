@@ -345,7 +345,12 @@ Options:
                             (default: abort if intermediate output files are
                             found)
 
-
+    --tolerant              Use existing models even when the training input
+                            fingerprint does not match. In case of multiple
+                            matching models, use the newest. Requires scanning
+                            of all entries in the workdir.
+                            (Default: Only re-use models when the name matches
+                            exactly.)
 """)
 
 
@@ -423,6 +428,7 @@ def main():
     opt_max_selection_size = '50k'
     opt_selection_attempts = 5
     opt_continue = False
+    opt_tolerant = False
     opt_max_teacher_disagreement_fraction = 0.0
     opt_min_teacher_agreements   = 0
     opt_min_learner_disagreement = 0     # 1 = tri-training with disagreement
@@ -581,6 +587,8 @@ def main():
             del sys.argv[1]
         elif option == '--continue':
             opt_continue = True
+        elif option == '--tolerant':
+            opt_tolerant = True
         elif option == '--verbose':
             opt_verbose = True
         elif option == '--debug':
@@ -801,6 +809,7 @@ def main():
             opt_deadline = opt_deadline,
             opt_stopfile = opt_stopfile,
             opt_model_kwargs = opt_model_kwargs,
+            opt_tolerant = opt_tolerant,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -814,6 +823,7 @@ def main():
         monitoring_datasets = monitoring_datasets,
         deadline = opt_deadline, stopfile = opt_stopfile,
         opt_model_kwargs = opt_model_kwargs,
+        opt_tolerant = opt_tolerant,
     )
 
     # evaluate models using all dev sets (and test sets if --final-test)
@@ -830,6 +840,7 @@ def main():
         all_prediction_fingerprints = all_prediction_fingerprints,
         opt_cumulative_ensemble = opt_cumulative_ensemble,
         opt_verbose = opt_verbose
+        opt_tolerant = opt_tolerant,
     )
 
     drop_all_targets = basic_dataset.SentenceDropout(
@@ -865,6 +876,7 @@ def main():
                 opt_deadline = opt_deadline,
                 opt_stopfile = opt_stopfile,
                 opt_model_kwargs = opt_model_kwargs,
+                opt_tolerant = opt_tolerant,
             )
         if opt_init_seed:
             random.seed(int(hashlib.sha512('round %d: %s' %(
@@ -911,6 +923,7 @@ def main():
             filename_extension = filename_extension,
             opt_continue = opt_continue,
             opt_manually_predict = opt_manually_predict,
+            opt_tolerant = opt_tolerant,
         )
         if opt_quit_after_prediction:
             print('\n*** Manual intervention requested. ***\n')
@@ -1087,6 +1100,7 @@ def main():
             monitoring_datasets = monitoring_datasets,
             deadline = opt_deadline, stopfile = opt_stopfile,
             opt_model_kwargs = opt_model_kwargs,
+            opt_tolerant = opt_tolerant,
         )
 
         print('\nEvaluating new models:')
@@ -1104,9 +1118,9 @@ def main():
             all_prediction_paths = all_prediction_paths,
             all_prediction_fingerprints = all_prediction_fingerprints,
             opt_cumulative_ensemble = opt_cumulative_ensemble,
+            opt_tolerant = opt_tolerant,
             opt_verbose = opt_verbose
         )
-
 
     print('\n== Final Model ==\n')
     # TODO
@@ -1134,6 +1148,7 @@ def make_predictions(
     opt_verbose = False,
     prefix = '',
     deadline = None, stopfile = None,
+    opt_tolerant = False,
 ):
     ''' makes predictions for the given dataet for all learners
     '''
@@ -1195,6 +1210,7 @@ def evaluate(
     opt_cumulative_ensemble = False,
     prefix = '',
     deadline = None, stopfile = None,
+    opt_tolerant = False,
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -1216,6 +1232,7 @@ def evaluate(
                 opt_verbose = opt_verbose,
                 prefix = prefix,
                 deadline = deadline, stopfile = stopfile,
+                opt_tolerant = opt_tolerant,
             )
             gold_path = dataset.filename
             if gold_path not in all_prediction_paths:
@@ -1284,6 +1301,7 @@ def train_and_evaluate_baselines(
     opt_cumulative_ensemble,
     opt_deadline, opt_stopfile,
     opt_model_kwargs = {},
+    opt_tolerant = False,
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -1295,6 +1313,7 @@ def train_and_evaluate_baselines(
         prefix = 'baseline-',
         deadline = opt_deadline, stopfile = opt_stopfile,
         opt_model_kwargs = opt_model_kwargs,
+        opt_tolerant = opt_tolerant,
     )
     evaluate(
         models,
@@ -1311,6 +1330,7 @@ def train_and_evaluate_baselines(
         opt_cumulative_ensemble = opt_cumulative_ensemble,
         prefix = 'baseline-',
         deadline = opt_deadline, stopfile = opt_stopfile,
+        opt_tolerant = opt_tolerant,
     )
 
 def hex2base62(h):
@@ -1653,6 +1673,7 @@ def train_models(
     prefix = '',
     deadline = None, stopfile = None,
     opt_model_kwargs = {},
+    opt_tolerant = False,
 ):
     retval = []
     manual_training_needed = []
@@ -1679,6 +1700,19 @@ def train_models(
         print('Model path:', model_path)
         # choose model for learner
         model_module = model_modules[learner_index % len(model_modules)]
+        if opt_tolerant and not os.path.exists(model_path):
+            best_mtime = -1.0
+            for entry in os.listdir(opt_workdir):
+                if not entry.startswith(prefix+'model-'):
+                    continue
+                fields = entry[len(prefix+'model-'):].split('-')
+                if len(fields) != 3:
+                    continue
+                candidate_path = '%s/%s' %(opt_workdir, entry)
+                mtime = os.path.getmtime(candidate_path)
+                if mtime > best_mtime:
+                    model_path = candidate_path
+                    best_mtime = mtime
         if os.path.exists(model_path):
             if not opt_continue:
                 raise ValueError(
