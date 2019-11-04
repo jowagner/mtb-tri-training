@@ -1713,6 +1713,8 @@ def train_models(
                 if mtime > best_mtime:
                     model_path = candidate_path
                     best_mtime = mtime
+            if best_mtime >= 0.0:
+                print('Adjusted model path to existing model %r' %model_path)
         if os.path.exists(model_path):
             if not opt_continue:
                 raise ValueError(
