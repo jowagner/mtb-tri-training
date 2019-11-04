@@ -417,8 +417,6 @@ class Sample(Dataset):
         if size is None:
             size = d_size
         if not self.with_replacement:
-            # TODO: This may not be enough data when filtering sentences
-            #       with long tokens and/or rejecting duplicated.
             permutation, extra_data = self._get_preferred_d_indices(
                 d_size, size, disprefer, stratified
             )
@@ -426,10 +424,11 @@ class Sample(Dataset):
             rng.shuffle(permutation)
         else:
             p_size = -1
-        print('Sampling %s: %d target size, %d dataset size, %d permutation size, stratified is %r, %d dispreferred items, %d diversify_attempts, unique_sentences is %r' %(
+        print('Sampling %s: %d target size, %d dataset size, %d permutation size, stratified is %r, %d dispreferred items, %d diversify_attempts, unique_sentences is %r, %d extra strata available' %(
             time.ctime(time.time()), size, d_size, p_size,
             stratified,
-            len(disprefer), diversify_attempts, unique_sentences
+            len(disprefer), diversify_attempts, unique_sentences,
+            len(extra_data)
         ))
         self.sentences = []
         remaining = size
@@ -439,7 +438,7 @@ class Sample(Dataset):
         if unique_sentences:
             so_far = {}
         last_verbose = time.time()
-        interval = 0.1
+        interval = 5.0
         while remaining:
             candidates = []
             for attempt in range(diversify_attempts):
@@ -491,7 +490,10 @@ class Sample(Dataset):
                         # push item far down the list but not too far as
                         # _get_preferred_d_indices() iterates over the full
                         # range(min, max) of values
-                        disprefer[d_index] += 9
+                        try:
+                            disprefer[d_index] += 9
+                        except KeyError:
+                            disprefer[d_index] = 9
                     continue
             if unique_sentences:
                 # check that the new sentence is different from all so far:
@@ -506,7 +508,10 @@ class Sample(Dataset):
                         # push item far down the list but not too far as
                         # _get_preferred_d_indices() iterates over the full
                         # range(min, max) of values
-                        disprefer[d_index] += 9
+                        try:
+                            disprefer[d_index] += 9
+                        except KeyError:
+                            disprefer[d_index] = 9
                     continue
                 so_far[candidate] = None
             remaining -= 1
