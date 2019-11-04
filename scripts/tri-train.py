@@ -1706,15 +1706,22 @@ def train_models(
                 if not entry.startswith(prefix+'model-'):
                     continue
                 fields = entry[len(prefix+'model-'):].split('-')
+                # exclude path with -incomplete or -oom* suffix
                 if len(fields) != 3:
                     continue
+                # check that round and learner match
+                if fields[0] != ('%02d' %training_round):
+                    continue
+                if fields[1] != ('%d' %learner_rank):
+                    continue
+                # found a candidate
                 candidate_path = '%s/%s' %(opt_workdir, entry)
                 mtime = os.path.getmtime(candidate_path)
                 if mtime > best_mtime:
                     model_path = candidate_path
                     best_mtime = mtime
             if best_mtime >= 0.0:
-                print('Adjusted model path to existing model %r' %model_path)
+                print('Adjusting model path to existing model %r' %model_path)
         if os.path.exists(model_path):
             if not opt_continue:
                 raise ValueError(
