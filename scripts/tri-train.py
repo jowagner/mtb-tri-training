@@ -351,6 +351,12 @@ Options:
                             of all entries in the workdir.
                             (Default: Only re-use models when the name matches
                             exactly.)
+
+    --rename-dispensable    When scanning for models with --tolerant, add the
+                            suffix "-dispensable" to all model files or
+                            directories older than the newest. It should be
+                            safe to delete these.
+                            (Default: Do not rename models.)
 """)
 
 
@@ -429,6 +435,7 @@ def main():
     opt_selection_attempts = 5
     opt_continue = False
     opt_tolerant = False
+    opt_rename_dispensable = False
     opt_max_teacher_disagreement_fraction = 0.0
     opt_min_teacher_agreements   = 0
     opt_min_learner_disagreement = 0     # 1 = tri-training with disagreement
@@ -589,6 +596,8 @@ def main():
             opt_continue = True
         elif option == '--tolerant':
             opt_tolerant = True
+        elif option == '--rename-dispensable':
+            opt_rename_dispensable = True
         elif option == '--verbose':
             opt_verbose = True
         elif option == '--debug':
@@ -810,6 +819,7 @@ def main():
             opt_stopfile = opt_stopfile,
             opt_model_kwargs = opt_model_kwargs,
             opt_tolerant = opt_tolerant,
+            opt_rename_dispensable = opt_rename_dispensable,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -824,6 +834,7 @@ def main():
         deadline = opt_deadline, stopfile = opt_stopfile,
         opt_model_kwargs = opt_model_kwargs,
         opt_tolerant = opt_tolerant,
+        opt_rename_dispensable = opt_rename_dispensable,
     )
 
     # evaluate models using all dev sets (and test sets if --final-test)
@@ -841,6 +852,7 @@ def main():
         opt_cumulative_ensemble = opt_cumulative_ensemble,
         opt_verbose = opt_verbose,
         opt_tolerant = opt_tolerant,
+        opt_rename_dispensable = opt_rename_dispensable,
     )
 
     drop_all_targets = basic_dataset.SentenceDropout(
@@ -877,6 +889,7 @@ def main():
                 opt_stopfile = opt_stopfile,
                 opt_model_kwargs = opt_model_kwargs,
                 opt_tolerant = opt_tolerant,
+                opt_rename_dispensable = opt_rename_dispensable,
             )
         if opt_init_seed:
             random.seed(int(hashlib.sha512('round %d: %s' %(
@@ -924,6 +937,7 @@ def main():
             opt_continue = opt_continue,
             opt_manually_predict = opt_manually_predict,
             opt_tolerant = opt_tolerant,
+            opt_rename_dispensable = opt_rename_dispensable,
         )
         if opt_quit_after_prediction:
             print('\n*** Manual intervention requested. ***\n')
@@ -1101,6 +1115,7 @@ def main():
             deadline = opt_deadline, stopfile = opt_stopfile,
             opt_model_kwargs = opt_model_kwargs,
             opt_tolerant = opt_tolerant,
+            opt_rename_dispensable = opt_rename_dispensable,
         )
 
         print('\nEvaluating new models:')
@@ -1119,6 +1134,7 @@ def main():
             all_prediction_fingerprints = all_prediction_fingerprints,
             opt_cumulative_ensemble = opt_cumulative_ensemble,
             opt_tolerant = opt_tolerant,
+            opt_rename_dispensable = opt_rename_dispensable,
             opt_verbose = opt_verbose
         )
 
@@ -1148,7 +1164,7 @@ def make_predictions(
     opt_verbose = False,
     prefix = '',
     deadline = None, stopfile = None,
-    opt_tolerant = False,
+    opt_tolerant = False, opt_rename_dispensable = False,
 ):
     ''' makes predictions for the given dataet for all learners
     '''
@@ -1210,7 +1226,7 @@ def evaluate(
     opt_cumulative_ensemble = False,
     prefix = '',
     deadline = None, stopfile = None,
-    opt_tolerant = False,
+    opt_tolerant = False, opt_rename_dispensable = False,
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -1233,6 +1249,7 @@ def evaluate(
                 prefix = prefix,
                 deadline = deadline, stopfile = stopfile,
                 opt_tolerant = opt_tolerant,
+                opt_rename_dispensable = opt_rename_dispensable,
             )
             gold_path = dataset.filename
             if gold_path not in all_prediction_paths:
@@ -1301,7 +1318,7 @@ def train_and_evaluate_baselines(
     opt_cumulative_ensemble,
     opt_deadline, opt_stopfile,
     opt_model_kwargs = {},
-    opt_tolerant = False,
+    opt_tolerant = False, opt_rename_dispensable = False,
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -1314,6 +1331,7 @@ def train_and_evaluate_baselines(
         deadline = opt_deadline, stopfile = opt_stopfile,
         opt_model_kwargs = opt_model_kwargs,
         opt_tolerant = opt_tolerant,
+        opt_rename_dispensable = opt_rename_dispensable,
     )
     evaluate(
         models,
@@ -1331,6 +1349,7 @@ def train_and_evaluate_baselines(
         prefix = 'baseline-',
         deadline = opt_deadline, stopfile = opt_stopfile,
         opt_tolerant = opt_tolerant,
+        opt_rename_dispensable = opt_rename_dispensable,
     )
 
 def hex2base62(h):
@@ -1673,7 +1692,7 @@ def train_models(
     prefix = '',
     deadline = None, stopfile = None,
     opt_model_kwargs = {},
-    opt_tolerant = False,
+    opt_tolerant = False, opt_rename_dispensable = False,
 ):
     retval = []
     manual_training_needed = []
@@ -1701,7 +1720,7 @@ def train_models(
         # choose model for learner
         model_module = model_modules[learner_index % len(model_modules)]
         if opt_tolerant and not os.path.exists(model_path):
-            best_mtime = -1.0
+            found_match = False
             for entry in os.listdir(opt_workdir):
                 if not entry.startswith(prefix+'model-'):
                     continue
@@ -1717,10 +1736,15 @@ def train_models(
                 # found a candidate
                 candidate_path = '%s/%s' %(opt_workdir, entry)
                 mtime = os.path.getmtime(candidate_path)
-                if mtime > best_mtime:
+                if (not found_match) or mtime > best_mtime:
+                    if found_match and opt_rename_dispensable:
+                        os.rename(model_path, model_path + '-dispensable')
                     model_path = candidate_path
                     best_mtime = mtime
-            if best_mtime >= 0.0:
+                    found_match = True
+                elif opt_rename_dispensable:
+                    os.rename(candidate_path, candidate_path + '-dispensable')
+            if found_match:
                 print('Adjusting model path to existing model %r' %model_path)
         if os.path.exists(model_path):
             if not opt_continue:

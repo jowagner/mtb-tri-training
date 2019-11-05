@@ -53,6 +53,7 @@ cd ${SCRIPTDIR}
     --final-test          \
     --continue             \
     --tolerant              \
+    --rename-dispensable    \
     --epoch-selection last  \
     --iterations %(iterations)d  \
     --workdir ${WORKDIR}     \
