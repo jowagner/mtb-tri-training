@@ -323,6 +323,7 @@ class Sample(Dataset):
         diversify_attempts = 1,
         disprefer = {},
         stratified = False,
+        keep_order = False,
     ):
         if size and percentage:
             raise ValueError('Must not specify both size and percentage.')
@@ -333,6 +334,7 @@ class Sample(Dataset):
         self.sentence_modifier = sentence_modifier
         self.sentence_filter   = sentence_filter
         self.with_replacement  = with_replacement
+        self.keep_order        = keep_order
         self.reset_sample(
             rng, size, diversify_attempts, disprefer,
             unique_sentences,
@@ -413,6 +415,11 @@ class Sample(Dataset):
             # e.g. with what probability dispreferred
             # items should be picked
             raise NotImplementedError
+        if self.keep_order and self.with_replacement:
+            # this could be implemented by recording
+            # the original index when sampling and
+            # sorting the sample when finished
+            raise NotImplementedError
         d_size = len(self.dataset)
         if size is None:
             size = d_size
@@ -421,7 +428,8 @@ class Sample(Dataset):
                 d_size, size, disprefer, stratified
             )
             p_size = len(permutation)
-            rng.shuffle(permutation)
+            if not self.keep_order:
+                rng.shuffle(permutation)
         else:
             p_size = -1
         print('Sampling %s: %d target size, %d dataset size, %d permutation size, stratified is %r, %d dispreferred items, %d diversify_attempts, unique_sentences is %r, %d extra strata available' %(
@@ -454,7 +462,8 @@ class Sample(Dataset):
                     if extra_data and p_index >= p_size:
                         e_data = extra_data[0]
                         del extra_data[0]
-                        rng.shuffle(e_data)
+                        if not self.keep_order:
+                            rng.shuffle(e_data)
                         permutation += e_data
                         old_p_size = p_size
                         p_size = len(permutation)
