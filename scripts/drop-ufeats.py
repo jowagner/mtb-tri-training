@@ -6,7 +6,7 @@ import sys
 import basic_dataset
 import conllu_dataset
 
-ufeats_column = 3
+ufeats_column = 5
 
 def main():
     random.seed(42)
@@ -22,7 +22,7 @@ def main():
         with_replacement = False,
         keep_order = True,
     )
-    dateset.save_to_file(sys.stdout)
+    dataset.save_to_file(sys.stdout)
 
 if __name__ == "__main__":
     main()
