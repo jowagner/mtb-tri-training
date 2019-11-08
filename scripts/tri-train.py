@@ -274,6 +274,9 @@ Options:
                                    replacement)
                             dev+remaining = concatenation of dev and remaining
                             9010 = split seed data 90:10 into train and dev
+                                   (TODO: Add code to make sure sentences that
+                                   have been sampled multiple times are only
+                                   added to one of the sets.)
                             (Default: Select epoch using dev+remaining and
                             use last tri-training iteration for final models.)
 
