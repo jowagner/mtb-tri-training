@@ -40,6 +40,8 @@ ${SCRIPTDIR}/wrapper-ichec.sh  \
     --labelled   %(tbid)s  \
     --final-test          \
     --continue             \
+    --tolerant              \
+    --rename-dispensable    \
     --epoch-selection last  \
     --iterations %(iterations)d  \
     --workdir ${WORKDIR}  &
@@ -72,6 +74,8 @@ ${SCRIPTDIR}/wrapper-ichec.sh  \
     --labelled   %(tbid)s  \
     --final-test          \
     --continue             \
+    --tolerant              \
+    --rename-dispensable    \
     --epoch-selection last  \
     --iterations %(iterations)d  \
     --workdir ${WORKDIR}  &
