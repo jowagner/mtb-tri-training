@@ -437,7 +437,7 @@ class Sample(Dataset):
             stratified,
             len(disprefer), diversify_attempts, unique_sentences,
             len(extra_data)
-        ))
+        ), file=sys.stderr)
         self.sentences = []
         remaining = size
         rejected = 0
@@ -470,7 +470,7 @@ class Sample(Dataset):
                         extra_data = None
                         print('Sampling %s: extended %d permutation size to %d' %(
                             time.ctime(time.time()), old_p_size, p_size
-                        ))
+                        ), file=sys.stderr)
                     d_index = permutation[p_index % p_size]
                 if diversify_attempts == 1 or not self.sentences:
                     # no choice
@@ -487,7 +487,7 @@ class Sample(Dataset):
                     print('Sampling %s: %d left, %d rejected, %d filtered, %d target size, %d dataset size, %d permutation size' %(
                         time.ctime(time.time()), remaining, rejected, filtered,
                         size, d_size, p_size,
-                    ))
+                    ), file=sys.stderr)
                     sys.stdout.flush()
                     last_verbose = time.time()
                     interval *= 2.0

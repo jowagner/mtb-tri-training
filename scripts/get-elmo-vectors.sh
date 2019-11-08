@@ -90,15 +90,19 @@ test -e ${MODEL} || exit 1
 # shorten the string as the tool will append ".ly${LAYER}.hdf5 afterwards"
 TMP_TOKREPFILE=${OUTPUTDIR}/$(basename ${HDF5_NAME} .hdf5)
 
-# echo "Running ELMoForManyLangs on ${INFILE}"
+echo "Running ELMoForManyLangs on ${INFILE} to produce ${TMP_TOKREPFILE}.ly${LAYER}.hdf5"
 cd ${EFML_TOOL_DIR}
-python -m elmoformanylangs test  \
+if ! python -m elmoformanylangs test  \
     --input_format conll           \
     --input ${INFILE}                \
     --model ${MODEL}                  \
     --output_prefix ${TMP_TOKREPFILE}  \
     --output_format hdf5               \
     --output_layer ${LAYER}
+then
+    echo "An error occured"
+    exit 1
+fi
 
 mv ${TMP_TOKREPFILE}*ly${LAYER}.hdf5 ${OUTPUTDIR}/${HDF5_NAME}
 
