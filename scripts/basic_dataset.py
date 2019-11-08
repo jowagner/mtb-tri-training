@@ -8,6 +8,8 @@
 
 # Author: Joachim Wagner
 
+from __future__ import print_function
+
 import collections
 import hashlib
 import random
