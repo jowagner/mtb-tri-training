@@ -41,7 +41,6 @@ for augment_size_code in range(augment_offset,10,augment_step):
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
     augsize2 = int(0.5+5*(2.0**0.5)**(augment_size_code+2))
     subsetsize = 16 * augsize
-    iterations = int(0.5+2*204.585/augsize)
     for major_code, more_options in [
         (3, ''),
         #(5, '--learners 5'),
@@ -70,16 +69,17 @@ for augment_size_code in range(augment_offset,10,augment_step):
                     ]:
                         if decay_code != '-' and augment_size_code < 6:
                             continue
-                        for short_lcode, lcode, tbid, lang_options in [
-                            #('c', 'cs', 'cs_pdt', '--simulate-size 20k --simulate-seed 42'),
-                            #('d', 'de', 'de_gsd', '--simulate-size 20k --simulate-seed 42'),
-                            ('e', 'en', 'en_ewt', '--simulate-size 20k --simulate-seed 42'),
-                            #('f', 'fr', 'fr_gsd', ''),
-                            #('g', 'ga', 'ga_9010idt', ''),
-                            ('h', 'hu', 'hu_szeged', ''),
-                            ('u', 'ug', 'ug_udt', ''),
-                            ('v', 'vi', 'vi_vtb', ''),
+                        for short_lcode, lcode, tbid, unlabelled_size, lang_options in [
+                            #'c', 'cs', 'cs_pdt',    160444000, '--simulate-size 20k --simulate-seed 42'),
+                            #'d', 'de', 'de_gsd',    160444000, '--simulate-size 20k --simulate-seed 42'),
+                            ('e', 'en', 'en_ewt',    153878772, '--simulate-size 20k --simulate-seed 42'),
+                            #'f', 'fr', 'fr_gsd',    160444000, ''),
+                            #'g', 'ga', 'ga_9010idt', 20462403, ''),
+                            ('h', 'hu', 'hu_szeged', 168359253, ''),
+                            ('u', 'ug', 'ug_udt',      2537468, ''),
+                            ('v', 'vi', 'vi_vtb',    189658820, ''),
                         ]:
+                            iterations = min(24, int(0.5+0.002*unlabelled_size/augsize))
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
                                 ('f', 'udpipe_future'),
