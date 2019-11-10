@@ -357,7 +357,8 @@ Options:
 
     --rename-dispensable    When scanning for models with --tolerant, add the
                             suffix "-dispensable" to all model files or
-                            directories older than the newest. It should be
+                            directories older than the newest, or, if an exact
+                            match is found, any other model. It should be
                             safe to delete these.
                             (Default: Do not rename models.)
 """)
@@ -1722,8 +1723,9 @@ def train_models(
         print('Model path:', model_path)
         # choose model for learner
         model_module = model_modules[learner_index % len(model_modules)]
-        if opt_tolerant and not os.path.exists(model_path):
+        if opt_tolerant:
             found_match = False
+            exact_model_path = model_path
             for entry in os.listdir(opt_workdir):
                 if not entry.startswith(prefix+'model-'):
                     continue
@@ -1738,12 +1740,17 @@ def train_models(
                     continue
                 # found a candidate
                 candidate_path = '%s/%s' %(opt_workdir, entry)
-                mtime = os.path.getmtime(candidate_path)
-                if (not found_match) or mtime > best_mtime:
+                if candidate_path == exact_model_path:
+                    # always prefer exactly matching models
+                    priority = (1, 0)
+                else:
+                    # for non-exact matches, prefer the newest model
+                    priority = (0, os.path.getmtime(candidate_path))
+                if (not found_match) or priority > best_priority:
                     if found_match and opt_rename_dispensable:
                         os.rename(model_path, model_path + '-dispensable')
                     model_path = candidate_path
-                    best_mtime = mtime
+                    best_priority = priority
                     found_match = True
                 elif opt_rename_dispensable:
                     os.rename(candidate_path, candidate_path + '-dispensable')
