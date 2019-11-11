@@ -1233,7 +1233,7 @@ def make_predictions(
                 truncated_entry = entry[len(prefix+'prediction-'):]
                 if filename_extension:
                     truncated_entry = truncated_entry[:-len(filename_extension)]
-                fields = entry[truncated_entry].split('-')
+                fields = truncated_entry.split('-')
                 # exclude path with -incomplete or similar suffix,
                 # i.e. last component is not a 20-character fingerprint
                 if len(fields[-1]) != fingerprint_length:
