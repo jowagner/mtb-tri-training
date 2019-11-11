@@ -348,7 +348,8 @@ Options:
                             (default: abort if intermediate output files are
                             found)
 
-    --tolerant              Use existing models even when the training input
+    --tolerant              Use existing models, subsets and (some)
+                            predictions even when the training input
                             fingerprint does not match. In case of multiple
                             matching models, use the newest. Requires scanning
                             of all entries in the workdir.
@@ -906,28 +907,52 @@ def main():
         else:
             target_size = min(opt_subset_size, unlabelled_data.get_number_of_items())
         subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
-        unlabelled_subset = get_subset(
-            unlabelled_data, target_size,
-            random, opt_subset_attempts,
-            with_replacement = False,
-            unique_sentences = True,
-            diversify_attempts = opt_diversify_attempts,
-            disprefer = previously_picked,
-            sentence_modifier = drop_all_targets,
-            sentence_filter = subset_filter,
-            stratified = opt_subset_stratified,
-            write_file = subset_path
-        )
+        subset_index = '%s/subset-%02d.indices' %(opt_workdir, training_round)
+        if opt_tolerant \
+        and os.path.exists(subset_index) \
+        and os.path.exists(subset_path):
+            print('Re-using existing subset file')
+            unlabelled_subset = basic_dataset.load_or_map_from_filename(
+                dataset_module.new_empty_set(),
+                subset_path
+            )
+            f = open(subset_index, 'rb')
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                d_index = int(line)
+                try:
+                    previously_picked[d_index] += 1
+                except KeyError:
+                    previously_picked[d_index] = 1
+            f.close()
+        else:
+            unlabelled_subset = get_subset(
+                unlabelled_data, target_size,
+                random, opt_subset_attempts,
+                with_replacement = False,
+                unique_sentences = True,
+                diversify_attempts = opt_diversify_attempts,
+                disprefer = previously_picked,
+                sentence_modifier = drop_all_targets,
+                sentence_filter = subset_filter,
+                stratified = opt_subset_stratified,
+                write_file = subset_path
+            )
+            f = open(subset_index, 'wb')
+            for d_index in unlabelled_subset.indices():
+                try:
+                    previously_picked[d_index] += 1
+                except KeyError:
+                    previously_picked[d_index] = 1
+                f.write('%d\n' %d_index)
+            f.close()
         print('Size of subset: %d items in %d sentences' %(
             unlabelled_subset.get_number_of_items(),
             len(unlabelled_subset)
         ))
         sys.stdout.flush()
-        for d_index in unlabelled_subset.indices():
-            try:
-                previously_picked[d_index] += 1
-            except KeyError:
-                previously_picked[d_index] = 1
 
         print('\nMaking predictions:')
         sys.stdout.flush()
@@ -1169,9 +1194,12 @@ def make_predictions(
     prefix = '',
     deadline = None, stopfile = None,
     opt_tolerant = False, opt_rename_dispensable = False,
+    fingerprint_length = 20,
 ):
     ''' makes predictions for the given dataet for all learners
     '''
+    if fingerprint_length <= len('dispensable'):
+        raise ValueError('Too short fingerprint that can be confused with suffixes')
     manual_prediction_needed = []
     predictions = []
     if dataset_name:
@@ -1190,9 +1218,62 @@ def make_predictions(
                 opt_workdir, prefix,
                 training_round, learner_rank,
                 dataset_name,
-                prediction_fingerprint[:20], filename_extension
+                prediction_fingerprint[:fingerprint_length],
+                filename_extension,
         )
         print('Prediction output path:', prediction_path)
+        if opt_tolerant:
+            found_match = False
+            exact_prediction_path = prediction_path
+            for entry in os.listdir(opt_workdir):
+                if filename_extension and not entry.endswith(filename_extension):
+                    continue
+                if not entry.startswith(prefix+'prediction-'):
+                    continue
+                truncated_entry = entry[len(prefix+'prediction-'):]
+                if filename_extension:
+                    truncated_entry = truncated_entry[:-len(filename_extension)]
+                fields = entry[truncated_entry].split('-')
+                # exclude path with -incomplete or similar suffix,
+                # i.e. last component is not a 20-character fingerprint
+                if len(fields[-1]) != fingerprint_length:
+                    continue
+                # check that round and learner match
+                if fields[0] != ('%02d' %training_round):
+                    continue
+                if fields[1] != ('%d' %learner_rank):
+                    continue
+                # check that dataset name matches
+                if dataset_name != '-'.join(fields[2:-1]):
+                    continue
+                # found a candidate
+                candidate_path = '%s/%s' %(opt_workdir, entry)
+                if candidate_path == exact_prediction_path:
+                    # always prefer exactly matching predictions
+                    priority = (1, 0)
+                else:
+                    # for non-exact matches, prefer the newest prediction
+                    priority = (0, os.path.getmtime(candidate_path))
+                if (not found_match) or priority > best_priority:
+                    if found_match and opt_rename_dispensable:
+                        if filename_extension:
+                            dispensable_path = prediction_path[:-len(filename_extension)] \
+                                               + '-dispensable' + filename_extension
+                        else:
+                            dispensable_path = prediction_path + '-dispensable'
+                        os.rename(prediction_path, dispensable_path)
+                    prediction_path = candidate_path
+                    best_priority = priority
+                    found_match = True
+                elif opt_rename_dispensable:
+                    if filename_extension:
+                        dispensable_path = candidate_path[:-len(filename_extension)] \
+                                               + '-dispensable' + filename_extension
+                    else:
+                        dispensable_path = candidate_path + '-dispensable'
+                    os.rename(candidate_path, dispensable_path)
+            if found_match:
+                print('Adjusting prediction path to existing prediction %r' %prediction_path)
         if os.path.exists(prediction_path):
             if not opt_continue:
                 raise ValueError(
