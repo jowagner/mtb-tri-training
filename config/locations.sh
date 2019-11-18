@@ -40,7 +40,7 @@ case "${SETTING}" in
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_MAX_CACHE_ENTRIES=100
     ;;
-"jwagner@bo-scientific-7.6")
+"jwagner@bo-scientific-7."[67])
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
