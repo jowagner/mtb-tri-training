@@ -434,6 +434,7 @@ class Sample(Dataset):
                 rng.shuffle(permutation)
         else:
             p_size = -1
+            extra_data = []
         print('Sampling %s: %d target size, %d dataset size, %d permutation size, stratified is %r, %d dispreferred items, %d diversify_attempts, unique_sentences is %r, %d extra strata available' %(
             time.ctime(time.time()), size, d_size, p_size,
             stratified,
