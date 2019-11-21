@@ -78,21 +78,22 @@ if len(sys.argv) > 1:
     if sys.argv[1] != '--update':
         raise ValueError('unknown option %r' %(sys.argv[1]))
     filename = sys.argv[2]
-    f = open(filename, 'rb')
-    old_header = f.readline()
-    if not old_header.startswith(key_and_rounds_header):
-        raise ValueError('Unsupported tsv format')
-    while True:
-        line = f.readline()
-        if not line:
-            break
-        fields = line.split()
-        key = tuple(fields[:7])
-        old_scores = fields[8:]
-        if key not in key2scores \
-        or len(scores) > len(key2scores[key]):
-            key2scores[key] = scores
-    f.close()
+    if os.path.exists(filename):
+        f = open(filename, 'rb')
+        old_header = f.readline()
+        if not old_header.startswith(key_and_rounds_header):
+            raise ValueError('Unsupported tsv format')
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            fields = line.split()
+            key = tuple(fields[:7])
+            old_scores = fields[8:]
+            if key not in key2scores \
+            or len(scores) > len(key2scores[key]):
+                key2scores[key] = scores
+        f.close()
     sys.stdout = open(filename, 'wb')
 
 # table header
