@@ -54,7 +54,7 @@ case "${SETTING}" in
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_MAX_CACHE_ENTRIES=100
+    export EFML_MAX_CACHE_ENTRIES=200
     ;;
 "jwagner@ok-opensuse-leap-15.1")
     SCRATCH=/scratch/${USER}
