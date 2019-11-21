@@ -89,7 +89,7 @@ if len(sys.argv) > 1:
                 break
             fields = line.split()
             key = tuple(fields[:7])
-            old_scores = fields[8:]
+            scores = fields[8:]
             if key not in key2scores \
             or len(scores) > len(key2scores[key]):
                 key2scores[key] = scores
