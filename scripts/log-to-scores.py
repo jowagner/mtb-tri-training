@@ -12,6 +12,7 @@ import time
 
 """
 Usage: grep -HE "(Score|Iteration)" */stdout.txt | ./log-to-scores.py > scores.tsv
+or   : grep -HE "(Score|Iteration)" */stdout.txt | ./log-to-scores.py --update scores.tsv
 """
 
 key2scores = {}
@@ -65,24 +66,49 @@ while True:
         else:
             score_index += 1
 
-# table header
-
-sys.stdout.write('\t'.join([
+key_and_rounds_header = '\t'.join([
     'Language', 'Parser',
     'AugmentSizeIndex',
     'Method', 'NumberOfLearners',
     'Learner', 'TestSetIndex', 'Rounds'
-]))
+])
+
+backup_stdout = sys.stdout
+if len(sys.argv) > 1:
+    if sys.argv[1] != '--update':
+        raise ValueError('unknown option %r' %(sys.argv[1]))
+    filename = sys.argv[2]
+    f = open(filename, 'rb')
+    old_header = f.readline()
+    if not old_header.startswith(key_and_rounds_header):
+        raise ValueError('Unsupported tsv format')
+    while True:
+        line = f.readline()
+        if not line:
+            break
+        fields = line.split()
+        key = tuple(fields[:7])
+        old_scores = fields[8:]
+        if key not in key2scores \
+        or len(scores) > len(key2scores[key]):
+            key2scores[key] = scores
+    f.close()
+    sys.stdout = open(filename, 'wb')
+
+# table header
+sys.stdout.write(key_and_rounds_header)
 for i in range(max_rounds+1):
     sys.stdout.write('\t%d' %i)
 sys.stdout.write('\n')
-
 # table body
-
 for key in sorted(key2scores):
     sys.stdout.write('\t'.join(key))
     scores = key2scores[key]
     sys.stdout.write('\t%d\t' %(len(scores)-1))
     sys.stdout.write('\t'.join(scores))
     sys.stdout.write('\n')
+
+if sys.stdout != backup_stdout:
+    sys.stdout.close()
+    sys.stdout = backup_stdout
 

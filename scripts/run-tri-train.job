@@ -27,6 +27,9 @@ fi
 if [ -e stderr.txt ]; then
     mv stderr.txt previous-stderr.txt
 fi
+if [ -e stdout.txt ]; then
+    mv stdout.txt previous-stdout.txt
+fi
 
 rm -rf stop *workdir
 
