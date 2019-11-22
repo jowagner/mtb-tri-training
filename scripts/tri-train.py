@@ -981,19 +981,50 @@ def main():
         print('\nTeaching (knowledge transfer):')
         sys.stdout.flush()
 
+        reusing_old_kt = False
+        if opt_continue and opt_tolerant:
+            # As there is no fingerprint in the candidate set filenames, we
+            # can only re-use these files in tolerant mode.
+            have_all_kt_sets = True
+            for learner_index in range(opt_learners):
+                learner_rank = learner_index + 1
+                tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
+                if not os.path.exists(tr_data_filename):
+                    have_all_kt_sets = False
+                    break
+            if have_all_kt_sets:
+                reusing_old_kt = True
+                print('Re-using existing candidate sets')
+
         # TODO: provide options to control column weights;
         # for now, any difference triggers a disagreement
         column_weights = len(target_columns) * [1.0]
         new_datasets.append([])
         prediction_sets = []
-        for learner_index in range(opt_learners):
+        if reusing_old_kt:
+            num_kt_learners = 0
+        else:
+            num_kt_learners = opt_learners
+        for learner_index in range(num_kt_learners):
             new_datasets[training_index].append(dataset_module.new_empty_set())
             prediction_sets.append(basic_dataset.load_or_map_from_filename(
                 dataset_module.new_empty_set(),
                 predictions[learner_index][1]
             ))
         event_counter = {}
-        for subset_index in range(len(unlabelled_subset)):
+        if reusing_old_kt:
+            kt_indices = []
+            for learner_index in range(opt_learners):
+                learner_rank = learner_index + 1
+                tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
+                new_datasets[training_index].append(
+                    basic_dataset.load_or_map_from_filename(
+                        dataset_module.new_empty_set(),
+                        tr_data_filename
+                ))
+        else:
+            kt_indices = range(len(unlabelled_subset))
+        for subset_index in kt_indices:
             sentence_predictions = []
             for learner_index in range(opt_learners):
                 sentence_predictions.append(prediction_sets[learner_index][subset_index])
@@ -1035,11 +1066,12 @@ def main():
                 )).hexdigest(), 16))
             learner_rank = learner_index + 1
             new_dataset = new_datasets[training_index][learner_index]
-            # write new labelled data to file
-            tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
-            f_out = open(tr_data_filename, 'w')
-            new_dataset.save_to_file(f_out)
-            f_out.close()
+            if not reusing_old_kt:
+                # write new labelled data to file
+                tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
+                f_out = open(tr_data_filename, 'w')
+                new_dataset.save_to_file(f_out)
+                f_out.close()
             new_size = new_dataset.get_number_of_items()
             print('Size of new dataset: %d items in %d sentences' %(
                 new_size, len(new_dataset)
