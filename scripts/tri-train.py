@@ -869,7 +869,7 @@ def main():
     new_datasets = []
     for training_index in range(opt_iterations):
         training_round = training_index + 1
-        print('\n== Tri-training Iteration %d of %d ==' %(
+        print_t('\n== Tri-training Iteration %d of %d ==' %(
             training_round, opt_iterations
         ))
         sys.stdout.flush()
@@ -900,7 +900,7 @@ def main():
             random.seed(int(hashlib.sha512('round %d: %s' %(
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
-        print('\nSelecting subset of unlabelled data:')
+        print_t('\nSelecting subset of unlabelled data:')
         sys.stdout.flush()
         if opt_allow_oversampling_of_subset:
             target_size = opt_subset_size
@@ -948,13 +948,13 @@ def main():
                     previously_picked[d_index] = 1
                 f.write('%d\n' %d_index)
             f.close()
-        print('Size of subset: %d items in %d sentences' %(
+        print_t('Size of subset: %d items in %d sentences' %(
             unlabelled_subset.get_number_of_items(),
             len(unlabelled_subset)
         ))
         sys.stdout.flush()
 
-        print('\nMaking predictions:')
+        print_t('\nMaking predictions:')
         sys.stdout.flush()
 
         predictions = make_predictions(
@@ -978,7 +978,7 @@ def main():
             )
             sys.exit(0)
 
-        print('\nTeaching (knowledge transfer):')
+        print_t('\nTeaching (knowledge transfer):')
         sys.stdout.flush()
 
         reusing_old_kt = False
@@ -994,7 +994,7 @@ def main():
                     break
             if have_all_kt_sets:
                 reusing_old_kt = True
-                print('Re-using existing candidate sets')
+                print('\nRe-using existing candidate sets')
 
         # TODO: provide options to control column weights;
         # for now, any difference triggers a disagreement
@@ -1054,7 +1054,7 @@ def main():
             new_datasets[training_index][learner_index].append(merged_prediction)
         print_event_counter(event_counter)
 
-        print('\nCompiling new datasets:')
+        print_t('\nCompiling new datasets:')
         sys.stdout.flush()
 
         new_training_sets = []
@@ -1165,7 +1165,7 @@ def main():
             )
             new_training_sets.append(new_training_set)
 
-        print('\nTraining new models:')
+        print_t('\nTraining new models:')
         sys.stdout.flush()
         models = train_models(
             opt_learners, new_training_sets, epoch_selection_sets, model_modules,
@@ -1179,7 +1179,7 @@ def main():
             opt_rename_dispensable = opt_rename_dispensable,
         )
 
-        print('\nEvaluating new models:')
+        print_t('\nEvaluating new models:')
         sys.stdout.flush()
         evaluate(
             models,
@@ -1199,19 +1199,24 @@ def main():
             opt_verbose = opt_verbose
         )
 
-    print('\n== Final Model ==\n')
+    print_t('\n== Final Model ==\n')
     # TODO
+
+def print_t(*args):
+    args = list(args)
+    args.append('[%s]' %(time.ctime(time.time())))
+    print(*args)
 
 def check_deadline(deadline = None, stopfile = None):
     if deadline:
         if time.time() > deadline:
-            print('\n*** Reached deadline. ***\n')
+            print_t('\n*** Reached deadline. ***\n')
             sys.exit(0)
         else:
-            print('%.1f hours to deadline' %((deadline - time.time())/3600.0))
+            print_t('%.1f hours to deadline' %((deadline - time.time())/3600.0))
     if stopfile:
         if os.path.exists(stopfile):
-            print('\n*** Found stop file. ***\n')
+            print_t('\n*** Found stop file. ***\n')
             sys.exit(0)
 
 def make_predictions(
@@ -1270,25 +1275,25 @@ def make_predictions(
                 # exclude path with -incomplete or similar suffix,
                 # i.e. last component is not a 20-character fingerprint
                 if len(fields[-1]) != fingerprint_length:
-                    print('\twrong fingerprint length: fields = %r' %fields)
+                    #print('\twrong fingerprint length: fields = %r' %fields)
                     continue
                 # check that round and learner match
                 if fields[0] != ('%02d' %training_round):
-                    print('\twrong round: fields = %r' %fields)
+                    #print('\twrong round: fields = %r' %fields)
                     continue
                 if fields[1] != ('%d' %learner_rank):
-                    print('\twrong learner: fields = %r' %fields)
+                    #print('\twrong learner: fields = %r' %fields)
                     continue
                 # check that dataset name matches
                 file_dataset_name = '-'.join(fields[2:-1]+[''])
                 if dataset_name != file_dataset_name:
-                    print('\twrong dataset: fields = %r' %fields)
+                    #print('\twrong dataset: fields = %r' %fields)
                     continue
                 # found a candidate
                 candidate_path = '%s/%s' %(opt_workdir, entry)
                 if candidate_path == exact_prediction_path:
                     # always prefer exactly matching predictions
-                    print('\texact match: fields = %r' %fields)
+                    #print('\texact match: fields = %r' %fields)
                     priority = (1, 0)
                 else:
                     # for non-exact matches, prefer the newest prediction
@@ -1301,7 +1306,7 @@ def make_predictions(
                         else:
                             dispensable_path = prediction_path + '-dispensable'
                         os.rename(prediction_path, dispensable_path)
-                    print('\tnew best: fields = %r' %fields)
+                    #print('\tnew best: fields = %r' %fields)
                     prediction_path = candidate_path
                     best_priority = priority
                     found_match = True
