@@ -1235,28 +1235,28 @@ def make_predictions(
                 if filename_extension:
                     truncated_entry = truncated_entry[:-len(filename_extension)]
                 fields = truncated_entry.split('-')
-                print('\tfields = %r' %fields)
                 # exclude path with -incomplete or similar suffix,
                 # i.e. last component is not a 20-character fingerprint
                 if len(fields[-1]) != fingerprint_length:
-                    print('\twrong fingerprint length')
+                    print('\twrong fingerprint length: fields = %r' %fields)
                     continue
                 # check that round and learner match
                 if fields[0] != ('%02d' %training_round):
-                    print('\twrong round')
+                    print('\twrong round: fields = %r' %fields)
                     continue
                 if fields[1] != ('%d' %learner_rank):
-                    print('\twrong learner')
+                    print('\twrong learner: fields = %r' %fields)
                     continue
                 # check that dataset name matches
-                if dataset_name != '-'.join(fields[2:-1]):
-                    print('\twrong dataset')
+                file_dataset_name = '-'.join(fields[2:-1]+[''])
+                if dataset_name != file_dataset_name:
+                    print('\twrong dataset: fields = %r' %fields)
                     continue
                 # found a candidate
                 candidate_path = '%s/%s' %(opt_workdir, entry)
                 if candidate_path == exact_prediction_path:
                     # always prefer exactly matching predictions
-                    print('\texact match')
+                    print('\texact match: fields = %r' %fields)
                     priority = (1, 0)
                 else:
                     # for non-exact matches, prefer the newest prediction
@@ -1269,7 +1269,7 @@ def make_predictions(
                         else:
                             dispensable_path = prediction_path + '-dispensable'
                         os.rename(prediction_path, dispensable_path)
-                    print('\tnew best')
+                    print('\tnew best: fields = %r' %fields)
                     prediction_path = candidate_path
                     best_priority = priority
                     found_match = True
