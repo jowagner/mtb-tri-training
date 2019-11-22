@@ -690,7 +690,7 @@ def main():
         else:
             print('size within limit specified for simulation')
 
-    print_t('== Collecting Labels ==\n')
+    print_t('\n== Collecting Labels ==\n')
     target_labelsets = []
     for column in target_columns:
         labelset = {}
@@ -699,7 +699,7 @@ def main():
         labelset.sort()
         target_labelsets.append(labelset)
 
-    print_t('== Loading Unlabelled Data ==\n')
+    print_t('\n== Loading Unlabelled Data ==\n')
     unlabelled_data_sets = []
     unl_dev_sets = []
     unl_test_sets = []
@@ -736,7 +736,6 @@ def main():
     print('opt_augment_size', opt_augment_size)
 
     print_t('\n== Selection of Seed Data ==\n')
-    sys.stdout.flush()
 
     if opt_init_seed:
         # For why using sha512, see Joachim's answer on
@@ -876,7 +875,6 @@ def main():
         print_t('\n== Tri-training Iteration %d of %d ==' %(
             training_round, opt_iterations
         ))
-        sys.stdout.flush()
 
         if opt_baselines and not opt_manually_train:
             print('\nBaseline(s):')
@@ -905,7 +903,6 @@ def main():
                 training_round, opt_init_seed,
             )).hexdigest(), 16))
         print_t('\nSelecting subset of unlabelled data:')
-        sys.stdout.flush()
         if opt_allow_oversampling_of_subset:
             target_size = opt_subset_size
         else:
@@ -956,10 +953,8 @@ def main():
             unlabelled_subset.get_number_of_items(),
             len(unlabelled_subset)
         ))
-        sys.stdout.flush()
 
         print_t('\nMaking predictions:')
-        sys.stdout.flush()
 
         predictions = make_predictions(
             models, unlabelled_subset,
@@ -983,7 +978,6 @@ def main():
             sys.exit(0)
 
         print_t('\nTeaching (knowledge transfer):')
-        sys.stdout.flush()
 
         reusing_old_kt = False
         if opt_continue and opt_tolerant:
@@ -1059,7 +1053,6 @@ def main():
         print_event_counter(event_counter)
 
         print_t('\nCompiling new datasets:')
-        sys.stdout.flush()
 
         new_training_sets = []
         for learner_index in range(opt_learners):
@@ -1170,7 +1163,6 @@ def main():
             new_training_sets.append(new_training_set)
 
         print_t('\nTraining new models:')
-        sys.stdout.flush()
         models = train_models(
             opt_learners, new_training_sets, epoch_selection_sets, model_modules,
             opt_model_init_type, opt_init_seed, training_round,
@@ -1184,7 +1176,6 @@ def main():
         )
 
         print_t('\nEvaluating new models:')
-        sys.stdout.flush()
         evaluate(
             models,
             dev_sets + unl_dev_sets,
