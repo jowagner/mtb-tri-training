@@ -36,6 +36,13 @@ while True:
         score_index = 0
         test_set_index = 0
     if '== Tri-training Iteration' in line:
+        if fields[-1].endswith(']'):
+            # remove [timestamp]
+            while True:
+                last_item = fields[-1]
+                del fields[-1]
+                if last_item.startswith('['):
+                    break
         tt_round += 1
         if fields[-4] != '%d' %tt_round:
             raise ValueError('logfile %s contains data for round %s where data for round %d is expected' %(
