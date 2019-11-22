@@ -645,6 +645,8 @@ def main():
     else:
         subset_filter = None
 
+    print_t('== Loading Labelled Data ==\n')
+
     training_data_sets = []
     dev_sets = []
     test_sets = []
@@ -688,6 +690,7 @@ def main():
         else:
             print('size within limit specified for simulation')
 
+    print_t('== Collecting Labels ==\n')
     target_labelsets = []
     for column in target_columns:
         labelset = {}
@@ -696,6 +699,7 @@ def main():
         labelset.sort()
         target_labelsets.append(labelset)
 
+    print_t('== Loading Unlabelled Data ==\n')
     unlabelled_data_sets = []
     unl_dev_sets = []
     unl_test_sets = []
@@ -731,7 +735,7 @@ def main():
     print('opt_subset_size', opt_subset_size)
     print('opt_augment_size', opt_augment_size)
 
-    print('\n== Selection of Seed Data ==\n')
+    print_t('\n== Selection of Seed Data ==\n')
     sys.stdout.flush()
 
     if opt_init_seed:
@@ -1204,8 +1208,18 @@ def main():
 
 def print_t(*args):
     args = list(args)
+    extra_newline = False
+    if args and args[-1] == '\n':
+        del args[-1]
+        extra_newline = True
+    if args and args[-1].endswith('\n'):
+        args[-1] = args[-1][:-1]
+        extra_newline = True
     args.append('[%s]' %(time.ctime(time.time())))
     print(*args)
+    if extra_newline:
+        print()
+    sys.stdout.flush()
 
 def check_deadline(deadline = None, stopfile = None):
     if deadline:
