@@ -1280,7 +1280,7 @@ def make_predictions(
                     else:
                         dispensable_path = candidate_path + '-dispensable'
                     os.rename(candidate_path, dispensable_path)
-            if found_match:
+            if found_match and prediction_path != exact_prediction_path:
                 print('Adjusting prediction path to existing prediction %r' %prediction_path)
         if os.path.exists(prediction_path):
             if not opt_continue:
@@ -1843,7 +1843,7 @@ def train_models(
                     found_match = True
                 elif opt_rename_dispensable:
                     os.rename(candidate_path, candidate_path + '-dispensable')
-            if found_match:
+            if found_match and model_path != exact_model_path:
                 print('Adjusting model path to existing model %r' %model_path)
         if os.path.exists(model_path):
             if not opt_continue:
