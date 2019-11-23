@@ -45,6 +45,7 @@ cd ${SCRIPTDIR}
     --model-module %(model_module)s  \
     %(model_keyword_options)s           \
     --subset-size "%(subsetsize)dk"          \
+    --subset-stratified                      \
     --augment-size %(augsize)dk   \
     --deadline 18.0            \
     --stopfile ${WORKDIR}/stop  \
