@@ -16,6 +16,7 @@ or   : grep -HE "(Score|Iteration)" */stdout.txt | ./log-to-scores.py --update s
 """
 
 key2scores = {}
+key2tokens = {}
 last_filename = None
 max_rounds = 0
 while True:
@@ -35,7 +36,7 @@ while True:
         tt_round = 0
         score_index = 0
         test_set_index = 0
-    if '== Tri-training Iteration' in line:
+    if line.startswith('== Tri-training Iteration'):
         if fields[-1].endswith(']'):
             # remove [timestamp]
             while True:
@@ -50,7 +51,16 @@ while True:
             ))
         score_index = 0
         test_set_index = 0
-    else:
+        learner_unlabelled_tokens = []
+        learner_unlabelled_sentences = []
+    elif line.startswith('Subtotal:'):
+        # [0]       [1]   [2]   [3] [4] [5]
+        # Subtotal  75323 items in 7426 sentences.
+        if len(fields) != 6 or fields[2] != 'items' or fields[5] != 'sentences':
+            continue
+        learner_unlabelled_tokens.append(int(fields[1]))
+        learner_unlabelled_sentences.append(int(fields[4]))
+    elif line.startswith('Score:'):
         if tt_round > max_rounds:
             max_rounds = tt_round
         score = fields[-1]
@@ -65,7 +75,20 @@ while True:
             learner, '%d' %test_set_index
         )
         if not key in key2scores:
+            if tt_round:
+                raise ValueError('New key %r but no data for round 0' %(key,))
             key2scores[key] = []
+            key2tokens[key] = []
+            # round 0 has no unlabelled data
+            key2tokens[key].append((0,0))
+        else:
+            if learner == 'Ensemble':
+                n_tokens = sum(learner_unlabelled_tokens)
+                n_sentences = sum(learner_unlabelled_sentences)
+            else:
+                n_tokens = learner_unlabelled_tokens[score_index]
+                n_sentences = learner_unlabelled_sentences[score_index]
+            key2tokens[key].append((n_tokens, n_sentences))
         key2scores[key].append(score)
         if score_index == num_learners:
             score_index = 0
@@ -77,7 +100,8 @@ key_and_rounds_header = '\t'.join([
     'Language', 'Parser',
     'AugmentSizeIndex',
     'Method', 'NumberOfLearners',
-    'Learner', 'TestSetIndex', 'Rounds'
+    'Learner', 'TestSetIndex', 'Rounds',
+    'UnlabelledTokensInLastRound',
 ])
 
 backup_stdout = sys.stdout
@@ -88,18 +112,25 @@ if len(sys.argv) > 1:
     if os.path.exists(filename):
         f = open(filename, 'rb')
         old_header = f.readline()
+        scores_start = 9
         if not old_header.startswith(key_and_rounds_header):
-            raise ValueError('Unsupported tsv format')
+            scores_start = 8
+            #raise ValueError('Unsupported tsv format')
         while True:
             line = f.readline()
             if not line:
                 break
             fields = line.split()
             key = tuple(fields[:7])
-            scores = fields[8:]
+            scores = fields[scores_start:]
+            if scores_start == 8:
+                n_tokens = len(scores) * [(-1, -1)]
+            else:
+                n_tokens = int(fields[8])
             if key not in key2scores \
             or len(scores) > len(key2scores[key]):
                 key2scores[key] = scores
+                key2tokens[key] = ((len(scores)-1) * [(-1, -1)]) + [(n_tokens, -1)]
         f.close()
     sys.stdout = open(filename, 'wb')
 
@@ -113,6 +144,7 @@ for key in sorted(key2scores):
     sys.stdout.write('\t'.join(key))
     scores = key2scores[key]
     sys.stdout.write('\t%d\t' %(len(scores)-1))
+    sys.stdout.write('%d\t' %(key2tokens[key][-1][0]))
     sys.stdout.write('\t'.join(scores))
     sys.stdout.write('\n')
 
