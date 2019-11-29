@@ -36,7 +36,9 @@ while True:
         tt_round = 0
         score_index = 0
         test_set_index = 0
-    if line.startswith('== Tri-training Iteration'):
+        learner_unlabelled_tokens = []
+        learner_unlabelled_sentences = []
+    if '== Tri-training Iteration' in line:
         if fields[-1].endswith(']'):
             # remove [timestamp]
             while True:
@@ -53,14 +55,14 @@ while True:
         test_set_index = 0
         learner_unlabelled_tokens = []
         learner_unlabelled_sentences = []
-    elif line.startswith('Subtotal:'):
-        # [0]       [1]   [2]   [3] [4] [5]
-        # Subtotal  75323 items in 7426 sentences.
-        if len(fields) != 6 or fields[2] != 'items' or fields[5] != 'sentences':
+    elif 'Subtotal:' in line:
+        # [0]      [1]       [2]   [3]   [4] [5] [6]
+        # filename Subtotal  75323 items in 7426 sentences.
+        if len(fields) != 7 or fields[3] != 'items' or fields[6] != 'sentences.':
             continue
-        learner_unlabelled_tokens.append(int(fields[1]))
-        learner_unlabelled_sentences.append(int(fields[4]))
-    elif line.startswith('Score:'):
+        learner_unlabelled_tokens.append(int(fields[2]))
+        learner_unlabelled_sentences.append(int(fields[5]))
+    elif 'Score:' in line:
         if tt_round > max_rounds:
             max_rounds = tt_round
         score = fields[-1]
@@ -124,7 +126,7 @@ if len(sys.argv) > 1:
             key = tuple(fields[:7])
             scores = fields[scores_start:]
             if scores_start == 8:
-                n_tokens = len(scores) * [(-1, -1)]
+                n_tokens = -1
             else:
                 n_tokens = int(fields[8])
             if key not in key2scores \
