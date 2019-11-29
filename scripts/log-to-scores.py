@@ -11,8 +11,8 @@ import sys
 import time
 
 """
-Usage: grep -HE "(Score|Iteration)" */stdout.txt | ./log-to-scores.py > scores.tsv
-or   : grep -HE "(Score|Iteration)" */stdout.txt | ./log-to-scores.py --update scores.tsv
+Usage: grep -HE "(Score|Iteration|Subtotal)" */stdout.txt | ./log-to-scores.py > scores.tsv
+or   : grep -HE "(Score|Iteration|Subtotal)" */stdout.txt | ./log-to-scores.py --update scores.tsv
 """
 
 key2scores = {}
