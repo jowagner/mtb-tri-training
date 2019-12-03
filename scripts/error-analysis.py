@@ -95,15 +95,15 @@ def get_keys(labels, sent_ids):
         keys.add('%s:MUW' %where)
     for freq in ('0-0', '1-1', '2-2', '3-'):
         keys.add('S:OOV:%s' %freq)
-        keys.add('S:MAV:%s' %freq)
+        keys.add('S:MAW:%s' %freq)
         keys.add('S:IV:%s' %freq)
-        keys.add('S:MUV:%s' %freq)
+        keys.add('S:MUW:%s' %freq)
         for label in labels:
             keys.add('S:%s:%s' %(label, freq))
         keys.add('SL:12-12,S:OOV:%s' %freq)
-        keys.add('SL:12-12,S:MAV:%s' %freq)
+        keys.add('SL:12-12,S:MAW:%s' %freq)
         keys.add('SL:12-12,S:IV:%s' %freq)
-        keys.add('SL:12-12,S:MUV:%s' %freq)
+        keys.add('SL:12-12,S:MUW:%s' %freq)
         for label in labels:
             keys.add('SL:12-12,S:%s:%s' %(label, freq))
     for slrange in ('-9', '10-19', '12-12', '20-39', '40-'):
@@ -398,6 +398,7 @@ def write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys):
             header.append('%s->%s' %(comparisons[-1]))
     f.write('\t'.join(header))
     f.write('\n')
+    not10x = False
     for other_keypart in other_keyparts:
         for eval_key in sorted(eval_keys):
             totals = []
@@ -413,12 +414,14 @@ def write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys):
             row = []
             row.append(other_keypart)
             row.append(eval_key)
-            row.append('%d' %(totals[0]))
+            row.append('%.1f' %(totals[0]/10.0))
+            if totals[0] % 10:
+                not10x = True
             for target in target_keyparts:
                 if pkey_part == 0:
-                    pkey1 = '%s\t%s' %(target_keypart, other_keypart)
+                    pkey1 = '%s\t%s' %(target, other_keypart)
                 else:
-                    pkey1 = '%s\t%s' %(other_keypart, target_keypart)
+                    pkey1 = '%s\t%s' %(other_keypart, target)
                 correct, total = counts[(eval_key, pkey1)]
                 if total:
                     score = 100.0 * correct / float(total)
@@ -447,6 +450,38 @@ def write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys):
                     row.append('N/A')
             f.write('\t'.join(row))
             f.write('\n')
+    if not10x:
+        sys.stderr.write('At least one total of events was not a multiple of 10.\n')
+
+def get_eval_keys_subsets(eval_keys):
+    subsets = {}
+    for key in eval_keys:
+        if key == 'any':
+            continue
+        if key.startswith('ID:'):
+            skey = 'by-sentence'
+        elif key.startswith('T:'):
+            skey = 'token-rows'
+        elif key.startswith('R:'):
+            skey = 'gold-relation'
+        elif key.startswith('A:'):
+            skey = 'any-prediction'
+        elif key.startswith('M:'):
+            skey = 'majority-predictions'
+        elif key.startswith('S:'):
+            skey = 'sentence-level'
+        elif key.startswith('SL:12-12:'):
+            skey = 'length-12'
+        elif key.startswith('SL'):
+            skey = 'by-length'
+        else:
+            skey = 'other'
+        if skey not in subsets:
+            subsets[skey] = set()
+        subsets[skey].add(key)
+    for skey in subsets:
+        subsets[skey].add('any')
+    return subsets.items()
 
 def main():
     workdirs = sys.argv[1:]
@@ -469,8 +504,11 @@ def main():
             (0, 'parser', 'round'),
             (0, 'round',  'parser'),
         ]:
-            with open('ea-effect-of-%s-for-%s.tsv' %(pkey_name, treebank[1]), 'wb') as f:
-                write_tsv(f, counts, pkey_part, pkey_name, other_name, keys)
+            for eval_subset_name, eval_keys_subset in get_eval_keys_subsets(keys):
+                with open('ea-effect-of-%s-for-%s-%s.tsv' %(
+                    pkey_name, treebank[1], eval_subset_name
+                ), 'wb') as f:
+                    write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys_subset)
 
 if __name__ == "__main__":
     main()
