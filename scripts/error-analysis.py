@@ -483,6 +483,47 @@ def get_eval_keys_subsets(eval_keys):
         subsets[skey].add('any')
     return subsets.items()
 
+class FileUpdater():
+
+    def __init__(self, path):
+        self.path = path
+
+    def __enter__(self):
+        if os.path.exists(self.path):
+            self.f = open(self.path, 'rb')
+            self.m = 'check'
+        else:
+            self.f = open(self.path, 'wb')
+            self.m = 'write'
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.m == 'check':
+            pos = self.f.tell()
+            if self.f.read(1):
+                self.f.seek(0)
+                keep = self.f.read(pos)
+                self.f.close()
+                self.f = open(self.path, 'wb')
+                self.f.write(keep)
+        self.f.close()
+
+    def write(self, data):
+        if self.m == 'check':
+            pos = self.f.tell()
+            if self.f.read(len(data)) == data:
+                return len(data)
+            else:
+                self.f.seek(0)
+                keep = self.f.read(pos)
+                self.f.close()
+                self.f = open(self.path, 'wb')
+                self.f.write(keep)
+                self.m = 'write'
+                return self.f.write(data)
+        else:
+            return self.f.write(data)
+
 def main():
     workdirs = sys.argv[1:]
     test_type = 'dev'
@@ -490,11 +531,11 @@ def main():
     for treebank in treebanks:
         vocab, token2morph, labels, sent_ids = get_vocab_and_morph_and_labels_and_sent_ids(treebank, test_type)
         keys = get_keys(labels, sent_ids)
-        with open('ea-evalkeys-%s.txt' %(treebank[1]), 'wb') as f:
+        with FileUpdater('ea-evalkeys-%s.txt' %(treebank[1])) as f:
             for key in sorted(keys):
                 f.write('%s\n' %key)
         predictions = get_predictions(workdirs, treebank, minrounds, test_type)
-        with open('ea-predictions-%s.txt' %(treebank[1]), 'wb') as f:
+        with FileUpdater('ea-predictions-%s.txt' %(treebank[1])) as f:
             for key in sorted(predictions.keys()):
                 for key2 in sorted(predictions[key].keys()):
                     f.write('%s\t%s\t%s\n' %(key, key2, predictions[key][key2].filename))
@@ -505,9 +546,9 @@ def main():
             (1, 'round',  'parser'),
         ]:
             for eval_subset_name, eval_keys_subset in get_eval_keys_subsets(keys):
-                with open('ea-effect-of-%s-for-%s-%s.tsv' %(
+                with FileUpdater('ea-effect-of-%s-for-%s-%s.tsv' %(
                     pkey_name, treebank[1], eval_subset_name
-                ), 'wb') as f:
+                )) as f:
                     write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys_subset)
 
 if __name__ == "__main__":
