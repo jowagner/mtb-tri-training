@@ -470,9 +470,9 @@ def get_eval_keys_subsets(eval_keys):
             skey = 'majority-predictions'
         elif key.startswith('S:'):
             skey = 'sentence-level'
-        elif key.startswith('SL:12-12:'):
+        elif key.startswith('SL:12-12'):
             skey = 'length-12'
-        elif key.startswith('SL'):
+        elif key.startswith('SL:'):
             skey = 'by-length'
         else:
             skey = 'other'
