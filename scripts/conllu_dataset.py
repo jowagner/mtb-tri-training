@@ -79,6 +79,11 @@ class ConlluSentence(basic_dataset.Sentence):
         #
         r_index = len(self.rows)
         self.rows.append(fields)
+        # check for sentence ID
+        if line.startswith('#') \
+        and line.replace(' ', '').startswith('#sent_id='):
+            eqpos = line.find('=')
+            self.sent_id = line[eqpos+1:].strip()
         # check whether this is a UD token
         token_id = fields[id_column]
         if token_id.startswith('#') \
