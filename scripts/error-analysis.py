@@ -371,7 +371,10 @@ def get_counts(predictions, selections, eval_keys, treebank, test_type):
                 key2counts[(eval_key, pkey1)] = correct, total
     return key2counts
 
-def write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys):
+def write_tsv(
+    f, counts, pkey_part, pkey_name, other_name, eval_keys,
+    treebank, test_type
+):
     if not pkey_part in (0,1):
         raise NotImplementedError
     other_keyparts = set()
@@ -396,6 +399,19 @@ def write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys):
         for j in range(i+1, num_target_keyparts):
             comparisons.append((target_keyparts[i], target_keyparts[j]))
             header.append('%s->%s' %(comparisons[-1]))
+    has_sent_id = False
+    for key in eval_keys:
+        if key.startswith('ID:'):
+            has_sent_id = True
+            break
+    if has_sent_id:
+        header.append('Text')
+        _, _, _, tbid, _, long_tbname = treebank
+        treebank_dir = get_treebank_dir(long_tbname)
+        testset = conllu_dataset.ConlluDataset()
+        f = open('%s/%s-ud-%s.conllu' %(treebank_dir, tbid, test_type), 'rb')
+        testset.load_file(f)
+        f.close()
     f.write('\t'.join(header))
     f.write('\n')
     not10x = False
@@ -448,6 +464,15 @@ def write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys):
                         row.append('N/A')
                 else:
                     row.append('N/A')
+            if has_sent_id and eval_key.startswith('ID:'):
+                sent_id = eval_key[3:]
+                text = []
+                for sentence in testset:
+                    if sentence.sent_id == sent_id:
+                        for sent_row in sentence:
+                            text.append(sent_row[1])
+                        break
+                row.append(' '.join(text))
             f.write('\t'.join(row))
             f.write('\n')
     if not10x:
@@ -549,7 +574,11 @@ def main():
                 with FileUpdater('%s/ea-effect-of-%s-for-%s-%s.tsv' %(
                     treebank[2], pkey_name, treebank[1], eval_subset_name
                 )) as f:
-                    write_tsv(f, counts, pkey_part, pkey_name, other_name, eval_keys_subset)
+                    write_tsv(
+                        f, counts, pkey_part, pkey_name, other_name,
+                        eval_keys_subset,
+                        treebank, test_type,
+                    )
 
 if __name__ == "__main__":
     main()
