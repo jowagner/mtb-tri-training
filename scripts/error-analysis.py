@@ -502,7 +502,7 @@ def main():
         counts = get_counts(predictions, selections, keys, treebank, test_type)
         for pkey_part, pkey_name, other_name in [
             (0, 'parser', 'round'),
-            (0, 'round',  'parser'),
+            (1, 'round',  'parser'),
         ]:
             for eval_subset_name, eval_keys_subset in get_eval_keys_subsets(keys):
                 with open('ea-effect-of-%s-for-%s-%s.tsv' %(
