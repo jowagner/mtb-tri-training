@@ -117,6 +117,13 @@ def get_predictions(workdirs, treebank, minrounds, test_type):
     minrounds = '%d' %minrounds
     short_lcode, lcode, language, tbid, tbname, long_tbname = treebank
     key2predictions = {}   # keys = {f, g, h} x {0, minrounds, last}
+    augexp2lastround = {
+        '0': 18,
+        '2': 13,
+        '4': 13,
+        '6': 6,
+        '8': 5,
+    }
     for workdir in workdirs:
         for entry in os.listdir(workdir):
             if not entry.startswith(short_lcode):
@@ -126,6 +133,7 @@ def get_predictions(workdirs, treebank, minrounds, test_type):
             parser = entry[1]
             method = entry[2:7]
             augexp = entry[7]
+            lastround = augexp2lastround[augexp]
             # scan folder for files like
             # prediction-12-E-ug_udt-dev-2LNqJcpnpadlgBWJ17nT.conllu
             predictions = []
@@ -144,6 +152,8 @@ def get_predictions(workdirs, treebank, minrounds, test_type):
                 while tt_round[0] == '0' and len(tt_round) > 1:
                     tt_round = tt_round[1:]
                 tt_round = int(tt_round)
+                if tt_round > lastround:
+                    continue
                 while tt_round >= len(predictions):
                     predictions.append(None)
                 predictions[tt_round] = filename
@@ -409,9 +419,9 @@ def write_tsv(
         _, _, _, tbid, _, long_tbname = treebank
         treebank_dir = get_treebank_dir(long_tbname)
         testset = conllu_dataset.ConlluDataset()
-        f = open('%s/%s-ud-%s.conllu' %(treebank_dir, tbid, test_type), 'rb')
-        testset.load_file(f)
-        f.close()
+        f_testset = open('%s/%s-ud-%s.conllu' %(treebank_dir, tbid, test_type), 'rb')
+        testset.load_file(f_testset)
+        f_testset.close()
     f.write('\t'.join(header))
     f.write('\n')
     not10x = False
@@ -472,7 +482,13 @@ def write_tsv(
                         for sent_row in sentence:
                             text.append(sent_row[1])
                         break
-                row.append(' '.join(text))
+                text = ' '.join(text)
+                if '"' in text:
+                    # https://webapps.stackexchange.com/questions/26841/how-to-escape-a-double-quote-in-a-tsv-file-for-import-into-a-google-sheets
+                    # (for description in English: 2nd comment of accepted
+                    # answer; no source code copied)
+                    text = '"%s"' %(text.replace('"', '""'))
+                row.append(text)
             f.write('\t'.join(row))
             f.write('\n')
     if not10x:
