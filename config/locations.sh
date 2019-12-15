@@ -39,6 +39,8 @@ case "${SETTING}" in
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_MAX_CACHE_ENTRIES=100
+    export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
+    export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     ;;
 "jwagner@bo-scientific-7."[67])
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
@@ -55,6 +57,8 @@ case "${SETTING}" in
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_MAX_CACHE_ENTRIES=200
+    export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
+    export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     ;;
 "jwagner@ok-opensuse-leap-15.1")
     SCRATCH=/scratch/${USER}
@@ -70,6 +74,8 @@ case "${SETTING}" in
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${SCRATCH}/elmo/cache
     export EFML_MAX_CACHE_ENTRIES=20
+    export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
+    export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     ;;
 "jwagner@g0-debian-9")
     echo "CPU nodes not supported"
@@ -92,6 +98,8 @@ case "${SETTING}" in
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${EFML_TOOL_DIR}/venv-allennlp-py36
     export EFML_MODEL_DIR=${HOME}/elmo
+    export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
+    export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     ;;
 "jwagner@g1-debian-10")
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
@@ -106,6 +114,8 @@ case "${SETTING}" in
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_MAX_CACHE_ENTRIES=100
+    export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
+    export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     ;;
 root*)
     # inside udocker
