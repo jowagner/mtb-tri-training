@@ -27,7 +27,7 @@ test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 source ${PRJ_DIR}/config/locations.sh
 
 MEM=6144 # initial amount of dynet memory; will be increased automatically by dynet if needed
-EPOCHS=6
+EPOCHS=60
 
 PARSER_NAME=src/parser.py
 PARSER_DIR=${UUPARSER_DIR}
@@ -59,14 +59,20 @@ echo $(hostname) $(date) > ${MODELDIR}/stats/training.start
 #    ${DYNET_OPTIONS} \
 #    --top-k-epochs 3  \
 #    --fingerprint  \
+#    --max-sentences 250  \
 
 cd ${PARSER_DIR}
 
-python2 scripts/create_json.py ${MODELDIR}/FAKE_UD_DIR/ ${MODELDIR}/ud_iso.json
+if [ -e "$MODELDIR/ud_iso.json" ]; then
+    echo "Re-using existing ud_iso.json"
+else
+    python2 scripts/create_json.py ${MODELDIR}/FAKE_UD_DIR/ ${MODELDIR}/ud_iso.json
+fi
+
+echo "Starting parser training" $(date)
 
 python ${PARSER_NAME}  \
     --json-isos ${MODELDIR}/ud_iso.json  \
-    --max-sentences 250  \
     --dynet-seed ${SEED}  \
     --dynet-mem ${MEM}  \
     --outdir ${MODELDIR}/${TBIDS}  \
