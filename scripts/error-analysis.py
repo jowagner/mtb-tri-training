@@ -118,10 +118,10 @@ def get_predictions(workdirs, treebank, minrounds, test_type):
     short_lcode, lcode, language, tbid, tbname, long_tbname = treebank
     key2predictions = {}   # keys = {f, g, h} x {0, minrounds, last}
     augexp2lastround = {
-        '0': 18,
-        '2': 13,
-        '4': 13,
-        '6': 6,
+        '0': 24,
+        '2': 17,
+        '4': 14,
+        '6': 9,
         '8': 5,
     }
     for workdir in workdirs:
