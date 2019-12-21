@@ -31,6 +31,8 @@ def train(
     command = []
     command.append('./fasttext_udpf-train.sh')
     command.append(dataset_filename)
+    if seed is None:
+        raise NotImplementedError
     command.append(seed)
     command.append(lcode)
     command.append(model_dir)

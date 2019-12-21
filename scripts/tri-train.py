@@ -1518,6 +1518,8 @@ def get_model_fingerprint(model_init_seed, seed_set, epoch_selection_set = None,
         epoch_selection_fingerprint = 'N/A'
     if verbose:
         print('Epoch selection fingerprint (shortened):', epoch_selection_fingerprint[:40])
+    if model_init_seed is None:
+        model_init_seed = ''
     model_fingerprint = hashlib.sha512('%s:%s:%s' %(
         model_init_seed, data_fingerprint, epoch_selection_fingerprint
     )).hexdigest()

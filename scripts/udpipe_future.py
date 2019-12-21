@@ -28,6 +28,8 @@ def train(
     command = []
     command.append('./udpipe_future-train.sh')
     command.append(dataset_filename)
+    if seed is None:
+        raise NotImplementedError
     command.append(seed)
     command.append(model_dir)
     command.append('%d' %batch_size)
