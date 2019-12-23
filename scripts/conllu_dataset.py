@@ -182,7 +182,7 @@ def evaluate(prediction_path, gold_path, outname = None):
     if not outname:
         outname = prediction_path[:-7] + '.eval.txt'
     command = []
-    command.append('./wrapper-conll18-eval.sh')
+    command.append('%s/scripts/wrapper-conll18-eval.sh' %os.environ['PRJ_DIR'])
     command.append('--output')
     command.append(outname)
     command.append('--verbose')
