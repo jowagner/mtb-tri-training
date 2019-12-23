@@ -68,14 +68,15 @@ for exp_code, test_type in exp2gold:
 
 for key in key2filenames:
     print('Combinations for', key)
+    language, parser, sample, learners, test_tbid, test_type = key
     seeds_and_filenames = key2filenames[key]
     n = len(seeds_and_filenames)
     total = 0
-    for _ in itertools.combinations(range(n), key[3]):
+    for _ in itertools.combinations(range(n), learners):
         total += 1
     scores = []
     count = 0
-    for indices in itertools.combinations(range(n), key[3]):
+    for indices in itertools.combinations(range(n), learners):
         count += 1
         print('Combinations %d of %d for %r' %(count, total, key))
         seeds = set()
