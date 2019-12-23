@@ -49,7 +49,9 @@ while True:
     rows.append(row)
     language = row[0]
     parser   = row[1]
-    key = (language, parser)
+    method   = row[3]
+    sample   = method[1]
+    key = (language, parser, sample)
     baselinescore = float(row[baseline_column])
     try:
         bestscore = langandparser2bestbaseline[key]
@@ -63,14 +65,16 @@ while True:
         worstscore = 9999.0
     if baselinescore < worstscore:
         langandparser2worstbaseline[key] = baselinescore
+    row[1] = '%s\t%s' %(parser, sample)
 
 rows.sort()
 print('<p>%d rows</p>' %len(rows))
 
-rows.append((None,None))
+rows.append((None, 'n/a n/a'))
 
 last_language = None
 last_parser   = None
+last_sample   = None
 
 l2text = {
     'e': 'English',
@@ -83,30 +87,43 @@ p2text = {
     'g': '+fasttext',
     'h': '+elmo',
 }
+s2text = {
+    '-': 'bootstrap',
+    'w': 'permutation',
+    'x': '250%',
+}
+d2text = {
+    '-': 'use all',
+    'v': 'vanilla',
+    'z': 'decaying',
+}
 
 for row in rows:
-    parser = row[1]
+    parser, sample = row[1].split()
     language = row[0]
-    if last_parser != parser and last_parser is not None:
+    if (last_language, last_parser, last_sample) != (language, parser, sample) \
+    and last_sample is not None:
         print('</table>')
     if last_language != language and last_language is not None:
         print(legend)
-    if parser is None:
+    if language is None:
         break
     if last_language != language:
         print('<h2>%s</h2>' %l2text[language])
-    if last_parser != parser:
+    if (last_language, last_parser) != (language, parser):
         print('<h3>%s</h3>' %p2text[parser])
+    if (last_language, last_parser, last_sample) != (language, parser, sample):
+        print('<h4>%s</h4>' %s2text[sample])
         print('<table cellpadding="4" border="1">')
     print('<tr>')
-    for i in range(2,baseline_column-5):
+    for i in range(0,baseline_column-5):
         print('<td>%s</td>' %row[i])
     # number of rounds
     print('<td>%s</td>' %row[baseline_column-2])
     # size in last round
     print('<td>%.1fk</td>' %(0.001*int(row[baseline_column-1])))
-    bestbaselinescore = langandparser2bestbaseline[(language, parser)]
-    worstbaselinescore = langandparser2worstbaseline[(language, parser)]
+    bestbaselinescore = langandparser2bestbaseline[(language, parser, sample)]
+    worstbaselinescore = langandparser2worstbaseline[(language, parser, sample)]
     score = float(row[baseline_column])
     sccode = '<div title="%.9f">%.1f</div>' %(score, score)
     if score == bestbaselinescore:
@@ -133,6 +150,7 @@ for row in rows:
             print('%s<b><font color="red">%s</font></b></td>' %(tdcode, sccode))
         else:
             print('%s%s</td>' %(tdcode, sccode))
+    last_sample = sample
     last_parser = parser
     last_language = language
 
