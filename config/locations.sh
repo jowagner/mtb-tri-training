@@ -76,6 +76,7 @@ case "${SETTING}" in
     export EFML_MAX_CACHE_ENTRIES=20
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
+    export TT_DISTRIBUTIONS_DIR=${SCRATCH}/tri-training/workdirs
     ;;
 "jwagner@g0-debian-9")
     echo "CPU nodes not supported"
