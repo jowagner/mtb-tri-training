@@ -110,7 +110,9 @@ for key in key2filenames:
         os.unlink(output_path)
         os.unlink(output_path[:-7] + '.eval.txt')
     scores.sort()
-    f = open('distribution-%s%s%s-%d-%s-%s.txt' %key, 'wb')
+    d_name = 'distribution-%s%s%s-%d-%s-%s.txt' %key
+    d_name = d_name.replace('--', 's-')
+    f = open(d_name, 'wb')
     for score in scores:
         score = score[1:]
         f.write('\t'.join(score))

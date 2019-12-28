@@ -77,7 +77,7 @@ while True:
 rows.sort()
 print('<p>%d rows</p>' %len(rows))
 
-rows.append((None, 'n/a n/a'))
+rows.append((None, 'n/a n/a', None))
 
 last_language = None
 last_parser   = None
@@ -110,6 +110,8 @@ class Distribution:
 
     def __init__(self, language, parser, sample):
         filename = None
+        if sample == '-':
+            sample = 's'
         code = language + parser + sample
         for entry in os.listdir(os.environ['TT_DISTRIBUTIONS_DIR']):
             if not entry.startswith('distribution-') \
@@ -156,7 +158,7 @@ class Distribution:
             return 'ffffff'
         colours = []
         for i in range(1001):
-            offset = 0.0001 * i - 0.05
+            offset = 0.00012 * (i - 500)
             colours.append(self.p_colour(score+offset))
         components = []
         for c_index in (0,1,2):
@@ -191,6 +193,7 @@ class Distribution:
 for row in rows:
     parser, sample = row[1].split()
     language = row[0]
+    augsize = row[2]
     if (last_language, last_parser, last_sample) != (language, parser, sample) \
     and last_sample is not None:
         print('</table>')
@@ -207,6 +210,9 @@ for row in rows:
         print('<h4>%s</h4>' %s2text[sample])
         print('<table cellpadding="4" border="1">')
         distribution = Distribution(language, parser, sample)
+        last_augsize = None
+    if last_augsize is not None and last_augsize != augsize:
+        print('<tr><td></td></tr>')
     print('<tr>')
     for i in range(0,baseline_column-5):
         print('<td>%s</td>' %row[i])
@@ -246,6 +252,7 @@ for row in rows:
     last_sample = sample
     last_parser = parser
     last_language = language
+    last_augsize = augsize
 
 print('<body></html>')
 
