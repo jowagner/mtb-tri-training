@@ -96,9 +96,9 @@ p2text = {
     'h': '+elmo',
 }
 s2text = {
-    '-': 'bootstrap',
-    'w': 'permutation',
-    'x': '250%',
+    '-': 'bootstrap samples of labelled data',
+    'w': 'permutations of labelled data',
+    'x': '250% of labelled data',
 }
 d2text = {
     '-': 'use all',
@@ -207,7 +207,7 @@ for row in rows:
     if (last_language, last_parser) != (language, parser):
         print('<h3>%s</h3>' %p2text[parser])
     if (last_language, last_parser, last_sample) != (language, parser, sample):
-        print('<h4>%s</h4>' %s2text[sample])
+        print('<h4>Using %s for round 0 models</h4>' %s2text[sample])
         print('<table cellpadding="4" border="1">')
         distribution = Distribution(language, parser, sample)
         last_augsize = None
