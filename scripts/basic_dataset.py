@@ -425,6 +425,8 @@ class Sample(Dataset):
         d_size = len(self.dataset)
         if size is None:
             size = d_size
+        if unique_sentences and size > d_size:
+            raise ValueError('Cannot make larger sample than given data without duplicating items')
         if not self.with_replacement:
             permutation, extra_data = self._get_preferred_d_indices(
                 d_size, size, disprefer, stratified
@@ -475,6 +477,7 @@ class Sample(Dataset):
                             time.ctime(time.time()), old_p_size, p_size
                         ), file=sys.stderr)
                     d_index = permutation[p_index % p_size]
+
                 if diversify_attempts == 1 or not self.sentences:
                     # no choice
                     priority = 0
@@ -494,6 +497,13 @@ class Sample(Dataset):
                     sys.stdout.flush()
                     last_verbose = time.time()
                     interval *= 2.0
+            if unique_sentences \
+            and p_index >= p_size * (1+diversify_attempts) \
+            and not self.with_replacement:
+                print('Sampling %s: giving up at p_index %d' %(
+                    time.ctime(time.time()), p_index,
+                ), file=sys.stderr)
+                break
             if self.sentence_filter is not None:
                 if self.sentence_filter(self[-1]):
                     del self.sentences[-1]
