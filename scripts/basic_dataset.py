@@ -472,7 +472,6 @@ class Sample(Dataset):
                         permutation += e_data
                         old_p_size = p_size
                         p_size = len(permutation)
-                        extra_data = None
                         print('Sampling %s: extended %d permutation size to %d' %(
                             time.ctime(time.time()), old_p_size, p_size
                         ), file=sys.stderr)
