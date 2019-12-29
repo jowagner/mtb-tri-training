@@ -22,8 +22,8 @@ legend = """
 <p>black bold = above or matching best baseline for this language and parser
 <p>red bold = below this seed and method's baseline
 <p>background dark purple: below worst baseline
-<p>background dark grey: in bottom 2.5% of baselines
-<p>background light grey: in bottom half of baselines and above 2.5%
+<p>background brown: in bottom 2.5% of baselines
+<p>background grey: in bottom half of baselines and above 2.5%
 <p>background white: in top half of baselines and below 97.5%
 <p>background light violet-blue: in top 2.5% of baselines
 <p>background cyan-blue: 0.0 to 0.5 LAS points above top baseline
@@ -158,7 +158,10 @@ class Distribution:
             return 'ffffff'
         colours = []
         for i in range(1001):
-            offset = 0.00012 * (i - 500)
+            offset = 0.00008 * (i - 500)
+            colours.append(self.p_colour(score+offset))
+        for i in range(1001):
+            offset = 0.00004 * (i - 500)
             colours.append(self.p_colour(score+offset))
         components = []
         for c_index in (0,1,2):
@@ -172,13 +175,13 @@ class Distribution:
         if score < self.min_score:
             return (0.8, 0.2, 0.8)
         if score < self.score025:
-            return (0.4, 0.4, 0.4)
+            return (0.7, 0.3, 0.0)
         if score < self.median:
-            return (0.8, 0.8, 0.8)
+            return (0.7, 0.7, 0.7)
         if score < self.score975:
             return (1.0, 1.0, 1.0)
         if score < self.max_score:
-            return (0.7, 0.6, 1.0)  # light violet-blue
+            return (0.8, 0.7, 1.0)  # light violet-blue
         if score < self.max_score+0.5:
             return (0.6, 1.0, 1.0)  # light cyan-blue
         if score < self.max_score+1.0:
