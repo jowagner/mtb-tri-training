@@ -362,6 +362,12 @@ Options:
                             match is found, any other model. It should be
                             safe to delete these.
                             (Default: Do not rename models.)
+
+    --force-resampling-of-subsets
+                            With --tolerant, do not re-use subset, forcing
+                            subsets to be sampled again. Useful for obtaining
+                            debugging output of sampling.
+
 """)
 
 
@@ -424,6 +430,7 @@ def main():
     opt_allow_oversampling_of_subset = False
     opt_subset_filter_kwargs = {}
     opt_subset_stratified = False
+    opt_resample_subsets = False
     opt_augment_size = '10k'
     opt_augment_attempts = 5
     opt_diversify_attempts = 1
@@ -552,6 +559,8 @@ def main():
             del sys.argv[1]
         elif option == '--subset-stratified':
             opt_subset_stratified = True
+        elif option == '--force-resampling-of-subsets':
+            opt_resample_subsets = True
         elif option == '--augment-size':
             opt_augment_size = sys.argv[1]
             del sys.argv[1]
@@ -911,7 +920,8 @@ def main():
         subset_index = '%s/subset-%02d.indices' %(opt_workdir, training_round)
         if opt_tolerant \
         and os.path.exists(subset_index) \
-        and os.path.exists(subset_path):
+        and os.path.exists(subset_path)  \
+        and not opt_resample_subsets:
             print('Re-using existing subset file')
             unlabelled_subset = basic_dataset.load_or_map_from_filename(
                 dataset_module.new_empty_set(),
@@ -1075,6 +1085,7 @@ def main():
             ))
             if new_size > opt_augment_size:
                 print('Pruning new dataset to augment size', opt_augment_size)
+                print('Pruning new dataset to augment size', opt_augment_size, file=sys.stderr)
                 new_datasets[training_index][learner_index] = get_subset(
                     new_dataset, opt_augment_size, random,
                     opt_augment_attempts, with_replacement = False,
@@ -1092,6 +1103,7 @@ def main():
             else:
                 last_k = training_round
             print('Using data sets of last %d round(s):' %last_k)
+            print('Using data sets of last %d round(s):' %last_k, file=sys.stderr)
             last_k_datasets = []
             for k in range(last_k):
                 t_index = training_index - k
@@ -1208,8 +1220,10 @@ def print_t(*args):
         extra_newline = True
     args.append('[%s]' %(time.ctime(time.time())))
     print(*args)
+    print(*args, file=sys.stderr)
     if extra_newline:
         print()
+        print(file=sys.stderr)
     sys.stdout.flush()
 
 def check_deadline(deadline = None, stopfile = None):
