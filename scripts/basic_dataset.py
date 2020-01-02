@@ -503,6 +503,7 @@ class Sample(Dataset):
                     time.ctime(time.time()), p_index,
                 ), file=sys.stderr)
                 break
+            dispr_offset = 10 + (d_index % 10)
             if self.sentence_filter is not None:
                 if self.sentence_filter(self[-1]):
                     del self.sentences[-1]
@@ -512,9 +513,9 @@ class Sample(Dataset):
                         # _get_preferred_d_indices() iterates over the full
                         # range(min, max) of values
                         try:
-                            disprefer[d_index] += 9
+                            disprefer[d_index] += dispr_offset
                         except KeyError:
-                            disprefer[d_index] = 9
+                            disprefer[d_index] = dispr_offset
                     continue
             if unique_sentences:
                 # check that the new sentence is different from all so far:
@@ -530,9 +531,9 @@ class Sample(Dataset):
                         # _get_preferred_d_indices() iterates over the full
                         # range(min, max) of values
                         try:
-                            disprefer[d_index] += 9
+                            disprefer[d_index] += dispr_offset
                         except KeyError:
-                            disprefer[d_index] = 9
+                            disprefer[d_index] = dispr_offset
                     continue
                 so_far[candidate] = None
             remaining -= 1
