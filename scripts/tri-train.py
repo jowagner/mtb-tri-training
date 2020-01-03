@@ -175,7 +175,9 @@ Options:
                             than one keyword argument.
 
     --subset-size  NUMBER   How many items to select from the unlabelled
-                            data in each tri-training iteration
+                            data for parsing. Another subset will be selected
+                            if, after knowledge transfer, the augment size
+                            (see --augment-size below) is not reached.
                             As full sentences are selected the actual number
                             of selected tokens can deviate from the requested
                             number.
@@ -877,8 +879,13 @@ def main():
         target_columns = target_columns,
         dropout_probabilities = len(target_columns) * [1.0]
     )
+
+    # TODO: provide options to control column weights;
+    # for now, any difference triggers a disagreement
+    column_weights = len(target_columns) * [1.0]
+
     previously_picked = {}
-    new_datasets = []
+    selected_data = []
     for training_index in range(opt_iterations):
         training_round = training_index + 1
         print_t('\n== Tri-training Iteration %d of %d ==' %(
@@ -907,194 +914,265 @@ def main():
                 opt_tolerant = opt_tolerant,
                 opt_rename_dispensable = opt_rename_dispensable,
             )
-        if opt_init_seed:
-            random.seed(int(hashlib.sha512('round %d: %s' %(
-                training_round, opt_init_seed,
-            )).hexdigest(), 16))
-        print_t('\nSelecting subset of unlabelled data:')
-        if opt_allow_oversampling_of_subset:
-            target_size = opt_subset_size
-        else:
-            target_size = min(opt_subset_size, unlabelled_data.get_number_of_items())
-        subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
-        subset_index = '%s/subset-%02d.indices' %(opt_workdir, training_round)
+        # prepare processing of subsets
         if opt_tolerant \
-        and os.path.exists(subset_index) \
-        and os.path.exists(subset_path)  \
-        and not opt_resample_subsets:
-            print('Re-using existing subset file')
-            unlabelled_subset = basic_dataset.load_or_map_from_filename(
-                dataset_module.new_empty_set(),
-                subset_path
-            )
-            f = open(subset_index, 'rb')
-            while True:
-                line = f.readline()
-                if not line:
-                    break
-                d_index = int(line)
-                try:
-                    previously_picked[d_index] += 1
-                except KeyError:
-                    previously_picked[d_index] = 1
-            f.close()
-        else:
-            unlabelled_subset = get_subset(
-                unlabelled_data, target_size,
-                random, opt_subset_attempts,
-                with_replacement = False,
-                unique_sentences = True,
-                diversify_attempts = opt_diversify_attempts,
-                disprefer = previously_picked,
-                sentence_modifier = drop_all_targets,
-                sentence_filter = subset_filter,
-                stratified = opt_subset_stratified,
-                write_file = subset_path
-            )
-            f = open(subset_index, 'wb')
-            for d_index in unlabelled_subset.indices():
-                try:
-                    previously_picked[d_index] += 1
-                except KeyError:
-                    previously_picked[d_index] = 1
-                f.write('%d\n' %d_index)
-            f.close()
-        print_t('Size of subset: %d items in %d sentences' %(
-            unlabelled_subset.get_number_of_items(),
-            len(unlabelled_subset)
-        ))
-
-        print_t('\nMaking predictions:')
-
-        predictions = make_predictions(
-            models, unlabelled_subset,
-            training_round = training_round,
-            opt_workdir = opt_workdir,
-            dataset_name = 'subset',
-            filename_extension = filename_extension,
-            opt_continue = opt_continue,
-            opt_manually_predict = opt_manually_predict,
-            opt_tolerant = opt_tolerant,
-            opt_rename_dispensable = opt_rename_dispensable,
-        )
-        if opt_quit_after_prediction:
-            print('\n*** Manual intervention requested. ***\n')
-            print(
-                'The predictions are ready. As --quit-after-predictions was'
-                ' specified, you can now inspect and/or modify the predictions'
-                ' and then continue tri-training by re-running this script'
-                ' with the same settings and --continue.'
-            )
-            sys.exit(0)
-
-        print_t('\nTeaching (knowledge transfer):')
-
-        reusing_old_kt = False
-        if opt_continue and opt_tolerant:
-            # As there is no fingerprint in the candidate set filenames, we
-            # can only re-use these files in tolerant mode.
-            have_all_kt_sets = True
-            for learner_index in range(opt_learners):
-                learner_rank = learner_index + 1
-                tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
-                if not os.path.exists(tr_data_filename):
-                    have_all_kt_sets = False
-                    break
-            if have_all_kt_sets:
-                reusing_old_kt = True
-                print('\nRe-using existing candidate sets')
-
-        # TODO: provide options to control column weights;
-        # for now, any difference triggers a disagreement
-        column_weights = len(target_columns) * [1.0]
-        new_datasets.append([])
-        prediction_sets = []
-        if reusing_old_kt:
-            num_kt_learners = 0
-        else:
-            num_kt_learners = opt_learners
-        for learner_index in range(num_kt_learners):
-            new_datasets[training_index].append(dataset_module.new_empty_set())
-            prediction_sets.append(basic_dataset.load_or_map_from_filename(
-                dataset_module.new_empty_set(),
-                predictions[learner_index][1]
-            ))
-        event_counter = {}
-        if reusing_old_kt:
-            kt_indices = []
-            for learner_index in range(opt_learners):
-                learner_rank = learner_index + 1
-                tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
-                new_datasets[training_index].append(
-                    basic_dataset.load_or_map_from_filename(
-                        dataset_module.new_empty_set(),
-                        tr_data_filename
+        and not opt_force_resample_subsets:
+            # check for old subset file format
+            subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
+            subset_index = '%s/subset-%02d.indices' %(opt_workdir, training_round)
+            if os.path.exists(subset_index) \
+            and os.path.exists(subset_path):
+                os.rename(subset_path,  '%s/subset-%02d-part-001.conllu' %(
+                    opt_workdir, training_round
                 ))
-        else:
-            kt_indices = range(len(unlabelled_subset))
-        for subset_index in kt_indices:
-            sentence_predictions = []
-            for learner_index in range(opt_learners):
-                sentence_predictions.append(prediction_sets[learner_index][subset_index])
-            learner_index, merged_prediction = knowledge_transfer(
-                sentence_predictions,
-                target_columns, column_weights, opt_learners,
-                opt_max_teacher_disagreement_fraction,
-                opt_min_teacher_agreements,
-                opt_min_learner_disagreement,
-                event_counter = event_counter,
+                os.rename(subset_index, '%s/subset-%02d-part-001.indices' %(
+                    opt_workdir, training_round
+                ))
+        new_candidate_sizes = []
+        new_candidate_sentences = []
+        new_candidate_sets = []
+        for learner_index in range(opt_learners):
+            new_candidate_sizes.append(0)
+            new_candidate_sentences.append(0)
+            new_candidate_sets.append([])
+        subset_part = 0
+        event_counter = {}
+        while True:
+            subset_part += 1
+            if opt_init_seed:
+                random.seed(int(hashlib.sha512('round %d, subset part %d: %s' %(
+                    training_round, subset_part, opt_init_seed,
+                )).hexdigest(), 16))
+            print_t('\nSelecting part %d of subset of unlabelled data:' %subset_part)
+            if opt_allow_oversampling_of_subset:
+                target_size = opt_subset_size
+            else:
+                target_size = min(opt_subset_size, unlabelled_data.get_number_of_items())
+            subset_path = '%s/subset-%02d-part-%03d.conllu' %(
+                opt_workdir, training_round, subset_part
             )
-            if learner_index < 0:
-                continue
-            # TODO: The above constraints are sentence-level
-            #       filters. We also need to apply similar
-            #       contraints per item and column, i.e.
-            #       optionally only accept items from the
-            #       merged prediction that sufficiently
-            #       disagree from the learner's prediction
-            #       (or are undefined, i.e. '_').
-            #       Note that masking the agreements with
-            #       the learner's prediction with '_' is
-            #       likely to result in training data with
-            #       mostly masked predictions.
+            subset_index = '%s/subset-%02d-part-%03d.indices' %(
+                opt_workdir, training_round, subset_part
+            )
+            if opt_tolerant \
+            and os.path.exists(subset_index) \
+            and os.path.exists(subset_path)  \
+            and not opt_force_resample_subsets:
+                print('Re-using existing subset file')
+                unlabelled_subset = basic_dataset.load_or_map_from_filename(
+                    dataset_module.new_empty_set(),
+                    subset_path
+                )
+                f = open(subset_index, 'rb')
+                while True:
+                    line = f.readline()
+                    if not line:
+                        break
+                    d_index = int(line)
+                    try:
+                        previously_picked[d_index] += 1
+                    except KeyError:
+                        previously_picked[d_index] = 1
+                f.close()
+            else:
+                unlabelled_subset = get_subset(
+                    unlabelled_data, target_size,
+                    random, opt_subset_attempts,
+                    with_replacement = False,
+                    unique_sentences = True,
+                    diversify_attempts = opt_diversify_attempts,
+                    disprefer = previously_picked,
+                    sentence_modifier = drop_all_targets,
+                    sentence_filter = subset_filter,
+                    stratified = opt_subset_stratified,
+                    write_file = subset_path
+                )
+                f = open(subset_index, 'wb')
+                for d_index in unlabelled_subset.indices():
+                    try:
+                        previously_picked[d_index] += 1
+                    except KeyError:
+                        previously_picked[d_index] = 1
+                    f.write('%d\n' %d_index)
+                f.close()
+            print_t('Size of part %d of subset: %d items in %d sentences' %(
+                subset_part,
+                unlabelled_subset.get_number_of_items(),
+                len(unlabelled_subset)
+            ))
 
-            # add new sentence to data set of learner
-            new_datasets[training_index][learner_index].append(merged_prediction)
+            print_t('\nMaking predictions for subset part %d:' %subset_part)
+
+            predictions = make_predictions(
+                models, unlabelled_subset,
+                training_round = training_round,
+                opt_workdir = opt_workdir,
+                dataset_name = 'subset-part-%03d' %subset_part,
+                filename_extension = filename_extension,
+                opt_continue = opt_continue,
+                opt_manually_predict = opt_manually_predict,
+                opt_tolerant = opt_tolerant,
+                opt_rename_dispensable = opt_rename_dispensable,
+            )
+            if opt_quit_after_prediction:
+                print('\n*** Manual intervention requested. ***\n')
+                print(
+                    'The predictions are ready. As --quit-after-predictions was'
+                    ' specified, you can now inspect and/or modify the predictions'
+                    ' and then continue tri-training by re-running this script'
+                    ' with the same settings and --continue.'
+                )
+                sys.exit(0)
+
+            print_t('\nTeaching (knowledge transfer) for subset part %d:' %subset_part)
+
+            # can we re-use previous output?
+            reusing_old_kt = False
+            if opt_continue and opt_tolerant:
+                # As there is no fingerprint in the candidate set filenames, we
+                # can only re-use these files in tolerant mode.
+                have_all_kt_sets = True
+                for learner_index in range(opt_learners):
+                    learner_rank = learner_index + 1
+                    tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
+                        opt_workdir, training_round, subset_part, learner_rank
+                    )
+                    if not os.path.exists(tr_data_filename):
+                        have_all_kt_sets = False
+                        break
+                if have_all_kt_sets:
+                    reusing_old_kt = True
+                    print('\nRe-using existing candidate sets')
+
+            if reusing_old_kt:
+                # re-using candidate data sets from files
+                for learner_index in range(opt_learners):
+                    learner_rank = learner_index + 1
+                    dataset = basic_dataset.load_or_map_from_filename(
+                        dataset_module.new_empty_set(),
+                        '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
+                            opt_workdir, training_round, subset_part, learner_rank
+                    ))
+                    new_candidate_sets[learner_index].append(dataset)
+            else:
+                # prepare knowledge transfer
+                prediction_sets = []
+                for learner_index in range(opt_learners):
+                    learner_rank = learner_index + 1
+                    new_candidate_sets[learner_index].append(
+                        dataset_module.new_empty_set()
+                    )
+                    prediction_sets.append(basic_dataset.load_or_map_from_filename(
+                        dataset_module.new_empty_set(),
+                        predictions[learner_index][1]
+                    ))
+                # perform knowledge transfer for each item of the current subset
+                if opt_init_seed:
+                    random.seed(int(hashlib.sha512('Knowledge transfer %02d %03d %s' %(
+                        training_round, subset_part, opt_init_seed,
+                    )).hexdigest(), 16))
+                for subset_index in range(len(unlabelled_subset)):
+                    # simplify access to predictions for this item
+                    sentence_predictions = []
+                    for learner_index in range(opt_learners):
+                        sentence_predictions.append(
+                            prediction_sets[learner_index][subset_index]
+                        )
+                    # carry out knowledge transfer
+                    learner_index, merged_prediction = knowledge_transfer(
+                        sentence_predictions,
+                        target_columns, column_weights, opt_learners,
+                        opt_max_teacher_disagreement_fraction,
+                        opt_min_teacher_agreements,
+                        opt_min_learner_disagreement,
+                        event_counter = event_counter,
+                    )
+                    if learner_index < 0:
+                        # teachers decided not to teach this item
+                        continue
+                    # TODO: The above constraints are sentence-level
+                    #       filters. We also need to apply similar
+                    #       contraints per item and column, i.e.
+                    #       optionally only accept items from the
+                    #       merged prediction that sufficiently
+                    #       disagree from the learner's prediction
+                    #       (or are undefined, i.e. '_').
+                    #       Note that masking the agreements with
+                    #       the learner's prediction with '_' is
+                    #       likely to result in training data with
+                    #       mostly masked predictions.
+
+                    # add new sentence to data set of learner
+                    new_candidate_sets[learner_index].append(merged_prediction)
+
+                # save data for re-use
+                for learner_index in range(opt_learners):
+                    learner_rank = learner_index + 1
+                    dataset = new_candidate_sets[learner_index]
+                    # write new labelled data to file
+                    tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
+                        opt_workdir, training_round, subset_part, learner_rank
+                    )
+                    f_out = open(tr_data_filename, 'w')
+                    dataset.save_to_file(f_out)
+                    f_out.close()
+
+            print_t('\nKnowledge transfer statistics:')
+
+            need_another_subset_part = False
+            for learner_index in range(opt_learners):
+                learner_rank = learner_index + 1
+                new_dataset = new_candidate_sets[learner_index]
+                new_size = new_dataset.get_number_of_items()
+                new_number_of_sentences = len(new_dataset)
+                print('Size of new dataset for this subset part: %d items in %d sentences' %(
+                    new_size, new_number_of_sentences
+                ))
+                new_candidate_sizes[learner_index] += new_size
+                new_candidate_sentences[learner_index] += new_number_of_sentences
+                if new_candidate_sizes[learner_index] < opt_augment_size:
+                    need_another_subset_part = True
+                    conclusion = ' --> more unlabelled data required'
+                else:
+                    conclusion = ''
+                print('Total of new data for this learner so far: %d items in %d sentences%s' %(
+                    new_candidate_sizes[learner_index],
+                    new_candidate_sentences[learner_index],
+                    conclusion
+                ))
+            if not need_another_subset_part:
+                break
+            # TODO: also break out of this loop if there is a learner that did
+            #       not receive any data after processing a large fraction of
+            #       the available unlabelled data
+
+        print_t('\nKnowledge transfer events (over all parts):')
         print_event_counter(event_counter)
 
         print_t('\nCompiling new datasets:')
 
         new_training_sets = []
+        selected_data.append([])
         for learner_index in range(opt_learners):
+            learner_rank = learner_index + 1
             print('\nLearner %d:' %(learner_index+1))
             if opt_init_seed:
-                random.seed(int(hashlib.sha512('New dataset %d %d %s' %(
-                    training_round, learner_rank, opt_init_seed,
+                random.seed(int(hashlib.sha512('New dataset %02d %03d %d %s' %(
+                    training_round, subset_part, learner_rank, opt_init_seed,
                 )).hexdigest(), 16))
-            learner_rank = learner_index + 1
-            new_dataset = new_datasets[training_index][learner_index]
-            if not reusing_old_kt:
-                # write new labelled data to file
-                tr_data_filename = '%s/new-candidate-set-%02d-%d.conllu' %(opt_workdir, training_round, learner_rank)
-                f_out = open(tr_data_filename, 'w')
-                new_dataset.save_to_file(f_out)
-                f_out.close()
+            new_dataset = basic_dataset.Concat(new_candidate_sets[learner_index])
             new_size = new_dataset.get_number_of_items()
-            print('Size of new dataset: %d items in %d sentences' %(
-                new_size, len(new_dataset)
-            ))
             if new_size > opt_augment_size:
-                print('Pruning new dataset to augment size', opt_augment_size)
-                print('Pruning new dataset to augment size', opt_augment_size, file=sys.stderr)
-                new_datasets[training_index][learner_index] = get_subset(
+                print_t('Pruning new dataset to augment size', opt_augment_size)
+                new_dataset = get_subset(
                     new_dataset, opt_augment_size, random,
                     opt_augment_attempts, with_replacement = False,
                     prefer_smaller = True,
-                    write_file = \
-                    '%s/new-selected-set-%02d-%d.conllu' %(
-                        opt_workdir, training_round, learner_rank
-                    )
                 )
+            write_dataset(new_dataset, '%s/new-selected-set-%02d-%d.conllu' %(
+                opt_workdir, training_round, learner_rank
+            ))
+            selected_data[training_index].append(new_dataset)
             # compile training set for this iteration and learner
             # according to --last-k, --decay and --oversample
             if opt_last_k:
@@ -1102,17 +1180,16 @@ def main():
                 last_k = min(training_round, opt_last_k)
             else:
                 last_k = training_round
-            print('Using data sets of last %d round(s):' %last_k)
-            print('Using data sets of last %d round(s):' %last_k, file=sys.stderr)
+            print_t('Using data sets of last %d round(s):' %last_k)
             last_k_datasets = []
             for k in range(last_k):
                 t_index = training_index - k
                 weight = opt_last_decay ** k
                 target_size = int(0.5 + weight * opt_augment_size)
-                new_dataset = new_datasets[t_index][learner_index]
-                if weight < 1.0:
+                new_dataset = selected_data[t_index][learner_index]
+                if k > 0:
                     current_size = new_dataset.get_number_of_items()
-                if weight < 1.0 and current_size > target_size:
+                if k > 0 and current_size > target_size:
                     new_dataset = get_subset(
                         new_dataset, target_size, random,
                         opt_last_decay_attempts, with_replacement = False,
@@ -1125,10 +1202,10 @@ def main():
                 last_k_datasets.append(new_dataset)
                 new_dataset_num_items = new_dataset.get_number_of_items()
                 new_dataset_sentences = len(new_dataset)
-                print('Taking %s items in %d sentences from round %d.'
+                print_t('Took %s items in %d sentences from round %d (weight %.3f).'
                       ' Average sentence length is %.1f items.' %(
                     new_dataset_num_items, new_dataset_sentences,
-                    t_index+1,
+                    t_index+1, weight,
                     new_dataset_num_items / float(new_dataset_sentences),
                 ))
             last_k_datasets = basic_dataset.Concat(last_k_datasets)
