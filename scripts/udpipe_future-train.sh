@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# (C) 2019 Dublin City University
+# (C) 2019, 2020 Dublin City University
 # All rights reserved. This material may not be
 # reproduced, displayed, modified or distributed without the express prior
 # written permission of the copyright holder.
@@ -26,11 +26,15 @@ test -z $4 && echo "Missing batch size"
 test -z $4 && exit 1
 BATCH_SIZE=$4
 
+test -z $5 && echo "Missing learning rate schedule"
+test -z $5 && exit 1
+LR_SCHEDULE=$5
+
 MIN_EPOCH_SENTENCES=9600
 
 # optional args:
-TEST_SET=$5
-DEV_SET=$6
+TEST_SET=$6
+DEV_SET=$7
 
 if [ -n "$TEST_SET" ]; then
     REAL_TEST_SET=$(realpath ${TEST_SET})
@@ -99,7 +103,7 @@ python ${PARSER_DIR}/ud_parser.py \
     --logdir ./                   \
     --batch_size ${BATCH_SIZE}               \
     --min_epoch_batches ${MIN_EPOCH_BATCHES}  \
-    --epochs "30:1e-3,5:6e-4,5:4e-4,5:3e-4,5:2e-4,10:1e-4"  \
+    --epochs "${LR_SCHEDULE}"     \
     ${FAKE_TBID}                  \
     2> stderr.txt     \
     > stdout.txt
