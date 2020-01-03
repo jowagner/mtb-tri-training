@@ -23,6 +23,8 @@ def get_training_schedule(epochs = 60):
         "30:1e-3,5:6e-4,5:4e-4,5:3e-4,5:2e-4,10:1e-4"
         adjusted to the given number of epochs
     '''
+    if type(epochs) is str:
+        epochs = int(epochs)
     if epochs < 1:
         raise ValueError('Need at least 1 epoch to train a model.')
     ref_remaining = 60

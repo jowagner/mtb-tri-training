@@ -25,6 +25,7 @@ def train(
     monitoring_datasets = [],
     lcode = None,
     batch_size = 32,
+    epochs = 60,
 ):
     if lcode is None:
         raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
