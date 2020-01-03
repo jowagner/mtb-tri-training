@@ -1295,7 +1295,7 @@ def print_t(*args):
     if args and args[-1] == '\n':
         del args[-1]
         extra_newline = True
-    if args and args[-1].endswith('\n'):
+    if args and type(args[-1]) is str and args[-1].endswith('\n'):
         args[-1] = args[-1][:-1]
         extra_newline = True
     args.append('[%s]' %(time.ctime(time.time())))
