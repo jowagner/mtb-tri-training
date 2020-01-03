@@ -28,9 +28,9 @@ legend = """
 <p>background light violet-blue: in top 2.5% of baselines
 <p>background cyan-blue: 0.0 to 0.5 LAS points above top baseline
 <p>background yellow-green: 0.5 to 1.0 LAS points above top baseline
-<p>background strong yellow: 1.0 to 2.0 LAS points above top baseline
-<p>background pink: 2.0 to 3.0 LAS points above top baseline
-<p>background strong red: 3.0 or more LAS points above top baseline
+<p>background strong yellow: 1.0 to 1.8 LAS points above top baseline
+<p>background pink: 1.8 to 2.6 LAS points above top baseline
+<p>background strong red: 2.6 or more LAS points above top baseline
 </p>
 """
 
@@ -108,7 +108,8 @@ d2text = {
 
 class Distribution:
 
-    def __init__(self, language, parser, sample):
+    def __init__(self, language, parser, sample, smooth = True):
+        self.smooth = smooth
         filename = None
         if sample == '-':
             sample = 's'
@@ -156,13 +157,15 @@ class Distribution:
     def colour(self, score):
         if not self.scores:
             return 'ffffff'
+        if self.smooth:
+            indices = range(101)
+        else:
+            indices = [50,]
         colours = []
-        for i in range(1001):
-            offset = 0.00008 * (i - 500)
-            colours.append(self.p_colour(score+offset))
-        for i in range(1001):
-            offset = 0.00004 * (i - 500)
-            colours.append(self.p_colour(score+offset))
+        for i in indices:
+            for f in (0.00017, 0.00014, 0.00012, 0.00010):
+                offset = f * (i - 50)
+                colours.append(self.p_colour(score+offset))
         components = []
         for c_index in (0,1,2):
             value = 0.0
@@ -173,22 +176,22 @@ class Distribution:
 
     def p_colour(self, score):
         if score < self.min_score:
-            return (0.8, 0.2, 0.8)
+            return (0.60, 0.20, 0.70)
         if score < self.score025:
-            return (0.7, 0.3, 0.0)
+            return (0.80, 0.40, 0.20)
         if score < self.median:
-            return (0.7, 0.7, 0.7)
+            return (0.75, 0.75, 0.75)
         if score < self.score975:
             return (1.0, 1.0, 1.0)
         if score < self.max_score:
-            return (0.8, 0.7, 1.0)  # light violet-blue
+            return (0.78, 0.74, 1.0)  # light violet-blue
         if score < self.max_score+0.5:
             return (0.6, 1.0, 1.0)  # light cyan-blue
         if score < self.max_score+1.0:
-            return (0.8, 1.0, 0.6)  # light yellow-green
-        if score < self.max_score+2.0:
+            return (0.85, 1.0, 0.55)  # light yellow-green
+        if score < self.max_score+1.8:
             return (1.0, 1.0, 0.0)  # strong yellow
-        if score < self.max_score+3.0:
+        if score < self.max_score+2.6:
             return (1.0, 0.7, 0.6)  # pink
         else:
             return (1.0, 0.0, 0.0)  # red
