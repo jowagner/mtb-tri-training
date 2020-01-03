@@ -40,7 +40,7 @@ if not os.path.exists('jobs'):
 for augment_size_code in range(augment_offset,10,augment_step):
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
     augsize2 = int(0.5+5*(2.0**0.5)**(augment_size_code+2))
-    subsetsize = 64 * augsize
+    subsetsize = max(min(320, 11 * augsize), 7*augsize)
     for major_code, more_options in [
         (3, ''),
         #(5, '--learners 5'),

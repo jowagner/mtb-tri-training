@@ -432,7 +432,7 @@ def main():
     opt_allow_oversampling_of_subset = False
     opt_subset_filter_kwargs = {}
     opt_subset_stratified = False
-    opt_resample_subsets = False
+    opt_force_resample_subsets = False
     opt_augment_size = '10k'
     opt_augment_attempts = 5
     opt_diversify_attempts = 1
@@ -562,7 +562,7 @@ def main():
         elif option == '--subset-stratified':
             opt_subset_stratified = True
         elif option == '--force-resampling-of-subsets':
-            opt_resample_subsets = True
+            opt_force_resample_subsets = True
         elif option == '--augment-size':
             opt_augment_size = sys.argv[1]
             del sys.argv[1]
@@ -1103,12 +1103,12 @@ def main():
                     #       mostly masked predictions.
 
                     # add new sentence to data set of learner
-                    new_candidate_sets[learner_index].append(merged_prediction)
+                    new_candidate_sets[learner_index][-1].append(merged_prediction)
 
                 # save data for re-use
                 for learner_index in range(opt_learners):
                     learner_rank = learner_index + 1
-                    dataset = new_candidate_sets[learner_index]
+                    dataset = new_candidate_sets[learner_index][-1]
                     # write new labelled data to file
                     tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
                         opt_workdir, training_round, subset_part, learner_rank
@@ -1117,16 +1117,19 @@ def main():
                     dataset.save_to_file(f_out)
                     f_out.close()
 
+            # now we have predictions for the current subset for all learners,
+            # either from existing files or newly predicted
+
             print_t('\nKnowledge transfer statistics:')
 
             need_another_subset_part = False
             for learner_index in range(opt_learners):
                 learner_rank = learner_index + 1
-                new_dataset = new_candidate_sets[learner_index]
+                new_dataset = new_candidate_sets[learner_index][-1]
                 new_size = new_dataset.get_number_of_items()
                 new_number_of_sentences = len(new_dataset)
-                print('Size of new dataset for this subset part: %d items in %d sentences' %(
-                    new_size, new_number_of_sentences
+                print('Size of learner %d\'s new dataset for this subset part: %d items in %d sentences' %(
+                    learner_rank, new_size, new_number_of_sentences
                 ))
                 new_candidate_sizes[learner_index] += new_size
                 new_candidate_sentences[learner_index] += new_number_of_sentences
