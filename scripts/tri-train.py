@@ -1189,6 +1189,8 @@ def main():
                 t_index = training_index - k
                 weight = opt_last_decay ** k
                 target_size = int(0.5 + weight * opt_augment_size)
+                if not target_size:
+                    continue
                 new_dataset = selected_data[t_index][learner_index]
                 if k > 0:
                     current_size = new_dataset.get_number_of_items()
@@ -1202,14 +1204,19 @@ def main():
                             t_index+1
                         )
                     )
-                last_k_datasets.append(new_dataset)
                 new_dataset_num_items = new_dataset.get_number_of_items()
                 new_dataset_sentences = len(new_dataset)
+                if new_dataset_sentences:
+                    avg_length = '%.1f' %(
+                        new_dataset_num_items / float(new_dataset_sentences)
+                    )
+                    last_k_datasets.append(new_dataset)
+                else:
+                    avg_length = 'n/a'
                 print_t('Took %s items in %d sentences from round %d (weight %.3f).'
-                      ' Average sentence length is %.1f items.' %(
+                      ' Average sentence length is %s items.' %(
                     new_dataset_num_items, new_dataset_sentences,
-                    t_index+1, weight,
-                    new_dataset_num_items / float(new_dataset_sentences),
+                    t_index+1, weight, avg_length,
                 ))
             last_k_datasets = basic_dataset.Concat(last_k_datasets)
             print('Subtotal: %s items in %d sentences.' %(
