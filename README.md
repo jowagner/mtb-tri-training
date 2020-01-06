@@ -81,6 +81,7 @@ export LD_LIBRARY_PATH
 ```
 
 As in the above configuration, we used CUDA 10.0 and matching CuDNN.
+TODO: Why do we not use `UDPIPE_FUTURE_LIB_PATH` in `config/locations.sh`?
 
 ```
 source venv-udpf/bin/activate
