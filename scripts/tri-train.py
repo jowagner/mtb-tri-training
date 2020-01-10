@@ -113,16 +113,20 @@ Options:
                             be trained from
                             the output of this script's random number
                             generator; types:
-                                int15 = 15 bit non-zero number,
-                                int31 = 31 bit non-zero number,
-                                int63 = 63 bit non-zero number,
-                                str12 = 12 characters (1 letter and 11 letters
-                                        or digits)
-                                str24 = 2x str12
-                                compose = concatenation of our seed (--seed),
-                                    learner rank (1-3) and training round,
-                                    i.e. adding unique additional digits to the
-                                    main seed
+                                intN = N bit non-zero number, e.g. in the
+                                    range 1 to 32767 for int15
+                                strN = N characters (1 letter and N-1
+                                    letters or digits), e.g. str12 for 12
+                                    characters
+                                compose = concatenation of main seed
+                                    (--seed), learner rank (1-3) and 2-digit
+                                    training round, i.e. adding unique
+                                    additional digits to the main seed
+                                verbXYZ = use XYZ verbatim as the seed
+                                type1+type2+...: concatenate two or more of
+                                    the above, e.g. compose+verb789 with
+                                    main seed 42 will yield 42301789 for the
+                                    3rd learner in the first round
                             (default: do not provide the models with a seed,
                             usually meaning that they use a system seed)
 
@@ -1905,8 +1909,17 @@ def adjust_size(size, data_size):
         return int(size)
 
 def get_model_seed(mode, main_seed, learner_rank, training_round):
+    if '+' in mode:
+        parts = []
+        for part_mode in mode.split('+'):
+            parts.append(get_model_seed(
+                part_mode, main_seed, learner_rank, training_round
+            ))
+        return ''.join(parts)
     if mode in ('system', None):
         return None
+    elif mode.startswith('verb'):
+        return mode[4:]
     elif mode.startswith('int'):
         bits = int(mode[3:])
         if bits < 1:
