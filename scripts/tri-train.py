@@ -183,7 +183,7 @@ Options:
                             if, after knowledge transfer, the augment size
                             (see --augment-size below) is not reached. (The
                             number of subsets is further limited by the
-                            option --opt-max-subsets, see below.)
+                            option --max-subsets, see below.)
                             As full sentences are selected the actual number
                             of selected tokens can deviate from the requested
                             number.
@@ -191,8 +191,8 @@ Options:
                             of the labelled data.
                             (Default: 600k)
 
-    --opt-max-subsets  NUMBER  How many subsets of unlabelled data to
-                            consider at most in each tri-training iteration.
+    --max-subsets  NUMBER   How many subsets of unlabelled data to consider
+                            at most in each tri-training iteration.
                             (Default: 10)
 
     --subset-attempts  NUMBER  Create NUMBER subsets and pick the one that is
@@ -574,7 +574,7 @@ def main():
             opt_subset_stratified = True
         elif option == '--force-resampling-of-subsets':
             opt_force_resample_subsets = True
-        elif option == '--opt-max-subsets':
+        elif option == '--max-subsets':
             opt_max_subsets = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--augment-size':
