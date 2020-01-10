@@ -47,10 +47,10 @@ cd ${SCRIPTDIR}
     %(model_keyword_options)s           \
     --subset-size "%(subsetsize)dk"          \
     --subset-stratified                      \
-    --augment-size %(augsize)dk   \
+    --augment-size "%(augsize)dk"        \
     --deadline 18.0            \
     --stopfile ${WORKDIR}/stop  \
-    --model-init compose  \
+    --model-init "compose+verb%(modelseedsuffix)03d"  \
     --unlabelled %(lcode)s_wp17    \
     --unlabelled %(lcode)s_cc17    \
     --subset-filter-keyword max_token_bytes 200  \

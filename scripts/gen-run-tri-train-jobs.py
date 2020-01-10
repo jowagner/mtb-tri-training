@@ -37,6 +37,20 @@ else:
 if not os.path.exists('jobs'):
     os.mkdir('jobs')
 
+setting2modelseedsuffix = {}
+modelseedsuffix2setting = []
+
+def get_modelseedsuffix(setting):
+    global setting2modelseedsuffix
+    global modelseedsuffix2setting
+    try:
+        retval = setting2modelseedsuffix[setting]
+    except KeyError:
+        retval = len(modelseedsuffix2setting)
+        setting2modelseedsuffix[setting] = retval
+        modelseedsuffix2setting.append(setting)
+    return retval
+
 for augment_size_code in range(augment_offset,10,augment_step):
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
     augsize2 = int(0.5+5*(2.0**0.5)**(augment_size_code+2))
@@ -70,6 +84,9 @@ for augment_size_code in range(augment_offset,10,augment_step):
                     ]:
                         #if decay_code != '-' and augment_size_code < 6:
                         #    continue
+                        modelseedsuffix = get_modelseedsuffix(
+                            ovs_code+wrpl_code+disa_code+decay_code
+                        )
                         for short_lcode, lcode, tbid, unlabelled_size, lang_options in [
                             #'c', 'cs', 'cs_pdt',    160444000, '--simulate-size 20k --simulate-seed 42'),
                             #'d', 'de', 'de_gsd',    160444000, '--simulate-size 20k --simulate-seed 42'),
@@ -81,8 +98,6 @@ for augment_size_code in range(augment_offset,10,augment_step):
                             ('v', 'vi', 'vi_vtb',    189658820, ''),
                         ]:
                             iterations = min(24, int(0.5+0.002*unlabelled_size/augsize))
-                            if wrpl_code != 'x':
-                                iterations = 1
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
                                 ('f', 'udpipe_future'),
