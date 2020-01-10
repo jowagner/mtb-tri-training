@@ -177,13 +177,19 @@ Options:
     --subset-size  NUMBER   How many items to select from the unlabelled
                             data for parsing. Another subset will be selected
                             if, after knowledge transfer, the augment size
-                            (see --augment-size below) is not reached.
+                            (see --augment-size below) is not reached. (The
+                            number of subsets is further limited by the
+                            option --opt-max-subsets, see below.)
                             As full sentences are selected the actual number
                             of selected tokens can deviate from the requested
                             number.
-                            If NUMBER end with % it is relative to the size
+                            If NUMBER ends with % it is relative to the size
                             of the labelled data.
                             (Default: 600k)
+
+    --opt-max-subsets  NUMBER  How many subsets of unlabelled data to
+                            consider at most in each tri-training iteration.
+                            (Default: 10)
 
     --subset-attempts  NUMBER  Create NUMBER subsets and pick the one that is
                             closest to the desired subset size
@@ -432,6 +438,7 @@ def main():
     opt_allow_oversampling_of_subset = False
     opt_subset_filter_kwargs = {}
     opt_subset_stratified = False
+    opt_max_subsets = 10
     opt_force_resample_subsets = False
     opt_augment_size = '10k'
     opt_augment_attempts = 5
@@ -563,6 +570,9 @@ def main():
             opt_subset_stratified = True
         elif option == '--force-resampling-of-subsets':
             opt_force_resample_subsets = True
+        elif option == '--opt-max-subsets':
+            opt_max_subsets = int(sys.argv[1])
+            del sys.argv[1]
         elif option == '--augment-size':
             opt_augment_size = sys.argv[1]
             del sys.argv[1]
@@ -935,10 +945,9 @@ def main():
             new_candidate_sizes.append(0)
             new_candidate_sentences.append(0)
             new_candidate_sets.append([])
-        subset_part = 0
         event_counter = {}
-        while True:
-            subset_part += 1
+        for subset_part_m1 in range(opt_max_subsets):
+            subset_part = subset_part_m1 + 1
             if opt_init_seed:
                 random.seed(int(hashlib.sha512('round %d, subset part %d: %s' %(
                     training_round, subset_part, opt_init_seed,
