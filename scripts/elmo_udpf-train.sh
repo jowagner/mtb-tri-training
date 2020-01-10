@@ -37,8 +37,8 @@ LR_SCHEDULE=$6
 MIN_EPOCH_SENTENCES=9600
 
 # optional args:
-TEST_SET=$7
-DEV_SET=$8
+DEV_SET=$7
+TEST_SET=$8
 
 if [ -n "$TEST_SET" ]; then
     REAL_TEST_SET=$(realpath ${TEST_SET})
