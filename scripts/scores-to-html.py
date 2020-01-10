@@ -18,22 +18,6 @@ import sys
 
 print('<html><body>')
 
-legend = """
-<p>black bold = above or matching best baseline for this language and parser
-<p>red bold = below this seed and method's baseline
-<p>background dark purple: below worst baseline
-<p>background brown: in bottom 2.5% of baselines
-<p>background grey: in bottom half of baselines and above 2.5%
-<p>background white: in top half of baselines and below 97.5%
-<p>background light violet-blue: in top 2.5% of baselines
-<p>background cyan-blue: 0.0 to 0.5 LAS points above top baseline
-<p>background yellow-green: 0.5 to 1.0 LAS points above top baseline
-<p>background strong yellow: 1.0 to 1.8 LAS points above top baseline
-<p>background pink: 1.8 to 2.6 LAS points above top baseline
-<p>background strong red: 2.6 or more LAS points above top baseline
-</p>
-"""
-
 header = sys.stdin.readline().split()
 
 langandparser2bestbaseline = {}
@@ -111,6 +95,16 @@ class Distribution:
     def __init__(self, language, parser, sample, smooth = True):
         self.smooth = smooth
         filename = None
+        if language is None:
+            self.scores = True
+            self.min_score =   0.0
+            self.score025  =   2.5
+            self.score250  =  25.0
+            self.median    =  50.0
+            self.score750  =  75.0
+            self.score975  =  97.5
+            self.max_score = 100.0
+            return
         if sample == '-':
             sample = 's'
         code = language + parser + sample
@@ -148,11 +142,18 @@ class Distribution:
             else:
                 # even number of scores
                 self.median = (scores[num_scores/2-1] + scores[num_scores/2])/2.0
+            backup = scores
             prune = int(0.025*len(scores))
             if prune:
                 scores = self.scores[prune:-prune]
             self.score025 = scores[0]
             self.score975 = scores[-1]
+            scores = backup
+            prune = int(0.25*len(scores))
+            if prune:
+                scores = self.scores[prune:-prune]
+            self.score250 = scores[0]
+            self.score750 = scores[-1]
 
     def colour(self, score):
         if not self.scores:
@@ -163,7 +164,7 @@ class Distribution:
             indices = [50,]
         colours = []
         for i in indices:
-            for f in (0.00017, 0.00014, 0.00012, 0.00010):
+            for f in (0.000023, 0.000011):
                 offset = f * (i - 50)
                 colours.append(self.p_colour(score+offset))
         components = []
@@ -176,15 +177,19 @@ class Distribution:
 
     def p_colour(self, score):
         if score < self.min_score:
-            return (0.60, 0.20, 0.70)
+            return (0.60, 0.20, 0.70) # below 0.0: purple
         if score < self.score025:
-            return (0.80, 0.40, 0.20)
+            return (0.80, 0.40, 0.20) #  0.0 -  2.5: brown
+        if score < self.score250:
+            return (0.76, 0.63, 0.56) #  2.5 - 25.0: brown-grey
         if score < self.median:
-            return (0.75, 0.75, 0.75)
+            return (0.75, 0.75, 0.75) # 25.0 - 50.0: grey
+        if score < self.score750:
+            return (1.00, 1.00, 1.00) # 50.0 - 75.0: white
         if score < self.score975:
-            return (1.0, 1.0, 1.0)
+            return (0.92, 0.91, 1.00) # 75.0 - 97.5: very light violet-blue
         if score < self.max_score:
-            return (0.78, 0.74, 1.0)  # light violet-blue
+            return (0.78, 0.74, 1.00) # 97.5 - 100: light violet-blue
         if score < self.max_score+0.5:
             return (0.6, 1.0, 1.0)  # light cyan-blue
         if score < self.max_score+1.0:
@@ -195,6 +200,43 @@ class Distribution:
             return (1.0, 0.7, 0.6)  # pink
         else:
             return (1.0, 0.0, 0.0)  # red
+
+legend = []
+legend.append('<table>')
+legend.append('<tr><td><b>black bold = above or matching best baseline for this language and parser</b></td></tr>')
+legend.append('<tr><td><b><font color="red">red bold = below this seed and method\'s baseline</font></b></td></tr>')
+distribution = Distribution(None, None, None, True)
+for score, text in [
+    ( -1.0, 'background dark purple: below worst baseline'),
+    (  0.0, 'blend'),
+    (  0.1, 'background brown: in bottom 2.5% of baselines'),
+    (  2.5, 'blend'),
+    ( 10.0, 'background brown-grey: in bottom quartile but above 2.5%'),
+    ( 25.0, 'blend'),
+    ( 30.0, 'background grey: in 2nd quartile (25%-50%)'),
+    ( 50.0, 'blend'),
+    ( 60.0, 'background white: in 3rd quartile (50%-75%)'),
+    ( 75.0, 'blend'),
+    ( 80.0, 'background very light violet-blue: in top quartile but below 97.5%'),
+    ( 97.5, 'blend'),
+    ( 99.0, 'background light violet-blue: in top 2.5% of baselines'),
+    (100.0, 'blend'),
+    (100.2, 'background cyan-blue: 0.0 to 0.5 LAS points above top baseline'),
+    (100.5, 'blend'),
+    (100.7, 'background yellow-green: 0.5 to 1.0 LAS points above top baseline'),
+    (101.0, 'blend'),
+    (101.4, 'background strong yellow: 1.0 to 1.8 LAS points above top baseline'),
+    (101.8, 'blend'),
+    (102.2, 'background pink: 1.8 to 2.6 LAS points above top baseline'),
+    (102.6, 'blend'),
+    (103.3, 'background strong red: 2.6 or more LAS points above top baseline'),
+]:
+    legend.append('<tr><td bgcolor="#%s">%s</td></tr>' %(distribution.colour(score), text))
+legend.append('</table>')
+legend.append('<tr><td>(For scores at interval boundaries, the neighbouring colours are blended.)</td></tr>')
+legend = '\n'.join(legend)
+
+print(legend)
 
 for row in rows:
     parser, sample = row[1].split()
