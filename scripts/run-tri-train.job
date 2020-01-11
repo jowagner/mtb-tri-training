@@ -35,7 +35,7 @@ rm -rf stop *workdir
 
 cd ${SCRIPTDIR}
 ./tri-train.py   \
-    --opt-max-subsets 1  \
+    --max-subsets 1  \
     --init-seed %(seed)s       \
     %(lang_options)s   \
     %(more_options)s   \
