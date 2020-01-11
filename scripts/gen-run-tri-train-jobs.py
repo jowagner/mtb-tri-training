@@ -51,6 +51,8 @@ def get_modelseedsuffix(setting):
         modelseedsuffix2setting.append(setting)
     return retval
 
+aug2iterations = [24, 20, 17, 16, 14, 12, 9, 7, 5, 3]
+
 for augment_size_code in range(augment_offset,10,augment_step):
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
     augsize2 = int(0.5+5*(2.0**0.5)**(augment_size_code+2))
@@ -97,7 +99,10 @@ for augment_size_code in range(augment_offset,10,augment_step):
                             ('u', 'ug', 'ug_udt',      2537468, ''),
                             ('v', 'vi', 'vi_vtb',    189658820, ''),
                         ]:
-                            iterations = min(24, int(0.5+0.002*unlabelled_size/augsize))
+                            #iterations = min(24, int(0.5+0.002*unlabelled_size/augsize))
+                            iterations = aug2iterations[augment_size_code]
+                            if wrpl_code != 'x':
+                                iterations = 0
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
                                 ('f', 'udpipe_future'),

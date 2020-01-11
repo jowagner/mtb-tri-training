@@ -60,7 +60,7 @@ cd ${SCRIPTDIR}
     --tolerant              \
     --rename-dispensable    \
     --epoch-selection last  \
-    --iterations %(iterations)d  \
+    --iterations %(iterations)2d  \
     --workdir ${WORKDIR}     \
     2> ${WORKDIR}/stderr.txt  \
     >  ${WORKDIR}/stdout.txt
