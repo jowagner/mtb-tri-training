@@ -177,7 +177,7 @@ class Distribution:
 
     def p_colour(self, score):
         if score < self.min_score:
-            return (0.60, 0.20, 0.70) # below 0.0: purple
+            return (0.50, 0.15, 0.60) # below 0.0: purple
         if score < self.score025:
             return (0.80, 0.40, 0.20) #  0.0 -  2.5: brown
         if score < self.score250:
@@ -187,16 +187,18 @@ class Distribution:
         if score < self.score750:
             return (1.00, 1.00, 1.00) # 50.0 - 75.0: white
         if score < self.score975:
-            return (0.92, 0.91, 1.00) # 75.0 - 97.5: very light violet-blue
+            return (1.00, 1.00, 1.00) # 75.0 - 97.5: white
         if score < self.max_score:
-            return (0.78, 0.74, 1.00) # 97.5 - 100: light violet-blue
-        if score < self.max_score+0.5:
+            return (0.80, 0.60, 1.00) # 97.5 - 100: light violet-blue
+        if score < self.max_score+0.4:
+            return (0.65, 0.65, 1.00) # light blue
+        if score < self.max_score+0.8:
             return (0.6, 1.0, 1.0)  # light cyan-blue
-        if score < self.max_score+1.0:
-            return (0.85, 1.0, 0.55)  # light yellow-green
+        if score < self.max_score+1.2:
+            return (0.80, 1.0, 0.50)  # light yellow-green
         if score < self.max_score+1.8:
             return (1.0, 1.0, 0.0)  # strong yellow
-        if score < self.max_score+2.6:
+        if score < self.max_score+2.4:
             return (1.0, 0.7, 0.6)  # pink
         else:
             return (1.0, 0.0, 0.0)  # red
@@ -215,21 +217,21 @@ for score, text in [
     ( 25.0, 'blend'),
     ( 30.0, 'background grey: in 2nd quartile (25%-50%)'),
     ( 50.0, 'blend'),
-    ( 60.0, 'background white: in 3rd quartile (50%-75%)'),
-    ( 75.0, 'blend'),
-    ( 80.0, 'background very light violet-blue: in top quartile but below 97.5%'),
+    ( 73.8, 'background white: in upper half but below 97.5%'),
     ( 97.5, 'blend'),
     ( 99.0, 'background light violet-blue: in top 2.5% of baselines'),
     (100.0, 'blend'),
-    (100.2, 'background cyan-blue: 0.0 to 0.5 LAS points above top baseline'),
-    (100.5, 'blend'),
-    (100.7, 'background yellow-green: 0.5 to 1.0 LAS points above top baseline'),
-    (101.0, 'blend'),
-    (101.4, 'background strong yellow: 1.0 to 1.8 LAS points above top baseline'),
+    (100.2, 'background light blue: 0.0 to 0.4 LAS points above top baseline'),
+    (100.4, 'blend'),
+    (100.6, 'background cyan-blue: 0.4 to 0.8 LAS points above top baseline'),
+    (100.8, 'blend'),
+    (101.0, 'background yellow-green: 0.8 to 1.2 LAS points above top baseline'),
+    (101.2, 'blend'),
+    (101.5, 'background strong yellow: 1.2 to 1.8 LAS points above top baseline'),
     (101.8, 'blend'),
-    (102.2, 'background pink: 1.8 to 2.6 LAS points above top baseline'),
-    (102.6, 'blend'),
-    (103.3, 'background strong red: 2.6 or more LAS points above top baseline'),
+    (102.1, 'background pink: 1.8 to 2.4 LAS points above top baseline'),
+    (102.4, 'blend'),
+    (999.9, 'background strong red: 2.4 or more LAS points above top baseline'),
 ]:
     legend.append('<tr><td bgcolor="#%s">%s</td></tr>' %(distribution.colour(score), text))
 legend.append('</table>')
@@ -263,6 +265,10 @@ for row in rows:
         print('<tr><td></td></tr>')
     print('<tr>')
     for i in range(0,baseline_column-5):
+        if i == baseline_column-7:
+            augsize_k = int(0.5+5*(2.0**0.5)**int(row[i]))
+            print('<td>%s: %dk</td>' %(row[i], augsize_k))
+            continue
         print('<td>%s</td>' %row[i])
     # number of rounds
     print('<td>%s</td>' %row[baseline_column-2])
