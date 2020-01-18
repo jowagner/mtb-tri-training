@@ -18,21 +18,30 @@ from __future__ import print_function
 import os
 import sys
 
-if len(sys.argv) > 1 and sys.argv[1] == 'ichec':
+if len(sys.argv) > 1 and sys.argv[1].startswith('ichec'):
     template = open('template-ichec-2x.job', 'rb').read()
-    augment_offset = 1
-    augment_step = 4
+    if sys.argv[1][-1] == 'c':
+        augment_size_codes = [1,5,]
+    else:
+        augment_size_codes = [3,7,]
     gpu_list = [
         ('v100', 'v100'),
     ]
 else:
     template = open('run-tri-train.job', 'rb').read()
-    augment_offset = 0
-    augment_step = 2
+    augment_size_codes = [0,2,4,6,8]
     gpu_list = [
         ('tesla', 'tesla'),
         ('rtx',   'rtx2080ti'),
     ]
+    if len(sys.argv) > 1 and sys.argv[1] == 'grove':
+        augment_size_codes = [0,2,4]
+    if len(sys.argv) > 1 and sys.argv[1] == 'grove+':
+        augment_size_codes = [3,5]
+    if len(sys.argv) > 1 and sys.argv[1] == 'boole':
+        augment_size_codes = [6,8]
+    if len(sys.argv) > 1 and sys.argv[1] == 'boole+':
+        augment_size_codes = [7,9]
 
 if not os.path.exists('jobs'):
     os.mkdir('jobs')
@@ -53,7 +62,7 @@ def get_modelseedsuffix(setting):
 
 aug2iterations = [24, 20, 17, 16, 14, 12, 9, 7, 5, 3]
 
-for augment_size_code in range(augment_offset,10,augment_step):
+for augment_size_code in augment_size_codes:
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
     augsize2 = int(0.5+5*(2.0**0.5)**(augment_size_code+2))
     subsetsize = 16 * augsize  # max(min(320, 11 * augsize), 7*augsize)
