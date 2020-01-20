@@ -110,8 +110,8 @@ for augment_size_code in augment_size_codes:
                         ]:
                             #iterations = min(24, int(0.5+0.002*unlabelled_size/augsize))
                             iterations = aug2iterations[augment_size_code]
-                            if wrpl_code != 'x':
-                                iterations = 0
+                            #if wrpl_code != 'x':
+                            #    iterations = 0
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
                                 ('f', 'udpipe_future'),
