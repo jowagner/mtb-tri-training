@@ -83,6 +83,7 @@ for augment_size_code in augment_size_codes:
                 ('x', '--without-replacement --seed-size "250%"'),
             ]:
                 for disa_code, disa_options in [
+                    #('a', '--all-knowledge-transfers'),  # not implemented yet
                     ('-', ''),
                     #('d', '--min-learner-disagreement 1'),
                     #('e', '--min-learner-disagreement 2'),
