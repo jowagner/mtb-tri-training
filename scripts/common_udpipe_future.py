@@ -66,6 +66,40 @@ def incomplete(model_dir):
         return True
     return False
 
+t_0 = 1577836800  # 1st of Jan 2020
+
+def run_command(command):
+    global t_0
+    if 'TT_UDPF_TASK_DIR' not in os.environ:
+        print('Running', command)
+        sys.stderr.flush()
+        sys.stdout.flush()
+        subprocess.call(command)
+    else:
+        print('Submitting task', command)
+        sys.stderr.flush()
+        sys.stdout.flush()
+        max_result_buckets = int(os.environ['TT_UDPF_MAX_RESULT_BUCKETS'])
+        # TODO: short command fingerprint
+        task_id = '%05x-%s-%s-%d-%s' %(
+            int((time.time()-t0)/60.0) % 16**5,
+            os.environ['HOSTNAME'],
+            os.environ['SLURM_JOB_ID'],
+            os.getpid(),
+            command_fingerprint,
+        )
+        # TODO: derive result bucket
+        filename = '%s/inbox/%s-%s.task' %(
+            task_id,
+            result_bucket
+        )
+        f = open(filename+'.prep', 'wb')
+        # TODO: write task description, including expiry time
+        # TODO: rename task to final name `filename`
+        # TODO: sleep to expiry time + x
+        # TODO: if task has not started conclude it expired --> exception
+        # TODO: wait for task to finish (no timeout)
+
 def main():
     raise NotImplementedError
 
