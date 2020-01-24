@@ -60,7 +60,7 @@ def get_modelseedsuffix(setting):
         modelseedsuffix2setting.append(setting)
     return retval
 
-aug2iterations = [24, 20, 17, 16, 14, 12, 9, 7, 5, 3]
+aug2iterations = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6]
 
 for augment_size_code in augment_size_codes:
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
