@@ -16,6 +16,7 @@ from __future__ import print_function
 import os
 import subprocess
 import sys
+import time
 
 def get_training_schedule(epochs = 60):
     ''' return a udpipe-future learning rate schedule
@@ -66,37 +67,59 @@ def incomplete(model_dir):
         return True
     return False
 
-t_0 = 1577836800  # 1st of Jan 2020
 
 def run_command(command):
-    global t_0
     if 'TT_UDPF_TASK_DIR' not in os.environ:
         print('Running', command)
         sys.stderr.flush()
         sys.stdout.flush()
         subprocess.call(command)
     else:
-        print('Submitting task', command)
-        sys.stderr.flush()
-        sys.stdout.flush()
-        max_result_buckets = int(os.environ['TT_UDPF_MAX_RESULT_BUCKETS'])
-        # TODO: short command fingerprint
-        task_id = '%05x-%s-%s-%d-%s' %(
-            int((time.time()-t0)/60.0) % 16**5,
+        now = time.time()
+        if 'TT_TASK_EPOCH' in os.environ:
+            t0 = float(os.environ['TT_TASK_EPOCH'])
+        else:
+            t0 = 0.0
+        command_fingerprint = hashlib.sha256('\n'.join(command)).hexdigest()
+        task_id = '%05x-%s-%s-%d-%s-%s' %(
+            int((now-t0)/60.0),
             os.environ['HOSTNAME'],
             os.environ['SLURM_JOB_ID'],
             os.getpid(),
-            command_fingerprint,
+            command_fingerprint[:8],
+            command_fingerprint[8:16],
         )
-        # TODO: derive result bucket
-        filename = '%s/inbox/%s-%s.task' %(
+        max_result_buckets = int(os.environ['TT_UDPF_MAX_RESULT_BUCKETS'])
+        task_fingerprint = hashlib.sha512(task_id).hexdigest()
+        result_bucket = int(task_fingerprint, 16) % max_result_buckets
+        filename = '%s/inbox/%s-%d.task' %(
+            os.environ['TT_UDPF_TASK_DIR'],
             task_id,
-            result_bucket
+            result_bucket,
         )
+        if 'TT_TASK_PATIENCE' in os.environ:
+            patience = float(os.environ['TT_TASK_PATIENCE'])
+        else:
+            patience = 36000.0
+        expires = now + patience
         f = open(filename+'.prep', 'wb')
-        # TODO: write task description, including expiry time
-        # TODO: rename task to final name `filename`
-        # TODO: sleep to expiry time + x
+        f.write('expires %.1f\n' %expires)
+        f.write('\n'.join(command))
+        f.close()
+        os.rename(filename+'.prep', filename)
+        print('Submitted task', command)
+        sys.stderr.flush()
+        sys.stdout.flush()
+        # wait for task to start
+        iteration = 0
+        fp_length = len(task_fingerprint)
+        while time.time() < expires and os.path.exists(filename):
+            time.sleep(30.0 + int(task_fingerprint[iteration % fp_length], 16))
+            iteration += 1
+        # did it expire?
+        # TODO: check for file in active queue
+        #       if not there, also check for result
+
         # TODO: if task has not started conclude it expired --> exception
         # TODO: wait for task to finish (no timeout)
 
