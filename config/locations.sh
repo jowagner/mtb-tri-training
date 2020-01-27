@@ -117,8 +117,10 @@ case "${SETTING}" in
     export EFML_MAX_CACHE_ENTRIES=100
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
+    #export TT_TASK_DIR=${HOME}/tri-training/tasks  # only set when ready to use
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=144000
+    export TT_TASK_BUCKETS=100
     ;;
 root*)
     # inside udocker

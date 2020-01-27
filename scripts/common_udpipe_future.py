@@ -67,14 +67,14 @@ def incomplete(model_dir):
         return True
     return False
 
-
 def run_command(command):
-    if 'TT_UDPF_TASK_DIR' not in os.environ:
+    if 'TT_TASK_DIR' not in os.environ:
         print('Running', command)
         sys.stderr.flush()
         sys.stdout.flush()
         subprocess.call(command)
     else:
+        # prepare task submission file
         now = time.time()
         if 'TT_TASK_EPOCH' in os.environ:
             t0 = float(os.environ['TT_TASK_EPOCH'])
@@ -83,19 +83,19 @@ def run_command(command):
         command_fingerprint = hashlib.sha256('\n'.join(command)).hexdigest()
         task_id = '%05x-%s-%s-%d-%s-%s' %(
             int((now-t0)/60.0),
-            os.environ['HOSTNAME'],
+            os.environ['HOSTNAME'].replace('-', '_'),
             os.environ['SLURM_JOB_ID'],
             os.getpid(),
             command_fingerprint[:8],
             command_fingerprint[8:16],
         )
-        max_result_buckets = int(os.environ['TT_UDPF_MAX_RESULT_BUCKETS'])
+        num_task_buckets = int(os.environ['TT_TASK_BUCKETS'])
         task_fingerprint = hashlib.sha512(task_id).hexdigest()
-        result_bucket = int(task_fingerprint, 16) % max_result_buckets
-        filename = '%s/inbox/%s-%d.task' %(
-            os.environ['TT_UDPF_TASK_DIR'],
+        my_task_bucket = int(task_fingerprint, 16) % num_task_buckets
+        filename = '%s/udpf/inbox/%s-%d.task' %(
+            os.environ['TT_TASK_DIR'],
             task_id,
-            result_bucket,
+            my_task_bucket,
         )
         if 'TT_TASK_PATIENCE' in os.environ:
             patience = float(os.environ['TT_TASK_PATIENCE'])
@@ -107,21 +107,78 @@ def run_command(command):
         f.write('\n'.join(command))
         f.close()
         os.rename(filename+'.prep', filename)
-        print('Submitted task', command)
+        submit_time = time.time()
+        print('Submitted task %s with command %r' %(task_id, command))
         sys.stderr.flush()
         sys.stdout.flush()
         # wait for task to start
         iteration = 0
         fp_length = len(task_fingerprint)
+        verbosity_interval = 3600.0
+        next_verbose = submit_time + verbosity_interval
+        start_time_interval = (submit_time, submit_time)
         while time.time() < expires and os.path.exists(filename):
-            time.sleep(30.0 + int(task_fingerprint[iteration % fp_length], 16))
+            duration = 30.0 + int(task_fingerprint[iteration % fp_length], 16)
+            now = time.time()
+            start_time_interval = (now, now+duration)
+            time.sleep(duration)
             iteration += 1
+            now = time.time()
+            if now >= next_verbose:
+                print('Waited %.1f hours so far for task %s to start' %(
+                    (now-submit_time)/3600.0,
+                    task_id,
+                ))
+                verbosity_interval *= 1.4
+                next_verbose += verbosity_interval
         # did it expire?
-        # TODO: check for file in active queue
-        #       if not there, also check for result
+        has_expired = True
+        # check for file in active queue
+        time.sleep(5.0) # just in case moving the file is not atomic
+        filename = '%s/udpf/active/%d/%s.task' %(
+            os.environ['TT_TASK_DIR'],
+            my_task_bucket,
+            task_id,
+        )
+        if os.path.exists(filename):
+            has_expired = False
+            # expectation value of start time assuming uniform
+            # distribution within above sleep interval
+            start_time = sum(start_time_interval) / 2.0
+            # wait for task to finish (no timeout)
+            verbosity_interval = 3600.0
+            next_verbose = min(next_verbose, start_time + verbosity_interval)
+            while os.path.exists(filename):
+                duration = 30.0 + int(task_fingerprint[iteration % fp_length], 16)
+                now = time.time()
+                end_time_interval = (now, now+duration)
+                time.sleep(duration)
+                iteration += 1
+                now = time.time()
+                if now >= next_verbose:
+                    print('Task %s is running about %.1f hours so far' %(
+                        task_id,
+                        (now-start_time)/3600.0,
+                    ))
+                    verbosity_interval *= 1.4
+                    next_verbose += verbosity_interval
+        # task is not active --> check for completion
+        filename = '%s/udpf/completed/%d/%s.task' %(
+            os.environ['TT_TASK_DIR'],
+            my_task_bucket,
+            task_id,
+        )
+        if not os.path.exists(filename):
+            print('Task %s failed' %task_id)
+            raise ValueError('Task %s marked by task master as no longer active but not as complete')
 
-        # TODO: if task has not started conclude it expired --> exception
-        # TODO: wait for task to finish (no timeout)
+def task_master():
+    # wait for task to appear
+    # extract bucket and task_id
+    # move file to active folder
+    # run task
+    # append stats to active file
+    # move active file to completed folder
 
 def main():
     raise NotImplementedError
