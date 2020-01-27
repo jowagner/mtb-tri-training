@@ -18,6 +18,19 @@ import subprocess
 import sys
 import time
 
+def print_usage():
+    print('Usage: %s [options]' %(os.path.split(sys.argv[0])[-1]))
+    print("""
+Options:
+
+    --deadline  HOURS       Do not train another model after HOURS hours
+                            and quit script.
+                            (Default: 0.0 = no limit)
+
+    --stopfile  FILE        Do not train another model if FILE exists.
+
+""")
+
 def get_training_schedule(epochs = 60):
     ''' return a udpipe-future learning rate schedule
         and epochs specification like
@@ -172,17 +185,107 @@ def run_command(command):
             print('Task %s failed' %task_id)
             raise ValueError('Task %s marked by task master as no longer active but not as complete')
 
-def task_master():
-    # wait for task to appear
-    # extract bucket and task_id
-    # move file to active folder
-    # run task
-    # append stats to active file
-    # move active file to completed folder
-
-def main():
-    raise NotImplementedError
+def worker():
+    opt_help = False
+    opt_debug = True
+    opt_deadline = None
+    opt_stopfile = None
+    while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
+        option = sys.argv[1]
+        option = option.replace('_', '-')
+        del sys.argv[1]
+        if option in ('--help', '-h'):
+            opt_help = True
+            break
+        elif option == '--deadline':
+            opt_deadline = 3600.0 * float(sys.argv[1])
+            if opt_deadline:
+                opt_deadline += time.time()
+            del sys.argv[1]
+        elif option == '--stopfile':
+            opt_stopfile = sys.argv[1]
+            del sys.argv[1]
+        else:
+            print('Unsupported or not yet implemented option %s' %option)
+            opt_help = True
+            break
+    if len(sys.argv) != 1:
+        opt_help = True
+    if opt_help:
+        print_usage()
+        sys.exit(0)
+    tt_task_dir = os.environ['TT_TASK_DIR']
+    inbox_dir  = tt_task_dir + '/udpf/inbox'
+    active_dir = tt_task_dir + '/udpf/active'
+    final_dir  = tt_task_dir + '/udpf/completed'
+    for required_dir in (inbox_dir, active_dir, final_dir):
+        os.makedirs(output_dir, exist_ok=True)
+    while True:
+        if opt_deadline and time.time() > opt_deadline:
+            print('\n*** Reached deadline. ***\n')
+            sys.exit(0)
+        if opt_stopfile and os.path.exists(stopfile):
+            print('\n*** Found stop file. ***\n')
+            sys.exit(0)
+        candidate_tasks = []
+        for filename in os.listdir(inbox_dir)
+            if filename.endswith('.task') and '-' in filename:
+                candidate_tasks.append(filename)
+        candidate_tasks.sort()
+        for filename in candidate_tasks:
+            taskfile    = '%s/%s' %(inbox_dir, filename)
+            task_id, task_bucket = filename[:-5].rsplit('-', 1)
+            active_name = '%s/%s/%s.task' %(active_dir, task_bucket, task_id)
+            try:
+                os.rename(taskfile, active_name)
+            except:
+                if opt_debug:
+                    print('Task %s claimed by other worker' %task_id)
+                continue
+            f = open(active_name, 'rb')
+            exp_line = f.readline()
+            fields = exp_line.split()
+            if not exp_line.startswith('expires') \
+            or len(fields) != 2:
+                print('Deleting malformed task', task_id)
+                f.close()
+                os.unlink(active_name)
+                continue
+            expires = float(fields[1])
+            if time.time() > expires:
+                print('Deleting expired task', task_id)
+                f.close()
+                os.unlink(active_name)
+            command = f.read().split('\n')
+            f.close()
+            # handle last line with linebreak
+            if command and command[-1] == '':
+                del command[-1]
+            # found the first task eligible to run
+            start_time = time.time()
+            print('Running task %s: %r' %(task_id, command))
+            sys.stderr.flush()
+            sys.stdout.flush()
+            subprocess.call(command)
+            end_time = time.time()
+            # signal completion
+            final_file = '%s/%s/%s.task' %(final_dir, task_bucket, task_id)
+            f = open(final_file, 'wb')
+            f.write('duration\t%.1f\n' %(end_time-start_time))
+            f.write('start\t%.1f\n' %start_time)
+            f.write('end\t%.1f\n' %end_time)
+            f.write('expires\t%.1f\n' %expires)
+            f.write('task_id\t%s\n' %task_id)
+            f.write('bucket\t%s\n' %task_bucket)
+            f.write('arg_len\t%d\n' %len(command))
+            f.write('\n'.join(command))
+            f.close()
+            os.unlink(active_name)
+            # before processing any remaining task, let the
+            # outer loop refresh the task list
+            break
+        time.sleep(0.25)  # poll interval while queue is empty
 
 if __name__ == "__main__":
-    main()
+    worker()
 
