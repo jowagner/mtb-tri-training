@@ -39,6 +39,8 @@ def get_training_schedule(epochs = 60):
     '''
     if type(epochs) is str:
         epochs = int(epochs)
+    if 'TT_DEBUG' in os.environ:
+        epochs = 1 + int(epochs/20)
     if epochs < 1:
         raise ValueError('Need at least 1 epoch to train a model.')
     ref_remaining = 60
