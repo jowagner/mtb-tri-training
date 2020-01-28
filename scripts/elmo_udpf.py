@@ -44,10 +44,7 @@ def train(
     for i in range(2):
         if len(monitoring_datasets) > i:
             command.append(monitoring_datasets[i].filename)
-    print('Running', command)
-    sys.stderr.flush()
-    sys.stdout.flush()
-    subprocess.call(command)
+    common_udpipe_future.run_command(command)
     if common_udpipe_future.incomplete(model_dir):
         if common_udpipe_future.memory_error(model_dir):
             # do not leave erroneous model behind
@@ -75,10 +72,7 @@ def predict(model_path, input_path, prediction_output_path):
     command.append(model_path)
     command.append(input_path)
     command.append(prediction_output_path)
-    print('Running', command)
-    sys.stderr.flush()
-    sys.stdout.flush()
-    subprocess.call(command)
+    common_udpipe_future.run_command(command)
 
 def main():
     raise NotImplementedError
