@@ -300,6 +300,7 @@ def worker():
             if command and command[-1] == '':
                 del command[-1]
             # found the first task eligible to run
+            submit_time = os.path.getmtime(active_name)
             start_time = time.time()
             print('Running task %s: %r' %(task_id, command))
             sys.stderr.flush()
@@ -312,9 +313,14 @@ def worker():
             final_file = '%s/%s.task' %(bucket_dir, task_id)
             f = open(final_file, 'wb')
             f.write('duration\t%.1f\n' %(end_time-start_time))
-            f.write('job\t%s\n' %(os.environ['SLURM_JOB_ID']))
-            f.write('host\t%s\n' %(os.environ['HOSTNAME'].replace('-', '_')))
+            f.write('waiting\t%.1f\n' %(start_time-submit_time))
+            f.write('total\t%.1f\n' %(end_time-submit_time))
+            f.write('cluster\t%s\n' %(os.environ['SLURM_CLUSTER_NAME']))
+            f.write('job_id\t%s\n' %(os.environ['SLURM_JOB_ID']))
+            f.write('job_name\t%s\n' %(os.environ['SLURM_JOB_NAME']))
+            f.write('host\t%s\n' %(os.environ['HOSTNAME']))
             f.write('process\t%d\n' %os.getpid())
+            f.write('submitted\t%.1f\n' %submit_time)
             f.write('start\t%.1f\n' %start_time)
             f.write('end\t%.1f\n' %end_time)
             f.write('expires\t%.1f\n' %expires)
