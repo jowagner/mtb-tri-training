@@ -94,12 +94,15 @@ def my_makedirs(required_dir):
             # (in python 3, we will be able to use exist_ok=True)
             pass
 
-def run_command(command):
+def run_command(command, queue_name = 'udpf', task_processor = None):
     if 'TT_TASK_DIR' not in os.environ:
         print('Running', command)
         sys.stderr.flush()
         sys.stdout.flush()
-        subprocess.call(command)
+        if task_processor is None:
+            subprocess.call(command)
+        else:
+            task_processor.run(command)
     else:
         # prepare task submission file
         now = time.time()
@@ -120,7 +123,8 @@ def run_command(command):
         task_fingerprint = hashlib.sha512(task_id).hexdigest()
         my_task_bucket = int(task_fingerprint, 16) % num_task_buckets
         task_dir  = os.environ['TT_TASK_DIR']
-        inbox_dir = task_dir + '/udpf/inbox'
+        queue_dir = '/'.join((task_dir, queue_name))
+        inbox_dir = '/'.join((queue_dir, 'inbox'))
         filename = '%s/%s-%d.task' %(
             inbox_dir,
             task_id,
@@ -167,8 +171,8 @@ def run_command(command):
         has_expired = True
         # check for file in active queue
         time.sleep(5.0) # just in case moving the file is not atomic
-        filename = '%s/udpf/active/%d/%s.task' %(
-            task_dir,
+        filename = '%s/active/%d/%s.task' %(
+            queue_dir,
             my_task_bucket,
             task_id,
         )
@@ -197,8 +201,8 @@ def run_command(command):
                     verbosity_interval *= 1.4
                     next_verbose += verbosity_interval
         # task is not active --> check for completion
-        filename = '%s/udpf/completed/%d/%s.task' %(
-            task_dir,
+        filename = '%s/completed/%d/%s.task' %(
+            queue_dir,
             my_task_bucket,
             task_id,
         )
@@ -207,7 +211,7 @@ def run_command(command):
             raise ValueError('Task %s marked by task master as no longer active but not as complete')
         if 'TT_TASK_ARCHIVE_COMPLETED' in os.environ  and \
         os.environ['TT_TASK_ARCHIVE_COMPLETED'].lower() not in ('0', 'false'):
-            archive_dir = '%s/udpf/archive' %task_dir
+            archive_dir = '/'.join((queue_dir, 'archive'))
             my_makedirs(archive_dir)
             counter = 1
             while True:
@@ -221,7 +225,7 @@ def run_command(command):
         os.environ['TT_TASK_CLEANUP_COMPLETED'].lower() not in ('0', 'false'):
             os.unlink(filename)
 
-def worker():
+def main():
     opt_help = False
     opt_debug = True
     opt_deadline = None
@@ -250,10 +254,18 @@ def worker():
     if opt_help:
         print_usage()
         sys.exit(0)
+    worker('udpf', None, opt_deadline, opt_stopfile, opt_debug)
+
+def worker(
+    queue_name = 'udpf',
+    task_processor = None,
+    opt_deadline = None, opt_stopfile = None, opt_debug = False
+):
     tt_task_dir = os.environ['TT_TASK_DIR']
-    inbox_dir  = tt_task_dir + '/udpf/inbox'
-    active_dir = tt_task_dir + '/udpf/active'
-    final_dir  = tt_task_dir + '/udpf/completed'
+    queue_dir  = '/'.join((tt_task_dir, queue_name))
+    inbox_dir  = '/'.join((queue_dir, 'inbox'))
+    active_dir = '/'.join((queue_dir, 'active'))
+    final_dir  = '/'.join((queue_dir, 'completed'))
     for required_dir in (inbox_dir, active_dir, final_dir):
         my_makedirs(required_dir)
     while True:
@@ -269,9 +281,9 @@ def worker():
                 candidate_tasks.append(filename)
         candidate_tasks.sort()
         for filename in candidate_tasks:
-            taskfile    = '%s/%s' %(inbox_dir, filename)
+            taskfile    = '/'.join((inbox_dir, filename))
             task_id, task_bucket = filename[:-5].rsplit('-', 1)
-            bucket_dir  = '%s/%s' %(active_dir, task_bucket)
+            bucket_dir  = '/'.join((active_dir, task_bucket))
             my_makedirs(bucket_dir)
             active_name = '%s/%s.task' %(bucket_dir, task_id)
             try:
@@ -305,7 +317,10 @@ def worker():
             print('Running task %s: %r' %(task_id, command))
             sys.stderr.flush()
             sys.stdout.flush()
-            subprocess.call(command)
+            if task_processor is None:
+                subprocess.call(command)
+            else:
+                task_processor.run(command)
             end_time = time.time()
             # signal completion
             bucket_dir = '%s/%s' %(final_dir, task_bucket)
@@ -337,5 +352,5 @@ def worker():
         time.sleep(0.25)  # poll interval while queue is empty
 
 if __name__ == "__main__":
-    worker()
+    main()
 
