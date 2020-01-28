@@ -13,6 +13,7 @@
 
 from __future__ import print_function
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -118,7 +119,8 @@ def run_command(command):
         else:
             patience = 36000.0
         expires = now + patience
-        os.makedirs(inbox_dir, exist_ok=True)
+        if not os.path.exists(inbox_dir):
+            os.makedirs(inbox_dir)
         f = open(filename+'.prep', 'wb')
         f.write('expires %.1f\n' %expires)
         f.write('\n'.join(command))
@@ -227,7 +229,8 @@ def worker():
     active_dir = tt_task_dir + '/udpf/active'
     final_dir  = tt_task_dir + '/udpf/completed'
     for required_dir in (inbox_dir, active_dir, final_dir):
-        os.makedirs(output_dir, exist_ok=True)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
     while True:
         if opt_deadline and time.time() > opt_deadline:
             print('\n*** Reached deadline. ***\n')
