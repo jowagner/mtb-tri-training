@@ -260,7 +260,7 @@ def worker():
         if opt_deadline and time.time() > opt_deadline:
             print('\n*** Reached deadline. ***\n')
             sys.exit(0)
-        if opt_stopfile and os.path.exists(stopfile):
+        if opt_stopfile and os.path.exists(opt_stopfile):
             print('\n*** Found stop file. ***\n')
             sys.exit(0)
         candidate_tasks = []
