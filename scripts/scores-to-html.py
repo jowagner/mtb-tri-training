@@ -177,11 +177,11 @@ class Distribution:
 
     def p_colour(self, score):
         if score < self.min_score:
-            return (0.50, 0.15, 0.60) # below 0.0: purple
+            return (0.00, 0.00, 0.00) # below 0.0: black
         if score < self.score025:
-            return (0.80, 0.40, 0.20) #  0.0 -  2.5: brown
+            return (0.60, 0.30, 0.15) #  0.0 -  2.5: brown
         if score < self.score250:
-            return (0.76, 0.63, 0.56) #  2.5 - 25.0: brown-grey
+            return (0.67, 0.52, 0.45) #  2.5 - 25.0: brown-grey
         if score < self.median:
             return (0.75, 0.75, 0.75) # 25.0 - 50.0: grey
         if score < self.score750:
@@ -199,9 +199,9 @@ class Distribution:
         if score < self.max_score+1.8:
             return (1.0, 1.0, 0.0)  # strong yellow
         if score < self.max_score+2.4:
-            return (1.0, 0.7, 0.6)  # pink
+            return (1.0, 0.8, 0.5)  # orange-pink
         else:
-            return (1.0, 0.0, 0.0)  # red
+            return (1.0, 0.5, 0.5)  # light red
 
 legend = []
 legend.append('<table>')
@@ -209,7 +209,7 @@ legend.append('<tr><td><b>black bold = above or matching best baseline for this 
 legend.append('<tr><td><b><font color="red">red bold = below this seed and method\'s baseline</font></b></td></tr>')
 distribution = Distribution(None, None, None, True)
 for score, text in [
-    ( -1.0, 'background dark purple: below worst baseline'),
+    ( -1.0, '<font color="red">background black: below worst baseline</font>'),
     (  0.0, 'blend'),
     (  0.1, 'background brown: in bottom 2.5% of baselines'),
     (  2.5, 'blend'),
@@ -229,13 +229,13 @@ for score, text in [
     (101.2, 'blend'),
     (101.5, 'background strong yellow: 1.2 to 1.8 LAS points above top baseline'),
     (101.8, 'blend'),
-    (102.1, 'background pink: 1.8 to 2.4 LAS points above top baseline'),
+    (102.1, 'background orange-pink: 1.8 to 2.4 LAS points above top baseline'),
     (102.4, 'blend'),
-    (999.9, 'background strong red: 2.4 or more LAS points above top baseline'),
+    (999.9, 'background pink-red: 2.4 or more LAS points above top baseline'),
 ]:
     legend.append('<tr><td bgcolor="#%s">%s</td></tr>' %(distribution.colour(score), text))
 legend.append('</table>')
-legend.append('<tr><td>(For scores at interval boundaries, the neighbouring colours are blended.)</td></tr>')
+legend.append('<tr><td>(For scores at interval boundaries, the neighbouring colours are blended as shown above.)</td></tr>')
 legend = '\n'.join(legend)
 
 print(legend)
