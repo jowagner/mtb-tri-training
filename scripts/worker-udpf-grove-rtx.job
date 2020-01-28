@@ -1,0 +1,25 @@
+#!/bin/bash
+  
+#SBATCH -p compute       # which partition to run on
+#SBATCH --gres=gpu:rtx2080ti:1
+#SBATCH -J udpf-30h    # name for the job
+#SBATCH --mem=18000
+#SBATCH --cpus-per-task=4
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+source ${HOME}/tri-training/mtb-tri-training/config/locations.sh
+
+SCRIPTDIR=${PRJ_DIR}/scripts
+
+# export TT_DEBUG=1
+
+STOPFILE=${HOME}/tri-training/stop-all-udpf-workers
+
+rm -f $STOPFILE
+
+cd ${SCRIPTDIR}
+./common_udpipe_future.py  \
+    --deadline 27.0        \
+    --stopfile $STOPFILE
+

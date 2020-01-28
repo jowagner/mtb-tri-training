@@ -1,0 +1,21 @@
+#!/bin/bash
+  
+#SBATCH -p long       # which partition to run on
+#SBATCH -J 4g23-234   # name for the job
+#SBATCH -d singleton
+#SBATCH --mem=288000
+#SBATCH --cpus-per-task=6
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+cd ${HOME}/tri-training/mtb-tri-training/scripts/jobs
+
+# export TT_DEBUG=1
+
+for I in ?g?[-wx]-[-v]34-rtx.job ; do
+    bash ./$I &
+    sleep 150
+done
+
+wait
+
