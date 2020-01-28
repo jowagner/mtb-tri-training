@@ -89,6 +89,8 @@ case "${SETTING}" in
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=144000
     export TT_TASK_BUCKETS=100
+    export TT_TASK_ARCHIVE_COMPLETED=true
+    export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 "jwagner@g1-debian-10")
     echo "Detected grove cluster GPU node"
@@ -110,6 +112,8 @@ case "${SETTING}" in
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=144000
     export TT_TASK_BUCKETS=100
+    export TT_TASK_ARCHIVE_COMPLETED=true
+    export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 root*)
     # inside udocker

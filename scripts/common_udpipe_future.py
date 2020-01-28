@@ -40,7 +40,8 @@ def get_training_schedule(epochs = 60):
     '''
     if type(epochs) is str:
         epochs = int(epochs)
-    if 'TT_DEBUG' in os.environ:
+    if 'TT_DEBUG' in os.environ \
+    and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
         epochs = 1 + int(epochs/20)
     if epochs < 1:
         raise ValueError('Need at least 1 epoch to train a model.')
@@ -118,7 +119,8 @@ def run_command(command):
         num_task_buckets = int(os.environ['TT_TASK_BUCKETS'])
         task_fingerprint = hashlib.sha512(task_id).hexdigest()
         my_task_bucket = int(task_fingerprint, 16) % num_task_buckets
-        inbox_dir = os.environ['TT_TASK_DIR'] + '/udpf/inbox'
+        task_dir  = os.environ['TT_TASK_DIR']
+        inbox_dir = task_dir + '/udpf/inbox'
         filename = '%s/%s-%d.task' %(
             inbox_dir,
             task_id,
@@ -166,7 +168,7 @@ def run_command(command):
         # check for file in active queue
         time.sleep(5.0) # just in case moving the file is not atomic
         filename = '%s/udpf/active/%d/%s.task' %(
-            os.environ['TT_TASK_DIR'],
+            task_dir,
             my_task_bucket,
             task_id,
         )
@@ -196,13 +198,28 @@ def run_command(command):
                     next_verbose += verbosity_interval
         # task is not active --> check for completion
         filename = '%s/udpf/completed/%d/%s.task' %(
-            os.environ['TT_TASK_DIR'],
+            task_dir,
             my_task_bucket,
             task_id,
         )
         if not os.path.exists(filename):
             print('Task %s failed' %task_id)
             raise ValueError('Task %s marked by task master as no longer active but not as complete')
+        if 'TT_TASK_ARCHIVE_COMPLETED' in os.environ  and \
+        os.environ['TT_TASK_ARCHIVE_COMPLETED'].lower() not in ('0', 'false'):
+            archive_dir = '%s/udpf/archive' %task_dir
+            my_makedirs(archive_dir)
+            counter = 1
+            while True:
+                archive_name = '%s/%s-run%03d.task' %(archive_dir, task_id, counter)
+                if os.path.exists(archive_name):
+                    counter += 1
+                    continue
+                os.rename(filename, archive_name)
+                break
+        elif 'TT_TASK_CLEANUP_COMPLETED' in os.environ  and \
+        os.environ['TT_TASK_CLEANUP_COMPLETED'].lower() not in ('0', 'false'):
+            os.unlink(filename)
 
 def worker():
     opt_help = False
@@ -301,6 +318,7 @@ def worker():
             f.write('task_id\t%s\n' %task_id)
             f.write('bucket\t%s\n' %task_bucket)
             f.write('arg_len\t%d\n' %len(command))
+            f.write('\n') # empty line to mark end of header, like in http
             f.write('\n'.join(command))
             f.close()
             os.unlink(active_name)
