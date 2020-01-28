@@ -236,7 +236,7 @@ def worker():
             print('\n*** Found stop file. ***\n')
             sys.exit(0)
         candidate_tasks = []
-        for filename in os.listdir(inbox_dir)
+        for filename in os.listdir(inbox_dir):
             if filename.endswith('.task') and '-' in filename:
                 candidate_tasks.append(filename)
         candidate_tasks.sort()

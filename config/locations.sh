@@ -43,6 +43,7 @@ case "${SETTING}" in
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     ;;
 "jwagner@bo-scientific-7."[67])
+    echo "Detected boole cluster"
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
@@ -79,16 +80,18 @@ case "${SETTING}" in
     export TT_DISTRIBUTIONS_DIR=${SCRATCH}/tri-training/workdirs
     ;;
 "jwagner@g0-debian-10")
+    echo "Detected grove cluster CPU node"
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
-    export TT_TASK_DIR=${HOME}/tri-training/tasks  # only set when ready to use
+    export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=144000
     export TT_TASK_BUCKETS=100
     ;;
 "jwagner@g1-debian-10")
+    echo "Detected grove cluster GPU node"
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
@@ -103,7 +106,7 @@ case "${SETTING}" in
     export EFML_MAX_CACHE_ENTRIES=100
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
-    export TT_TASK_DIR=${HOME}/tri-training/tasks  # only set when ready to use
+    export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=144000
     export TT_TASK_BUCKETS=100
