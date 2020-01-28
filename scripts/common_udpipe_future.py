@@ -83,6 +83,16 @@ def incomplete(model_dir):
         return True
     return False
 
+def my_makedirs(required_dir):
+    if not os.path.exists(required_dir):
+        try:
+            os.makedirs(required_dir)
+        except OSError:
+            # folder was created by another process
+            # between the to calls above
+            # (in python 3, we will be able to use exist_ok=True)
+            pass
+
 def run_command(command):
     if 'TT_TASK_DIR' not in os.environ:
         print('Running', command)
@@ -119,8 +129,7 @@ def run_command(command):
         else:
             patience = 36000.0
         expires = now + patience
-        if not os.path.exists(inbox_dir):
-            os.makedirs(inbox_dir)
+        my_makedirs(inbox_dir)
         f = open(filename+'.prep', 'wb')
         f.write('expires %.1f\n' %expires)
         f.write('\n'.join(command))
@@ -229,8 +238,7 @@ def worker():
     active_dir = tt_task_dir + '/udpf/active'
     final_dir  = tt_task_dir + '/udpf/completed'
     for required_dir in (inbox_dir, active_dir, final_dir):
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        my_makedirs(required_dir)
     while True:
         if opt_deadline and time.time() > opt_deadline:
             print('\n*** Reached deadline. ***\n')
@@ -246,7 +254,9 @@ def worker():
         for filename in candidate_tasks:
             taskfile    = '%s/%s' %(inbox_dir, filename)
             task_id, task_bucket = filename[:-5].rsplit('-', 1)
-            active_name = '%s/%s/%s.task' %(active_dir, task_bucket, task_id)
+            bucket_dir  = '%s/%s' %(active_dir, task_bucket)
+            my_makedirs(bucket_dir)
+            active_name = '%s/%s.task' %(bucket_dir, task_id)
             try:
                 os.rename(taskfile, active_name)
             except:
@@ -280,7 +290,9 @@ def worker():
             subprocess.call(command)
             end_time = time.time()
             # signal completion
-            final_file = '%s/%s/%s.task' %(final_dir, task_bucket, task_id)
+            bucket_dir = '%s/%s' %(final_dir, task_bucket)
+            my_makedirs(bucket_dir)
+            final_file = '%s/%s.task' %(bucket_dir, task_id)
             f = open(final_file, 'wb')
             f.write('duration\t%.1f\n' %(end_time-start_time))
             f.write('start\t%.1f\n' %start_time)
