@@ -41,6 +41,12 @@ case "${SETTING}" in
     export EFML_MAX_CACHE_ENTRIES=100
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
+    export TT_TASK_DIR=${HOME}/tri-training/tasks
+    export TT_TASK_EPOCH=1577836800
+    export TT_TASK_PATIENCE=144000
+    export TT_TASK_BUCKETS=100
+    export TT_TASK_ARCHIVE_COMPLETED=true
+    export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 "jwagner@bo-scientific-7."[67])
     echo "Detected boole cluster"
@@ -60,6 +66,12 @@ case "${SETTING}" in
     export EFML_MAX_CACHE_ENTRIES=200
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
+    export TT_TASK_DIR=${HOME}/tri-training/tasks
+    export TT_TASK_EPOCH=1577836800
+    export TT_TASK_PATIENCE=144000
+    export TT_TASK_BUCKETS=100
+    export TT_TASK_ARCHIVE_COMPLETED=true
+    export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 "jwagner@ok-opensuse-leap-15.1")
     SCRATCH=/scratch/${USER}
