@@ -48,7 +48,7 @@ cd ${SCRIPTDIR}
     --subset-size "%(subsetsize)dk"          \
     --subset-stratified                      \
     --augment-size "%(augsize)dk"        \
-    --deadline 18.0            \
+    --deadline 232.0            \
     --stopfile ${WORKDIR}/stop  \
     --model-init "compose+verb%(modelseedsuffix)03d"  \
     --unlabelled %(lcode)s_wp17    \
