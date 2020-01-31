@@ -90,6 +90,12 @@ case "${SETTING}" in
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_DISTRIBUTIONS_DIR=${SCRATCH}/tri-training/workdirs
+    export TT_TASK_DIR=${HOME}/tri-training/tasks
+    export TT_TASK_EPOCH=1577836800
+    export TT_TASK_PATIENCE=144000
+    export TT_TASK_BUCKETS=10
+    export TT_TASK_ARCHIVE_COMPLETED=true
+    export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 "jwagner@g0-debian-10")
     echo "Detected grove cluster CPU node"
