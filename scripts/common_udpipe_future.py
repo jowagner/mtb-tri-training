@@ -24,11 +24,21 @@ def print_usage():
     print("""
 Options:
 
-    --deadline  HOURS       Do not train another model after HOURS hours
-                            and quit script.
+    --deadline  HOURS       Do not start working on another task after
+                            HOURS hours since the start of this script
+                            and quit.
                             (Default: 0.0 = no limit)
 
-    --stopfile  FILE        Do not train another model if FILE exists.
+    --stopfile  FILE        Do not start working on another task and
+                            quit if FILE exists.
+                            (Default: empty string = no stop file)
+
+    --max-idle  HOURS       Wait no longer than HOURS hours since the
+                            end of the last task (or, if there was no
+                            task yet, since the start of the script)
+                            for an eligible task.
+                            Set to 0 for no limit on idle time.
+                            (Default: 0.25 = 15 minutes)
 
 """)
 
@@ -94,25 +104,44 @@ def my_makedirs(required_dir):
             # (in python 3, we will be able to use exist_ok=True)
             pass
 
-def run_command(command, queue_name = 'udpf', task_processor = None):
-    if 'TT_TASK_DIR' not in os.environ:
-        print('Running', command)
-        sys.stderr.flush()
-        sys.stdout.flush()
-        if task_processor is None:
+def wait_for_tasks(task_list):
+    for task in task_list:
+        task.wait()
+
+class Task:
+
+    def __init__(self, command, queue_name = 'udpf'):
+        self.command = command
+        self.queue_name = queue_name
+        self.requires = []
+
+    def add_required_file(self, filename):
+        self.requires.append(filename)
+
+    def required_files_exist(self, exception_if_not = False):
+        for filename in self.requires:
+            if not os.path.exists(filename):
+                if exception_if_not:
+                    raise ValueError('Missing file %s' %filename)
+                return False
+        return True
+
+    def run(self):
+        self.submit()
+        self.wait()
+
+    def process(self):
+        if self.required_files_exist(exception_if_not = True):
             subprocess.call(command)
-        else:
-            task_processor.run(command)
-    else:
-        # prepare task submission file
-        now = time.time()
+
+    def get_task_id(self):
         if 'TT_TASK_EPOCH' in os.environ:
             t0 = float(os.environ['TT_TASK_EPOCH'])
         else:
             t0 = 0.0
         command_fingerprint = hashlib.sha256('\n'.join(command)).hexdigest()
         task_id = '%05x-%s-%s-%d-%s-%s' %(
-            int((now-t0)/60.0),
+            int((time.time()-t0)/60.0),
             os.environ['HOSTNAME'].replace('-', '_'),
             os.environ['SLURM_JOB_ID'],
             os.getpid(),
@@ -120,31 +149,67 @@ def run_command(command, queue_name = 'udpf', task_processor = None):
             command_fingerprint[8:16],
         )
         num_task_buckets = int(os.environ['TT_TASK_BUCKETS'])
-        task_fingerprint = hashlib.sha512(task_id).hexdigest()
-        my_task_bucket = int(task_fingerprint, 16) % num_task_buckets
+        self.task_fingerprint = hashlib.sha512(task_id).hexdigest()
+        self.my_task_bucket = int(task_fingerprint, 16) % num_task_buckets
+        self.task_id = task_id
+        return task_id
+
+    def get_expiry(self)
+        if 'TT_TASK_PATIENCE' in os.environ:
+            patience = float(os.environ['TT_TASK_PATIENCE'])
+        else:
+            patience = 36000.0
+        self.expires = time.time() + patience
+        return self.expires
+
+    def get_submit_name(self, task_id, my_task_bucket):
         task_dir  = os.environ['TT_TASK_DIR']
         queue_dir = '/'.join((task_dir, queue_name))
         inbox_dir = '/'.join((queue_dir, 'inbox'))
+        my_makedirs(inbox_dir)
         filename = '%s/%s-%d.task' %(
             inbox_dir,
             task_id,
             my_task_bucket,
         )
-        if 'TT_TASK_PATIENCE' in os.environ:
-            patience = float(os.environ['TT_TASK_PATIENCE'])
-        else:
-            patience = 36000.0
-        expires = now + patience
-        my_makedirs(inbox_dir)
+        self.submit_name = filename
+        self.queue_dir   = queue_dir
+        return filename
+
+    def submit(self):
+        if 'TT_TASK_DIR' not in os.environ:
+            print('Running', self.command)
+            sys.stderr.flush()
+            sys.stdout.flush()
+            self.process()
+            return
+        # prepare task submission file
+        task_id  = self.get_task_id()
+        filename = self.get_submit_name(task_id, self.my_task_bucket)
+        expires  = self.get_expiry()
         f = open(filename+'.prep', 'wb')
-        f.write('expires %.1f\n' %expires)
+        f.write('expires\t%.1f\n' %expires)
+        for required_file in self.requires:
+            f.write('requires\t%s\n' %required_file)
+        f.write('\n')
         f.write('\n'.join(command))
+        f.write('\n')
         f.close()
         os.rename(filename+'.prep', filename)
-        submit_time = time.time()
+        self.submit_time = time.time()
         print('Submitted task %s with command %r' %(task_id, command))
         sys.stderr.flush()
         sys.stdout.flush()
+
+    def wait(self):
+        if 'TT_TASK_DIR' not in os.environ:
+            return
+        expires          = self.expires
+        my_task_bucket   = self.my_task_bucket
+        queue_dir        = self.queue_dir
+        submit_time      = self.submit_time
+        task_fingerprint = self.task_fingerprint
+        task_id          = self.task_id
         # wait for task to start
         iteration = 0
         fp_length = len(task_fingerprint)
@@ -152,8 +217,8 @@ def run_command(command, queue_name = 'udpf', task_processor = None):
         if 'TT_DEBUG' in os.environ:
             verbosity_interval /= 100.0
         next_verbose = submit_time + verbosity_interval
-        start_time_interval = (submit_time, submit_time)
-        while time.time() < expires and os.path.exists(filename):
+        start_time_interval = (submit_time, time.time())
+        while time.time() < expires and os.path.exists(self.submit_name):
             duration = 30.0 + int(task_fingerprint[iteration % fp_length], 16)
             now = time.time()
             start_time_interval = (now, now+duration)
@@ -225,11 +290,12 @@ def run_command(command, queue_name = 'udpf', task_processor = None):
         os.environ['TT_TASK_CLEANUP_COMPLETED'].lower() not in ('0', 'false'):
             os.unlink(filename)
 
-def main():
+def main(queue_name, task_processor):
     opt_help = False
     opt_debug = True
     opt_deadline = None
     opt_stopfile = None
+    opt_max_idle = 900.0
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
         option = option.replace('_', '-')
@@ -241,6 +307,9 @@ def main():
             opt_deadline = 3600.0 * float(sys.argv[1])
             if opt_deadline:
                 opt_deadline += time.time()
+            del sys.argv[1]
+        elif option == '--max-idle':
+            opt_max_idle = 3600.0 * float(sys.argv[1])
             del sys.argv[1]
         elif option == '--stopfile':
             opt_stopfile = sys.argv[1]
@@ -254,27 +323,15 @@ def main():
     if opt_help:
         print_usage()
         sys.exit(0)
-    worker('udpf', None, opt_deadline, opt_stopfile, opt_debug)
+    worker(
+        queue_name, task_processor, opt_deadline, opt_stopfile, opt_debug,
+        opt_max_idle
+    )
 
-def worker(
-    queue_name = 'udpf',
-    task_processor = None,
-    opt_deadline = None, opt_stopfile = None, opt_debug = False
-):
-    tt_task_dir = os.environ['TT_TASK_DIR']
-    queue_dir  = '/'.join((tt_task_dir, queue_name))
-    inbox_dir  = '/'.join((queue_dir, 'inbox'))
-    active_dir = '/'.join((queue_dir, 'active'))
-    final_dir  = '/'.join((queue_dir, 'completed'))
-    for required_dir in (inbox_dir, active_dir, final_dir):
-        my_makedirs(required_dir)
-    while True:
-        if opt_deadline and time.time() > opt_deadline:
-            print('\n*** Reached deadline. ***\n')
-            sys.exit(0)
-        if opt_stopfile and os.path.exists(opt_stopfile):
-            print('\n*** Found stop file. ***\n')
-            sys.exit(0)
+def pick_task(inbox_dir, active_dir, task_processor):
+    if task_processor is None:
+        raise ValueError('Missing task processor')
+    else:
         candidate_tasks = []
         for filename in os.listdir(inbox_dir):
             if filename.endswith('.task') and '-' in filename:
@@ -293,34 +350,74 @@ def worker(
                     print('Task %s claimed by other worker' %task_id)
                 continue
             f = open(active_name, 'rb')
-            exp_line = f.readline()
-            fields = exp_line.split()
-            if not exp_line.startswith('expires') \
-            or len(fields) != 2:
-                print('Deleting malformed task', task_id)
+            eligible = True
+            delete_task = False
+            while True:
+                line = f.readline().rstrip()
+                if not line: # empty line or EOF
+                    break
+                fields = line.split('\t')
+                if len(fields) != 2:
+                    print('Deleting malformed task', task_id)
+                    delete_task = True
+                elif line.startswith('expires'):
+                    expires = float(fields[1])
+                    if time.time() > expires:
+                        print('Deleting expired task', task_id)
+                        delete_task = True
+                elif line.startswith('requires'):
+                    needed_file = fields[1]
+                    if not os.path.exists(needed_file):
+                        eligible = False
+                if delete_task or not eligible:
+                    break
+            if delete_task or not eligible:
                 f.close()
-                os.unlink(active_name)
+                if delete_task:
+                    os.unlink(active_name)
                 continue
-            expires = float(fields[1])
-            if time.time() > expires:
-                print('Deleting expired task', task_id)
-                f.close()
-                os.unlink(active_name)
             command = f.read().split('\n')
             f.close()
             # handle last line with linebreak
             if command and command[-1] == '':
                 del command[-1]
             # found the first task eligible to run
-            submit_time = os.path.getmtime(active_name)
+            task = task_processor(command)
+            task.submit_time = os.path.getmtime(active_name)
+            return task
+    return None
+
+def worker(
+    queue_name = 'udpf',
+    task_processor = None,
+    opt_deadline = None, opt_stopfile = None, opt_debug = False,
+    opt_max_idle = 900.0,
+):
+    tt_task_dir = os.environ['TT_TASK_DIR']
+    queue_dir  = '/'.join((tt_task_dir, queue_name))
+    inbox_dir  = '/'.join((queue_dir, 'inbox'))
+    active_dir = '/'.join((queue_dir, 'active'))
+    final_dir  = '/'.join((queue_dir, 'completed'))
+    for required_dir in (inbox_dir, active_dir, final_dir):
+        my_makedirs(required_dir)
+    idle_deadline = time.time() + opt_max_idle
+    while True:
+        if opt_max_idle and time.time() > idle_deadline:
+            print('\n*** Reached maximum idle time. ***\n')
+            sys.exit(0)
+        if opt_deadline and time.time() > opt_deadline:
+            print('\n*** Reached deadline. ***\n')
+            sys.exit(0)
+        if opt_stopfile and os.path.exists(opt_stopfile):
+            print('\n*** Found stop file. ***\n')
+            sys.exit(0)
+        task = pick_task(inbox_dir, active_dir, task_processor)
+        if task is not None:
             start_time = time.time()
             print('Running task %s: %r' %(task_id, command))
             sys.stderr.flush()
             sys.stdout.flush()
-            if task_processor is None:
-                subprocess.call(command)
-            else:
-                task_processor.run(command)
+            task.process()
             end_time = time.time()
             # signal completion
             bucket_dir = '%s/%s' %(final_dir, task_bucket)
@@ -328,14 +425,14 @@ def worker(
             final_file = '%s/%s.task' %(bucket_dir, task_id)
             f = open(final_file, 'wb')
             f.write('duration\t%.1f\n' %(end_time-start_time))
-            f.write('waiting\t%.1f\n' %(start_time-submit_time))
-            f.write('total\t%.1f\n' %(end_time-submit_time))
+            f.write('waiting\t%.1f\n' %(start_time-task.submit_time))
+            f.write('total\t%.1f\n' %(end_time-task.submit_time))
             f.write('cluster\t%s\n' %(os.environ['SLURM_CLUSTER_NAME']))
             f.write('job_id\t%s\n' %(os.environ['SLURM_JOB_ID']))
             f.write('job_name\t%s\n' %(os.environ['SLURM_JOB_NAME']))
             f.write('host\t%s\n' %(os.environ['HOSTNAME']))
             f.write('process\t%d\n' %os.getpid())
-            f.write('submitted\t%.1f\n' %submit_time)
+            f.write('submitted\t%.1f\n' %task.submit_time)
             f.write('start\t%.1f\n' %start_time)
             f.write('end\t%.1f\n' %end_time)
             f.write('expires\t%.1f\n' %expires)
@@ -346,11 +443,9 @@ def worker(
             f.write('\n'.join(command))
             f.close()
             os.unlink(active_name)
-            # before processing any remaining task, let the
-            # outer loop refresh the task list
-            break
-        time.sleep(0.25)  # poll interval while queue is empty
+            idle_deadline = time.time() + opt_max_idle
+        time.sleep(2.5)  # poll interval while no eligible task is found
 
 if __name__ == "__main__":
-    main()
+    main('udpf', Task)
 
