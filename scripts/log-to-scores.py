@@ -157,8 +157,22 @@ if len(sys.argv) > 1:
                 n_tokens = int(fields[8])
             if key not in key2scores \
             or len(scores) > len(key2scores[key]):
+                if ':' in scores:
+                    plain_scores = []
+                    token_infos  = []
+                    dates = []
+                    for scoreplus in scores:
+                        score, date, n_tokens, n_sentences = scoreplus
+                        plain_scores.append(score)
+                        token_infos.append((int(n_tokens), int(n_sentences)))
+                        dates.append(date)
+                    scores = plain_scores
+                else:
+                    token_infos = ((len(scores)-1) * [(-1, -1)]) + [(n_tokens, -1)]
+                    dates = len(scores) * ['????-??-??']
                 key2scores[key] = scores
-                key2tokens[key] = ((len(scores)-1) * [(-1, -1)]) + [(n_tokens, -1)]
+                key2tokens[key] = token_infos
+                key2dates[key] = dates
         f.close()
     sys.stdout = open(filename, 'wb')
 
@@ -178,7 +192,7 @@ for key in sorted(key2scores):
     for index, score in enumerate(scores):
         sys.stdout.write('\t')
         sys.stdout.write('%s:%s:%d:%d' %(
-            score, dates[index], tokens[index], sentences[index]
+            score, dates[index], token_info[index][0], token_info[index][1]
         ))
     sys.stdout.write('\n')
 
