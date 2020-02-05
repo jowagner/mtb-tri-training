@@ -28,8 +28,23 @@ learner_column  = header.index('Learner')
 testset_column  = header.index('TestSetIndex')
 
 def unpack_score(score):
-    score, date, tokens, sentences = score.split(':')
-    return score, date, int(tokens), int(sentences)
+    if ':' in score:
+        score, date, tokens, sentences = score.split(':')
+    else:
+        date, tokens, sentences = '????-??-??', '-1', '-1'
+    return float(score), date, int(tokens), int(sentences)
+
+def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
+    return '&#10;'.join([
+        '<div title="Round %d with LAS %s' %(
+            tt_round, text.split(':')[0]
+        ),
+        'Model trained %s' %date,
+        '%.1fk unlabelled tokens' %(n_tokens/1000.0),
+        '%.1fk unlabelled sentences">%.1f</div>' %(
+            n_sentences/1000.0, score
+        ),
+    ])
 
 rows = []
 while True:
@@ -289,9 +304,7 @@ for row in rows:
         tdcode = '<td>'
     else:
         tdcode = '<td bgcolor="#%s">' %distribution.colour(score)
-    sccode = '<div title="Round %d with LAS %s&#10;Model trained %s&#10;%.1fk tokens&#10;%.1fksentences">%.1f</div>' %(
-        tt_round, text, date, n_tokens/1000.0, n_sentences/1000.0, score
-    )
+    sccode = get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score)
     if score == bestbaselinescore:
         print('%s<b>%s</b></td>' %(tdcode, sccode))
     else:
@@ -299,14 +312,12 @@ for row in rows:
     rowbaseline = score
     for text in row[baseline_column+1:]:
         tt_round += 1
-        score = float(text)
+        score, date, n_tokens, n_sentences = unpack_score(text)
         if distribution is None:
             tdcode = '<td>'
         else:
             tdcode = '<td bgcolor="#%s">' %distribution.colour(score)
-        sccode = '<div title="Round %d with LAS %s&#10;Model trained %s&#10;%.1fk tokens&#10;%.1fksentences">%.1f</div>' %(
-            tt_round, text, date, n_tokens/1000.0, n_sentences/1000.0, score
-        )
+        sccode = get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score)
         if score >= bestbaselinescore:
             print('%s<b>%s</b></td>' %(tdcode, sccode))
         elif score < rowbaseline:
