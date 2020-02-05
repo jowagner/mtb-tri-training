@@ -27,6 +27,10 @@ baseline_column = header.index('0')
 learner_column  = header.index('Learner')
 testset_column  = header.index('TestSetIndex')
 
+def unpack_score(score):
+    score, date, tokens, sentences = score.split(':')
+    return score, date, int(tokens), int(sentences)
+
 rows = []
 while True:
     line = sys.stdin.readline()
@@ -38,12 +42,13 @@ while True:
     if row[testset_column] != '0':
         continue
     rows.append(row)
+    # find best and worst baseline scores
     language = row[0]
     parser   = row[1]
     method   = row[3]
     sample   = method[1]
     key = (language, parser, sample)
-    baselinescore = float(row[baseline_column])
+    baselinescore, _, _, _ = unpack_score(row[baseline_column])
     try:
         bestscore = langandparser2bestbaseline[key]
     except:
@@ -56,6 +61,7 @@ while True:
         worstscore = 9999.0
     if baselinescore < worstscore:
         langandparser2worstbaseline[key] = baselinescore
+    # append sampling to parser information
     row[1] = '%s\t%s' %(parser, sample)
 
 rows.sort()
@@ -277,13 +283,15 @@ for row in rows:
     bestbaselinescore = langandparser2bestbaseline[(language, parser, sample)]
     worstbaselinescore = langandparser2worstbaseline[(language, parser, sample)]
     text = row[baseline_column]
-    score = float(text)
+    score, date, n_tokens, n_sentences = unpack_score(text)
     tt_round = 0
     if distribution is None:
         tdcode = '<td>'
     else:
         tdcode = '<td bgcolor="#%s">' %distribution.colour(score)
-    sccode = '<div title="Round %d with LAS %s">%.1f</div>' %(tt_round, text, score)
+    sccode = '<div title="Round %d with LAS %s&#10;Model trained %s&#10;%.1fk tokens&#10;%.1fksentences">%.1f</div>' %(
+        tt_round, text, date, n_tokens/1000.0, n_sentences/1000.0, score
+    )
     if score == bestbaselinescore:
         print('%s<b>%s</b></td>' %(tdcode, sccode))
     else:
@@ -296,7 +304,9 @@ for row in rows:
             tdcode = '<td>'
         else:
             tdcode = '<td bgcolor="#%s">' %distribution.colour(score)
-        sccode = '<div title="Round %d with LAS %s">%.1f</div>' %(tt_round, text, score)
+        sccode = '<div title="Round %d with LAS %s&#10;Model trained %s&#10;%.1fk tokens&#10;%.1fksentences">%.1f</div>' %(
+            tt_round, text, date, n_tokens/1000.0, n_sentences/1000.0, score
+        )
         if score >= bestbaselinescore:
             print('%s<b>%s</b></td>' %(tdcode, sccode))
         elif score < rowbaseline:
