@@ -157,19 +157,25 @@ if len(sys.argv) > 1:
                 n_tokens = int(fields[8])
             if key not in key2scores \
             or len(scores) > len(key2scores[key]):
-                if ':' in scores:
-                    plain_scores = []
-                    token_infos  = []
-                    dates = []
-                    for scoreplus in scores:
-                        score, date, n_tokens, n_sentences = scoreplus.split(':')[:4]
-                        plain_scores.append(score)
-                        token_infos.append((int(n_tokens), int(n_sentences)))
-                        dates.append(date)
-                    scores = plain_scores
-                else:
-                    token_infos = ((len(scores)-1) * [(-1, -1)]) + [(n_tokens, -1)]
-                    dates = len(scores) * ['????-??-??']
+                plain_scores = []
+                token_infos  = []
+                dates = []
+                last_sp_index = len(scores) - 1
+                for sp_index, scoreplus in enumerate(scores):
+                    if ':' in scoreplus:
+                        score, date, sp_n1, sp_n2 = scoreplus.split(':')[:4]
+                        token_info = (int(sp_n1), int(sp_n2))
+                    else:
+                        score = scoreplus
+                        date = '????-??-??'
+                        if sp_index == last_sp_index:
+                            token_info = (n_tokens, -1)
+                        else:
+                            token_info = (-1, -1)
+                    plain_scores.append(score)
+                    token_infos.append(token_info)
+                    dates.append(date)
+                scores = plain_scores
                 key2scores[key] = scores
                 key2tokens[key] = token_infos
                 key2dates[key] = dates
