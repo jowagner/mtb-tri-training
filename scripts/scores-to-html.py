@@ -29,7 +29,7 @@ testset_column  = header.index('TestSetIndex')
 
 def unpack_score(score):
     if ':' in score:
-        score, date, tokens, sentences = score.split(':')
+        score, date, tokens, sentences = score.split(':')[:4]
     else:
         date, tokens, sentences = '????-??-??', '-1', '-1'
     return float(score), date, int(tokens), int(sentences)

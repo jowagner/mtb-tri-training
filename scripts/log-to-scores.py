@@ -162,7 +162,7 @@ if len(sys.argv) > 1:
                     token_infos  = []
                     dates = []
                     for scoreplus in scores:
-                        score, date, n_tokens, n_sentences = scoreplus
+                        score, date, n_tokens, n_sentences = scoreplus.split(':')[:4]
                         plain_scores.append(score)
                         token_infos.append((int(n_tokens), int(n_sentences)))
                         dates.append(date)
