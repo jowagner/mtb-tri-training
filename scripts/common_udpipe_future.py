@@ -355,7 +355,7 @@ def main(queue_name, task_processor, cache = None, last_arg = None):
         opt_max_idle
     )
 
-def pick_task(inbox_dir, active_dir, task_processor):
+def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
     if task_processor is None:
         raise ValueError('Missing task processor')
     else:
@@ -413,7 +413,7 @@ def pick_task(inbox_dir, active_dir, task_processor):
             if command and command[-1] == '':
                 del command[-1]
             # found the first task eligible to run
-            task = task_processor(command)
+            task = task_processor(command, **extra_kw_parameters)
             task.active_name = active_name
             task.submit_time = os.path.getmtime(active_name)
             task.task_id = task_id
@@ -427,11 +427,13 @@ def pick_task(inbox_dir, active_dir, task_processor):
 def worker(
     queue_name = 'udpf',
     task_processor = None,
-    cache = None,
     opt_deadline = None, opt_stopfile = None, opt_debug = False,
     opt_max_idle = 900.0,
     last_arg = None,
+    extra_kw_parameters = {},
 ):
+    if task_processor is None:
+        task_processor = Task
     tt_task_dir = os.environ['TT_TASK_DIR']
     queue_dir  = '/'.join((tt_task_dir, queue_name))
     inbox_dir  = '/'.join((queue_dir, 'inbox'))
@@ -451,14 +453,12 @@ def worker(
         if opt_stopfile and os.path.exists(opt_stopfile):
             print('\n*** Found stop file. ***\n')
             sys.exit(0)
-        task = pick_task(inbox_dir, active_dir, task_processor)
+        task = pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters)
         if task is not None:
             task.start_time = time.time()
             print('Running task %s: %r' %(task.task_id, task.command))
             sys.stderr.flush()
             sys.stdout.flush()
-            if cache:
-                task.cache = cache
             task.start_processing()
             my_active_tasks.append(task)
         still_active_tasks = []

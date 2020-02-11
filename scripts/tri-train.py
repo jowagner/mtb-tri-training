@@ -24,6 +24,7 @@ import sys
 import time
 
 import basic_dataset
+import utilities
 
 def print_usage():
     print('Usage: %s [options]' %(os.path.split(sys.argv[0])[-1]))
@@ -1524,7 +1525,7 @@ def evaluate(
                 all_prediction_fingerprints[gold_path].append(prediction_fingerprint)
             print('Evaluating ensemble of learners on %s:' %name)
             check_deadline(deadline, stopfile)
-            ensemble_fingerprint = hex2base62(hashlib.sha512(
+            ensemble_fingerprint = utilities.hex2base62(hashlib.sha512(
                 ':'.join(pred_fingerprints)
             ).hexdigest())
             output_path = '%s/%sprediction-%02d-E-%s-%s%s' %(
@@ -1542,7 +1543,7 @@ def evaluate(
                 check_deadline(deadline, stopfile)
                 pred_paths = all_prediction_paths[gold_path]
                 pred_fingerprints = all_prediction_fingerprints[gold_path]
-                ensemble_fingerprint = hex2base62(hashlib.sha512(
+                ensemble_fingerprint = utilities.hex2base62(hashlib.sha512(
                     ':'.join(pred_fingerprints)
                 ).hexdigest())
                 output_path = '%s/%sprediction-%02d-A-%s-%s%s' %(
@@ -1601,18 +1602,6 @@ def train_and_evaluate_baselines(
         opt_rename_dispensable = opt_rename_dispensable,
     )
 
-def hex2base62(h):
-    s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    i = int(h, 16)
-    if not i:
-        return '0'
-    digits = []
-    while i:
-        d = i % 62
-        digits.append(s[d])
-        i = int(i/62)
-    return ''.join(digits)
-
 def get_prediction_fingerprint(model_fingerprint, unlabelled_subset, verbose = False):
     data_fingerprint = unlabelled_subset.hexdigest()
     if verbose:
@@ -1620,7 +1609,7 @@ def get_prediction_fingerprint(model_fingerprint, unlabelled_subset, verbose = F
     fingerprint = hashlib.sha512('%s:%s' %(
         model_fingerprint, data_fingerprint
     )).hexdigest()
-    return hex2base62(fingerprint)
+    return utilities.hex2base62(fingerprint)
 
 def get_model_fingerprint(model_init_seed, seed_set, epoch_selection_set = None, verbose = False):
     data_fingerprint = seed_set.hexdigest()
@@ -1637,7 +1626,7 @@ def get_model_fingerprint(model_init_seed, seed_set, epoch_selection_set = None,
     model_fingerprint = hashlib.sha512('%s:%s:%s' %(
         model_init_seed, data_fingerprint, epoch_selection_fingerprint
     )).hexdigest()
-    return hex2base62(model_fingerprint)
+    return utilities.hex2base62(model_fingerprint)
 
 def get_model_selection_dataset(
     selection_type, dev_sets, seed_set, seed_set_10,
