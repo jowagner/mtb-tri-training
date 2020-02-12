@@ -123,6 +123,26 @@ class ElmoCache:
             else:
                 self.length = -1
 
+    def sync_to_disk_files(self):
+        start_time = time.time()
+        data_file = open(self.data_filename, 'wb')
+        atime_file = open(self.atime_filename, 'wb')
+        for key, entry in self.key2entry.iteritems():
+            if entry.access_time_synced and entry.vectors_on_disk:
+                continue
+                
+        data_file.close()
+        atime_file.close()
+        duration = time.time() - start_time
+        print('Synced elmo cache to disk:')
+        print('\t# duration: %.1f seconds' %duration)
+        print('\t# entries, i.e. sentences: %d (of %d, %.2f%%)' %(
+            n_entries, 1, 2)) # TODO
+
+        print('\t# records, i.e. vector blocks:', n_record)
+        print('\t# access time: %d (%d records)', %(atime_entries, atime_record))
+
+
     def load_from_disk(self):
         config = open(self.config_filename, 'rb')
         line = config.readline()
@@ -141,7 +161,13 @@ class ElmoCache:
         for r_index in range(self.n_records):
             data_file.seek(r_index * self.record_size)
             line = data_file.readline(self.record_size)
+            # line: data 123 500
+            # for r_index 123 with 500 lines of payload
+            # (comment lines starting with '#' can come after
+            # the obligatory lines below and do not count
+            # towards to payload line count)
             if not line.startswith('data'):
+                # block is free/recycled or never been used
                 continue
             fields = line.split()
             assert fields[1] == ('%d' %r_index)
@@ -289,11 +315,11 @@ class ElmoCache:
         config.write('record_size %d\n' %self.record_size)
         config.write('vectors_per_record %d\n' %self.vectors_per_record)
         config.close()
-        data_file = open(self.data_filename, 'rb')
+        data_file = open(self.data_filename, 'wb')
         for r_index in range(self.n_records):
             data_file.write(self.get_data_record(r_index))
         data_file.close()
-        atime_file = open(self.atime_filename, 'rb')
+        atime_file = open(self.atime_filename, 'wb')
         for r_index in range(self.n_records):
             atime_file.write(self.get_atime_record(0, r_index))
         atime_file.close()
@@ -324,10 +350,10 @@ class ElmoCache:
         if self.record_size < 128 or self.record_size % 128:
             raise ValueError('Elmo cache record size too small or not a multiple of 128')
         rows = []
-        row = 'init\t%d\t' %r_index
+        row = 'init %d ' %r_index
         rows.append(self.with_padding(row, 128))
         for pad_index in range(1, self.record_size/128):
-            row = '.\t.\tpadding\t%d\tof\t%d\tfor\t%d\t' %(
+            row = '........ padding %d of %d for record # %d ' %(
                 pad_index, self.record_size/128-1, r_index
             )
             rows.append(self.with_padding(row, 128))
@@ -367,6 +393,10 @@ class ElmoCache:
             ('GB', 1000**3),
             ('MB', 1000**2),
             ('KB', 1000),
+            ('T', 1000**4),
+            ('G', 1000**3),
+            ('M', 1000**2),
+            ('K', 1000),
             ('B', 1),
         ]:
             if cache_size.endswith(suffix):
@@ -376,7 +406,7 @@ class ElmoCache:
         n_bytes = float(cache_size) * multiplier
         return int(n_bytes/self.record_size)
 
-    def get_cache_key(self, tokens, hdf5_key, lcode)
+    def get_cache_key(self, tokens, hdf5_key, lcode):
         part1 = '%05d' %len(tokens)
         if len(part1) != 5:
             # this limit is very generous, over 99k tokens
