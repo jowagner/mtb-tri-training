@@ -146,6 +146,7 @@ class ElmoCache:
             fields = line.split()
             assert fields[1] == ('%d' %r_index)
             n_payload = int(fields[2])
+            assert n_payload < self.record_size
             payload_hash = fields[3]
             payload_lines = []
             while n_payload:
@@ -174,9 +175,9 @@ class ElmoCache:
             assert fields[0] == 'lcode'
             lcode = fields[1]
             # get time of last access
-            atime_file.seek(...) # TODO
+            atime_file.seek(self.atime_size*r_index)
             line = atime_file.readline()
-            atime = float(line)
+            atime = float(line.split()[0])
             # create in-memory cache entry if it does not exist yet
             if not key in self.key2entry:
                 entry = ElmoCache.Entry(None, lcode, None)
@@ -196,14 +197,14 @@ class ElmoCache:
             if len(entry.have_parts) == entry.n_parts:
                 # all parts are ready
                 entry.have_parts.sort()
-                last_part_index = -1 
+                last_part_index = -1
                 parts = []
                 for part_index, vectors, r_index2 in entry.have_parts:
                     assert part_index == last_part_index + 1
                     entry.records.append(r_index2)
                     parts.append(vectors)
                     last_part_index = part_index
-                entry.vectors = numpy.stack(parts)  # TODO: check axis
+                entry.vectors = numpy.concatenate(parts, axis=0)
                 entry.last_access = max(entry.access_times)
                 entry.access_time_synced = (
                     entry.last_access == min(entry.access_times)
@@ -212,13 +213,25 @@ class ElmoCache:
                 # clean up
                 entry.have_parts = None
                 entry.access_times = None
-        # remove all incomplete in-memory cache entries 
+        data_file.close()
+        atime_file.close()
+        # remove all incomplete in-memory cache entries
         incomplete = []
+        n_atime_not_synced = 0
+        n_normal = 0
         for key, entry in self.key2entry.iteritems():
             if entry.have_parts is not None:
                 incomplete.append(key)
+            elif not entry.access_time_synced:
+                n_atime_not_synced += 1
+            else:
+                n_normal += 1
         for key in incomplete:
             del self.key2entry[key]
+        print('Loaded elmo cache from disk:')
+        print('\t# normal entries found:', n_normal)
+        print('\t# entries with inconsistent acess time:', n_atime_not_synced)
+        print('\t# incomplete entries discarded:', len(incomplete))
 
     def __init__(self):
         self.npz2ready_count = {}
@@ -228,6 +241,7 @@ class ElmoCache:
         self.atime_filename = cache_dir + '/access'
         self.data_filename  = cache_dir + '/data'
         self.config_filename  = cache_dir + '/config'
+        self.atime_size = 24
         if os.path.exists(self.atime_filename) \
         and os.path.exists(self.data_filename) \
         and os.path.exists(self.config_filename):
@@ -271,8 +285,69 @@ class ElmoCache:
               * self.record_size  and
               * self.n_records
         '''
-        
+        config = open(self.config_filename, 'wb')
+        config.write('record_size %d\n' %self.record_size)
+        config.write('vectors_per_record %d\n' %self.vectors_per_record)
+        config.close()
+        data_file = open(self.data_filename, 'rb')
+        for r_index in range(self.n_records):
+            data_file.write(self.get_data_record(r_index))
+        data_file.close()
+        atime_file = open(self.atime_filename, 'rb')
+        for r_index in range(self.n_records):
+            atime_file.write(self.get_atime_record(0, r_index))
+        atime_file.close()
 
+    def get_atime_record(self, atime, r_index):
+        record = '%.1f\t%d\t' %(atime, r_index)
+        if len(record) > self.atime_size:
+            # cannot fit r_index into record
+            record = '%.1f\t' %atime
+            if len(record) > self.atime_size:
+                # also doesn't fit --> reduce precision
+                record = '%.0f\t' %atime
+        return self.with_padding(record, self.atime_size)
+
+    def with_padding(self, record, target_size):
+        ''' note that the last character may be replaced with a newline
+        '''
+        length = len(record)
+        if length > target_size:
+            raise ValueError('Record size is too small for %r...' %(record[:20]))
+        if length == target_size:
+            return record[:target_size-1] + '\n'
+        else:
+            padding = (target_size - len(record) - 1) * '.'
+            return record + padding + '\n'
+
+    def get_data_record(self, r_index):
+        if self.record_size < 128 or self.record_size % 128:
+            raise ValueError('Elmo cache record size too small or not a multiple of 128')
+        rows = []
+        row = 'init\t%d\t' %r_index
+        rows.append(self.with_padding(row, 128))
+        for pad_index in range(1, self.record_size/128):
+            row = '.\t.\tpadding\t%d\tof\t%d\tfor\t%d\t' %(
+                pad_index, self.record_size/128-1, r_index
+            )
+            rows.append(self.with_padding(row, 128))
+        return ''.join(rows)
+
+    def get_record_padding(self, index, current_size, target_size):
+        missing = target_size - current_size
+        full_rows = int(missing / 128)
+        partial = missing - full_rows
+        rows = []
+        if partial:
+            rows.append((partial-1)*'.')
+            rows.append('\n')
+        for r_index in range(full_rows):
+            marker = '%d:%d' %(index, r_index)
+            padding = 128 - len(marker) - 1
+            rows.append(marker)
+            rows.append(padding * '.')
+            rows.append('\n')
+        return ''.join(rows)
 
     def get_n_records(self):
         if 'EFML_CACHE_SIZE' in os.environ:
@@ -299,8 +374,7 @@ class ElmoCache:
                 cache_size = cache_size[:-len(suffix)]
                 break
         n_bytes = float(cache_size) * multiplier
-        record_size = self.get_record_size()
-        return int(n_bytes/record_size)
+        return int(n_bytes/self.record_size)
 
     def get_cache_key(self, tokens, hdf5_key, lcode)
         part1 = '%05d' %len(tokens)
@@ -313,22 +387,6 @@ class ElmoCache:
             min_length = 60
         )
         return ':'.join((part1, part2, part3[:60]))
-
-    def get_record_padding(self, index, current_size, target_size):
-        missing = target_size - current_size
-        full_rows = int(missing / 128)
-        partial = missing - full_rows
-        rows = []
-        if partial:
-            rows.append((partial-1)*'.')
-            rows.append('\n')
-        for r_index in range(full_rows):
-            marker = '%d:%d' %(index, r_index)
-            padding = 128 - len(marker) - 1
-            rows.append(marker)
-            rows.append(padding * '.')
-            rows.append('\n')
-        return ''.join(rows)
 
     def request(self, tokens, hdf5_key, npz_name, lcode):
         key = self.get_cache_key(tokens, hdf5_key, lcode)
