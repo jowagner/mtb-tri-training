@@ -41,9 +41,14 @@ class ElmoNpzTask(common_udpipe_future.Task):
         common_udpipe_future.Task.__init__(self, command, **kw_args)
 
     def start_processing(self):
-        conllu_file, npz_name = self.command
+        conllu_file, npz_name, lcode = self.command
         sentences = self.read_sentences(conllu_file)
-        lcode = self.lcode
+        try:
+            if lcode != self.lcode:
+                print('*** self.lcode pre-defined and not matching command lcode ***')
+        except:
+            print('self.lcode needs to be initialised in start_processing() as expected')
+        self.lcode = lcode
         for tokens, hdf5_key in sentences:
             self.cache.request(tokens, hdf5_key, npz_name, lcode)
         self.cache.submit(npz_name)
@@ -755,6 +760,13 @@ QUEUENAME:
             task_processor = common_udpipe_future.Task,
             last_arg = (last_arg_name, last_arg_description),
         )
+    elif len(sys.argv) == 5 and sys.argv[1] == 'test-npz':
+        # undocumented test mode
+        conllu_file = sys.argv[2]
+        npz_file    = sys.argv[3]
+        lcode       = sys.argv[4]
+        task = ElmoNpzTask([conllu_file, npz_file, lcode])
+        task.submit()
     else:
         common_udpipe_future.print_usage(
             last_arg = (last_arg_name, last_arg_description),

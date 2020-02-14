@@ -126,8 +126,9 @@ class Task:
     def __init__(self, command, queue_name = 'udpf', requires = None):
         self.command = command
         self.queue_name = queue_name
-        task_dir = os.environ['TT_TASK_DIR']
-        self.queue_dir = '/'.join((task_dir, self.queue_name))
+        if 'TT_TASK_DIR' in os.environ:
+            task_dir = os.environ['TT_TASK_DIR']
+            self.queue_dir = '/'.join((task_dir, self.queue_name))
         self.requires = []
         if requires:
             for filename in requires:
