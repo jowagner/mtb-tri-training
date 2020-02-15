@@ -20,3 +20,31 @@ def hex2base62(h, min_length = 0):
         i = int(i/62)
     return ''.join(digits)
 
+def bstring(s):
+    if type(b'') is str:
+        return s
+    if type(s) is bytes:
+        return s
+    return s.encode('utf-8')
+
+def std_string(s):
+    if type(b'') is str:
+       return s
+    if type(s) is bytes:
+       return s.decode('utf-8')
+    return s
+
+def b_ord(s):
+    if type(b'') is str:
+        return ord(s)
+    if type(s) is int:
+        # probably called with binarystring[some_index]
+        return s
+    return s[0]   # in Python 3, accessing an element of a byte string yields an integer
+
+def iteritems(d):
+    try:
+        return d.iteritems()
+    except AttributeError:
+        return d.items()
+

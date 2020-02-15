@@ -19,6 +19,8 @@ import subprocess
 import sys
 import time
 
+import utilities
+
 def print_usage(last_arg = None):
     if last_arg:
         last_arg_name, last_arg_description = last_arg
@@ -124,24 +126,34 @@ def wait_for_tasks(task_list):
 class Task:
 
     def __init__(self, command, queue_name = 'udpf', requires = None):
-        self.command = command
-        self.queue_name = queue_name
+        self.command = [utilities.bstring(x) for x in command]
+        self.queue_name = utilities.bstring(queue_name)
         if 'TT_TASK_DIR' in os.environ:
-            task_dir = os.environ['TT_TASK_DIR']
-            self.queue_dir = '/'.join((task_dir, self.queue_name))
+            task_dir = utilities.bstring(os.environ['TT_TASK_DIR'])
+            self.queue_dir = b'/'.join((task_dir, self.queue_name))
         self.requires = []
         if requires:
             for filename in requires:
-                self.requires.append(filename)
+                self.requires.append(utilities.bstring(filename))
+
+    def __repr__(self):
+        parts = []
+        parts.append('<%s' %self.__class__.__name__)
+        try:
+            parts.append(utilities.std_string(self.task_id))
+        except:
+            pass
+        parts.append('on queue %r' %self.queue_name)
+        return (' '.join(parts))+'>'
 
     def add_required_file(self, filename):
-        self.requires.append(filename)
+        self.requires.append(utilities.bstring(filename))
 
     def required_files_exist(self, exception_if_not = False):
         for filename in self.requires:
             if not os.path.exists(filename):
                 if exception_if_not:
-                    raise ValueError('Missing file %s' %filename)
+                    raise ValueError('Missing file %r' %filename)
                 return False
         return True
 
@@ -168,16 +180,19 @@ class Task:
             t0 = float(os.environ['TT_TASK_EPOCH'])
         else:
             t0 = 0.0
-        command_fingerprint = hashlib.sha256('\n'.join(self.command)).hexdigest()
-        task_id = '%05x-%s-%s-%d-%s-%s' %(
+        command_fingerprint = hashlib.sha256(b'\n'.join(self.command)).hexdigest()
+        task_id = utilities.bstring('%05x-%s-%s-%d-%s-%s' %(
             int((time.time()-t0)/60.0),
             os.environ['HOSTNAME'].replace('-', '_'),
             os.environ['SLURM_JOB_ID'] if 'SLURM_JOB_ID' in os.environ else 'na',
             os.getpid(),
             command_fingerprint[:8],
             command_fingerprint[8:16],
-        )
-        num_task_buckets = int(os.environ['TT_TASK_BUCKETS'])
+        ))
+        if 'TT_TASK_BUCKETS' in os.environ:
+            num_task_buckets = int(os.environ['TT_TASK_BUCKETS'])
+        else:
+            num_task_buckets = 20
         self.task_fingerprint = hashlib.sha512(task_id).hexdigest()
         self.my_task_bucket = int(self.task_fingerprint, 16) % num_task_buckets
         self.task_id = task_id
@@ -192,9 +207,9 @@ class Task:
         return self.expires
 
     def get_submit_name(self, task_id, my_task_bucket):
-        inbox_dir = '/'.join((self.queue_dir, 'inbox'))
+        inbox_dir = b'/'.join((self.queue_dir, b'inbox'))
         my_makedirs(inbox_dir)
-        filename = '%s/%s-%d.task' %(
+        filename = b'%s/%s-%d.task' %(
             inbox_dir,
             task_id,
             my_task_bucket,
@@ -213,15 +228,15 @@ class Task:
         task_id  = self.get_task_id()
         filename = self.get_submit_name(task_id, self.my_task_bucket)
         expires  = self.get_expiry()
-        f = open(filename+'.prep', 'wb')
-        f.write('expires\t%.1f\n' %expires)
+        f = open(filename+b'.prep', 'wb')
+        f.write(b'expires\t%.1f\n' %expires)
         for required_file in self.requires:
-            f.write('requires\t%s\n' %required_file)
-        f.write('\n')
-        f.write('\n'.join(self.command))
-        f.write('\n')
+            f.write(b'requires\t%s\n' %required_file)
+        f.write(b'\n')
+        f.write(b'\n'.join(self.command))
+        f.write(b'\n')
         f.close()
-        os.rename(filename+'.prep', filename)
+        os.rename(filename+b'.prep', filename)
         self.submit_time = time.time()
         print('Submitted task %s to run command %r' %(task_id, self.command))
         sys.stderr.flush()
@@ -262,7 +277,7 @@ class Task:
         has_expired = True
         # check for file in active queue
         time.sleep(5.0) # just in case moving the file is not atomic
-        filename = '%s/active/%d/%s.task' %(
+        filename = b'%s/active/%d/%s.task' %(
             queue_dir,
             my_task_bucket,
             task_id,
@@ -292,7 +307,7 @@ class Task:
                     verbosity_interval *= 1.4
                     next_verbose += verbosity_interval
         # task is not active --> check for completion
-        filename = '%s/completed/%d/%s.task' %(
+        filename = b'%s/completed/%d/%s.task' %(
             queue_dir,
             my_task_bucket,
             task_id,
@@ -302,11 +317,11 @@ class Task:
             raise ValueError('Task %s marked by task master as no longer active but not as complete')
         if 'TT_TASK_ARCHIVE_COMPLETED' in os.environ  and \
         os.environ['TT_TASK_ARCHIVE_COMPLETED'].lower() not in ('0', 'false'):
-            archive_dir = '/'.join((queue_dir, 'archive'))
+            archive_dir = b'/'.join((queue_dir, b'archive'))
             my_makedirs(archive_dir)
             counter = 1
             while True:
-                archive_name = '%s/%s-run%03d.task' %(archive_dir, task_id, counter)
+                archive_name = b'%s/%s-run%03d.task' %(archive_dir, task_id, counter)
                 if os.path.exists(archive_name):
                     counter += 1
                     continue
@@ -362,15 +377,15 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
     else:
         candidate_tasks = []
         for filename in os.listdir(inbox_dir):
-            if filename.endswith('.task') and '-' in filename:
+            if filename.endswith(b'.task') and b'-' in filename:
                 candidate_tasks.append(filename)
         candidate_tasks.sort()
         for filename in candidate_tasks:
-            taskfile    = '/'.join((inbox_dir, filename))
-            task_id, task_bucket = filename[:-5].rsplit('-', 1)
-            bucket_dir  = '/'.join((active_dir, task_bucket))
+            taskfile    = b'/'.join((inbox_dir, filename))
+            task_id, task_bucket = filename[:-5].rsplit(b'-', 1)
+            bucket_dir  = b'/'.join((active_dir, task_bucket))
             my_makedirs(bucket_dir)
-            active_name = '%s/%s.task' %(bucket_dir, task_id)
+            active_name = b'%s/%s.task' %(bucket_dir, task_id)
             try:
                 os.rename(taskfile, active_name)
             except:
@@ -386,18 +401,18 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
                 line = f.readline().rstrip()
                 if not line: # empty line or EOF
                     break
-                fields = line.split('\t')
+                fields = line.split(b'\t')
                 if len(fields) != 2:
                     print('Deleting malformed task', task_id)
                     delete_task = True
-                elif line.startswith('expires'):
+                elif line.startswith(b'expires'):
                     expires = float(fields[1])
                     if time.time() > expires:
                         print('Deleting expired task', task_id)
                         delete_task = True
-                elif line.startswith('lcode'):
+                elif line.startswith(b'lcode'):
                     lcode = fields[1]
-                elif line.startswith('requires'):
+                elif line.startswith(b'requires'):
                     needed_file = fields[1]
                     if not os.path.exists(needed_file):
                         eligible = False
@@ -408,10 +423,10 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
                 if delete_task:
                     os.unlink(active_name)
                 continue
-            command = f.read().split('\n')
+            command = f.read().split(b'\n')
             f.close()
             # handle last line with linebreak
-            if command and command[-1] == '':
+            if command and command[-1] == b'':
                 del command[-1]
             # found the first task eligible to run
             task = task_processor(command, **extra_kw_parameters)
@@ -435,11 +450,11 @@ def worker(
 ):
     if task_processor is None:
         task_processor = Task
-    tt_task_dir = os.environ['TT_TASK_DIR']
-    queue_dir  = '/'.join((tt_task_dir, queue_name))
-    inbox_dir  = '/'.join((queue_dir, 'inbox'))
-    active_dir = '/'.join((queue_dir, 'active'))
-    final_dir  = '/'.join((queue_dir, 'completed'))
+    tt_task_dir = utilities.bstring(os.environ['TT_TASK_DIR'])
+    queue_dir  = b'/'.join((tt_task_dir, utilities.bstring(queue_name)))
+    inbox_dir  = b'/'.join((queue_dir, b'inbox'))
+    active_dir = b'/'.join((queue_dir, b'active'))
+    final_dir  = b'/'.join((queue_dir, b'completed'))
     for required_dir in (inbox_dir, active_dir, final_dir):
         my_makedirs(required_dir)
     idle_deadline = time.time() + opt_max_idle
@@ -457,7 +472,7 @@ def worker(
         task = pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters)
         if task is not None:
             task.start_time = time.time()
-            print('Running task %s: %r' %(task.task_id, task.command))
+            print('Running task %r' %task)
             sys.stderr.flush()
             sys.stdout.flush()
             task.start_processing()
@@ -465,18 +480,19 @@ def worker(
         still_active_tasks = []
         for index, task in enumerate(my_active_tasks):
             idle_deadline = time.time() + opt_max_idle
-            if not task.finished_processing:
+            if not task.finished_processing():
                 still_active_tasks.append(task)
                 continue
+            print('Detected that task %r has finished' %task)
             end_time = time.time()
             # signal completion
             bucket_dir = '%s/%s' %(final_dir, task.task_bucket)
             my_makedirs(bucket_dir)
             final_file = '%s/%s.task' %(bucket_dir, task.task_id)
             f = open(final_file, 'wb')
-            f.write('duration\t%.1f\n' %(end_time-task.start_time))
-            f.write('waiting\t%.1f\n' %(task.start_time-task.submit_time))
-            f.write('total\t%.1f\n' %(end_time-task.submit_time))
+            f.write(b'duration\t%.1f\n' %(end_time-task.start_time))
+            f.write(b'waiting\t%.1f\n' %(task.start_time-task.submit_time))
+            f.write(b'total\t%.1f\n' %(end_time-task.submit_time))
             for keyname, envname in [
                 ('cluster',  'SLURM_CLUSTER_NAME'),
                 ('job_id',   'SLURM_JOB_ID'),
@@ -484,24 +500,27 @@ def worker(
                 ('host',     'HOSTNAME'),
             ]:
                 if envname in os.environ:
-                    f.write('%s\t%s\n' %(keyname, os.environ[envname]))
-            f.write('process\t%d\n' %os.getpid())
-            f.write('submitted\t%.1f\n' %task.submit_time)
-            f.write('start\t%.1f\n' %task.start_time)
-            f.write('end\t%.1f\n' %end_time)
-            f.write('expires\t%.1f\n' %task.expires)
-            f.write('task_id\t%s\n' %task.task_id)
-            f.write('bucket\t%s\n' %task.task_bucket)
-            f.write('arg_len\t%d\n' %len(task.command))
+                    f.write(utilities.bstring(
+                        '%s\t%s\n' %(keyname, os.environ[envname])
+                    ))
+            f.write(b'process\t%d\n' %os.getpid())
+            f.write(b'submitted\t%.1f\n' %task.submit_time)
+            f.write(b'start\t%.1f\n' %task.start_time)
+            f.write(b'end\t%.1f\n' %end_time)
+            f.write(b'expires\t%.1f\n' %task.expires)
+            f.write(b'task_id\t%s\n' %task.task_id)
+            f.write(b'bucket\t%s\n' %task.task_bucket)
+            f.write(b'arg_len\t%d\n' %len(task.command))
             # TODO: 'requires' header lines are currently lost
-            f.write('\n') # empty line to mark end of header, like in http
-            f.write('\n'.join(task.command))
-            f.write('\n') # final newline
+            f.write(b'\n') # empty line to mark end of header, like in http
+            f.write(b'\n'.join(task.command))
+            f.write(b'\n') # final newline
             f.close()
             os.unlink(task.active_name)
             idle_deadline = time.time() + opt_max_idle
         my_active_tasks = still_active_tasks
-        time.sleep(2.5)  # poll interval
+        print('Tasks still active:', my_active_tasks)
+        time.sleep(4.5)  # poll interval
 
 if __name__ == "__main__":
     main('udpf', Task)
