@@ -31,6 +31,11 @@ except:
     # only show error if user needs h5py functionality
     pass
 
+try:
+    from StringIO import StringIO
+except:
+    from io import BytesIO as StringIO
+
 import common_udpipe_future
 
 def request_npz(conllu_filename, npz_filename):
@@ -148,7 +153,7 @@ class ElmoCache:
             else:
                 self.length = -1
 
-    def allocate(self, data_file, r_index, key, part_index):
+    def allocate(self, data_file, key, part_index):
         r_index, _ = self.get_location(data_file, key, part_index, accept_free = True)
         self.record_states[r_index] = ord('p')
         return r_index
@@ -157,15 +162,15 @@ class ElmoCache:
         # TODO: reduce to returning only r_index if 2nd part never used
         next_probe = 0
         while True:
-            h = hashlib.sha512('%d:%d:%s' %(
+            h = hashlib.sha512(b'%d:%d:%s' %(
                   next_probe, part_index, key
             )).hexdigest()
             r_index = int(h, 16) % self.n_records
             state = self.record_states[r_index]
             if state == ord('i'):
-                return r_index, 'init'
+                return r_index, b'init'
             elif state == ord('f') and accept_free:
-                return r_index, 'free'
+                return r_index, b'free'
             elif state == ord('p'):
                 # pre-allocated for an earlier part of this key
                 # --> cannot
@@ -173,7 +178,7 @@ class ElmoCache:
             elif state == ord('d'):
                 # data record: need to check whether key and part match
                 if (key, part_index) == self.idx2key_and_part[r_index]:
-                    return r_index, 'data'
+                    return r_index, b'data'
             else:
                 raise ValueError('Unknown record state %d at index %d' %(state, r_index))
             next_probe += 1
@@ -181,21 +186,21 @@ class ElmoCache:
     def write_vectors(self, data_file, r_index, key, part_index, n_parts, partial_vectors, lcode, n_tokens):
         data_file.seek(r_index * self.record_size)
         payload = []
-        payload.append('key %s\n' %key)
-        payload.append('part %d of %d\n' %(part_index+1, n_parts))
-        payload.append('length %d\n' %n_tokens)  # overall tokens in this sentence, not just in this record
-        payload.append('lcode %s\n' %lcode)
-        binary_vector = StringIO.StringIO()
+        payload.append(b'key %s\n' %key)
+        payload.append(b'part %d of %d\n' %(part_index+1, n_parts))
+        payload.append(b'length %d\n' %n_tokens)  # overall tokens in this sentence, not just in this record
+        payload.append(b'lcode %s\n' %lcode)
+        binary_vector = StringIO()
         numpy.save(binary_vector, partial_vectors)
         binary_vector.seek(0)
         binary_vector = binary_vector.read()
         payload.append(base64.b64encode(binary_vector))
-        payload.append('\n')
-        payload = ''.join(payload)
-        payload_lines = payload.count('\n')
-        payload_hash = hashlib.sha256(payload).hexdigest()
-        header = 'data %d %d %s\n' %(r_index, payload_lines, payload_hash)
-        data = ''.join((header, payload, '\n'))
+        payload.append(b'\n')
+        payload = b''.join(payload)
+        payload_lines = payload.count(b'\n')
+        payload_hash = utilities.bstring(hashlib.sha256(payload).hexdigest())
+        header = b'data %d %d %s\n' %(r_index, payload_lines, payload_hash)
+        data = b''.join((header, payload, b'\n'))
         pad_to = 4096 * int((len(data)+4095)/4096)
         data_file.write(self.get_data_record(
             r_index,
@@ -208,7 +213,17 @@ class ElmoCache:
     def prune_cache_to_max_load_factor(self):
         print('*** TODO: check load factor and prune cache if necessary ***') # TODO
 
-    def sync_to_disk_files(self):
+    def on_worker_idle(self):
+        self.sync_to_disk_files()
+
+    def on_worker_exit(self):
+        self.sync_to_disk_files(force = True)
+
+    def sync_to_disk_files(self, force = False):
+        now = time.time()
+        if now < self.last_sync + self.sync_interval and not force:
+            return
+        self.last_sync = now
         self.prune_cache_to_max_load_factor()
         start_time = time.time()
         data_file = open(self.data_filename, 'r+b')
@@ -221,7 +236,8 @@ class ElmoCache:
         n_records_atime = 0
         for key, entry in utilities.iteritems(self.key2entry):
             n_entries_total += 1
-            if entry.access_time_synced and entry.vectors_on_disk:
+            if entry.access_time_synced and entry.vectors_on_disk \
+            or entry.vectors is None:
                 # nothing to do for this entry
                 continue
             n_tokens = entry.vectors.shape[0]
@@ -229,7 +245,7 @@ class ElmoCache:
                 # find out where the parts are or will be stored
                 n_parts = int((n_tokens+vectors_per_record-1)/vectors_per_record)
                 for part_index in range(n_parts):
-                    r_index = self.allocate(data_file, r_index, key, part_index)
+                    r_index = self.allocate(data_file, key, part_index)
                     entry.records.append(r_index)
             else:
                 n_parts = len(entry.records)
@@ -418,6 +434,10 @@ class ElmoCache:
         self.config_filename  = cache_dir + '/config'
         self.atime_size = 32
         self.max_load_factor = 0.95
+        self.last_scan = 0.0
+        self.scan_interval = 2.0
+        self.last_sync = 0.0
+        self.sync_interval = 30.0
         if os.path.exists(self.atime_filename) \
         and os.path.exists(self.data_filename) \
         and os.path.exists(self.config_filename):
@@ -512,48 +532,32 @@ class ElmoCache:
         '''
         length = len(record)
         if length > target_size:
-            raise ValueError('Record size is too small for %r...' %(record[:20]))
+            raise ValueError('Record size %d is too small for %d bytes in %r...' %(target_size, length, record[:20]))
         if length == target_size:
-            return record[:target_size-1] + '\n'
+            return record[:target_size-1] + b'\n'
         else:
-            padding = (target_size - len(record) - 1) * '.'
-            return record + padding + '\n'
+            padding = (target_size - len(record) - 1) * b'.'
+            return record + padding + b'\n'
 
-    def get_data_record(self, r_index, prefix = None, max_padding = None):
+    def get_data_record(self, r_index, prefix = None, pad_to = None):
         if self.record_size < 128 or self.record_size % 128:
             raise ValueError('Elmo cache record size too small or not a multiple of 128')
         rows = []
         if prefix is None:
-            row = 'init %d ' %r_index
+            row = b'init %d ' %r_index
         else:
-            row = prefix + ' '
+            row = prefix + b' '
         rows.append(self.with_padding(row, 128))
-        if max_padding is None:
+        if pad_to is None:
             record_size = self.record_size
         else:
-            record_size = min(max_padding, self.record_size)
+            record_size = min(pad_to, self.record_size)
         for pad_index in range(1, record_size/128):
-            row = '........ padding %d of %d for record # %d ' %(
+            row = b'........ padding %d of %d for record # %d ' %(
                 pad_index, self.record_size/128-1, r_index
             )
             rows.append(self.with_padding(row, 128))
-        return ''.join(rows)
-
-    def get_record_padding(self, index, current_size, target_size):
-        missing = target_size - current_size
-        full_rows = int(missing / 128)
-        partial = missing - full_rows
-        rows = []
-        if partial:
-            rows.append((partial-1)*'.')
-            rows.append('\n')
-        for r_index in range(full_rows):
-            marker = '%d:%d' %(index, r_index)
-            padding = 128 - len(marker) - 1
-            rows.append(marker)
-            rows.append(padding * '.')
-            rows.append('\n')
-        return ''.join(rows)
+        return b''.join(rows)
 
     def get_n_records(self):
         if 'EFML_CACHE_SIZE' in os.environ:
@@ -728,9 +732,14 @@ class ElmoCache:
 
     def get_n_ready(self, npz_name):
         self.scan_for_ready_vectors()
+        self.sync_to_disk_files()
         return self.npz2ready_count[npz_name]
 
     def scan_for_ready_vectors(self):
+        now = time.time()
+        if now < self.last_scan + self.scan_interval:
+            return
+        self.last_scan = now
         still_not_ready = []
         for task in self.hdf5_tasks:
             if os.path.exists(task.hdf5_name):
@@ -826,6 +835,7 @@ QUEUENAME:
             task_processor = ElmoNpzTask,
             extra_kw_parameters = {'cache': cache},
             last_arg = (last_arg_name, last_arg_description),
+            callback = cache,
         )
     elif len(sys.argv) > 1 and sys.argv[-1] == 'elmo-hdf5':
         common_udpipe_future.worker(

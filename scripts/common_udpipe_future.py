@@ -447,6 +447,7 @@ def worker(
     opt_max_idle = 900.0,
     last_arg = None,
     extra_kw_parameters = {},
+    callback = None,
 ):
     if task_processor is None:
         task_processor = Task
@@ -462,12 +463,18 @@ def worker(
     while True:
         if opt_max_idle and time.time() > idle_deadline:
             print('\n*** Reached maximum idle time. ***\n')
+            if callback:
+                callback.on_worker_exit()
             sys.exit(0)
         if opt_deadline and time.time() > opt_deadline:
             print('\n*** Reached deadline. ***\n')
+            if callback:
+                callback.on_worker_exit()
             sys.exit(0)
         if opt_stopfile and os.path.exists(opt_stopfile):
             print('\n*** Found stop file. ***\n')
+            if callback:
+                callback.on_worker_exit()
             sys.exit(0)
         task = pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters)
         if task is not None:
@@ -520,6 +527,8 @@ def worker(
             idle_deadline = time.time() + opt_max_idle
         my_active_tasks = still_active_tasks
         print('Tasks still active:', my_active_tasks)
+        if callback:
+            callback.on_worker_idle()
         time.sleep(4.5)  # poll interval
 
 if __name__ == "__main__":
