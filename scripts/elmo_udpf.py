@@ -22,6 +22,7 @@ import os
 import subprocess
 import sys
 import time
+import zlib
 
 import utilities
 
@@ -193,13 +194,13 @@ class ElmoCache:
         binary_vector = StringIO()
         numpy.save(binary_vector, partial_vectors)
         binary_vector.seek(0)
-        binary_vector = binary_vector.read()
+        binary_vector = zlib.compress(binary_vector.read())
         payload.append(base64.b64encode(binary_vector))
         payload.append(b'\n')
         payload = b''.join(payload)
-        payload_lines = payload.count(b'\n')
-        payload_hash = utilities.bstring(hashlib.sha256(payload).hexdigest())
-        header = b'data %d %d %s\n' %(r_index, payload_lines, payload_hash)
+        payload_hash = self.get_payload_hash(payload)
+        n_payload_lines = payload.count('\n')
+        header = b'data %d %d %s\n' %(r_index, n_payload_lines, payload_hash)
         data = b''.join((header, payload, b'\n'))
         pad_to = 4096 * int((len(data)+4095)/4096)
         data_file.write(self.get_data_record(
@@ -209,6 +210,9 @@ class ElmoCache:
         ))
         self.idx2key_and_part[r_index] = (key, part_index)
         self.record_states[r_index] = ord('d')
+
+    def get_payload_hash(self, payload):
+        return utilities.bstring(hashlib.sha256(payload).hexdigest())
 
     def prune_cache_to_max_load_factor(self):
         print('*** TODO: check load factor and prune cache if necessary ***') # TODO
@@ -264,7 +268,7 @@ class ElmoCache:
                 entry.vectors_on_disk = True
             if not entry.access_time_synced:
                 for r_index in entry.records:
-                    self.write_atime(atime_file, r_index, self.last_access)
+                    self.write_atime(atime_file, r_index, entry.last_access)
                 n_entries_atime += 1
                 n_records_atime += n_parts
                 entry.access_time_synced = True
@@ -343,7 +347,8 @@ class ElmoCache:
                     continue
                 payload_lines.append(line)
                 n_payload -= 1
-            if payload_hash != self.get_payload_hash(payload_lines):
+            if payload_hash != self.get_payload_hash(b''.join(payload_lines)):
+                print('skipping record %d with wrong payload hash' %r_index)
                 continue
             # line: key 00017:en:ksdjahfhqwefuih
             fields = payload_lines[0].split()
@@ -361,13 +366,16 @@ class ElmoCache:
             assert fields[0] == b'length'
             n_tokens = int(fields[1])
             # line: lcode en
-            fields = payload_lines[2].split()
+            fields = payload_lines[3].split()
             assert fields[0] == b'lcode'
             lcode = fields[1]
             # get time of last access
             atime_file.seek(self.atime_size*r_index)
             line = atime_file.readline()
-            atime = float(line.split()[0])
+            try:
+                atime = float(line.split()[0])
+            except:
+                raise ValueError('atime for record %d is %r' %(r_index, line))
             # create in-memory cache entry if it does not exist yet
             if not key in self.key2entry:
                 entry = ElmoCache.Entry(None, lcode, None)
@@ -381,7 +389,7 @@ class ElmoCache:
                 assert entry.n_parts == n_parts
                 assert entry.length  == n_tokens
             # add new part to entry
-            vectors = self.base64_to_vectors(payload_lines[4:])
+            vectors = self.base64_to_vectors(payload_lines[4:])   # TODO
             entry.have_parts.append((part_index, vectors, r_index))
             entry.access_times.append(atime)
             if len(entry.have_parts) == entry.n_parts:
@@ -451,14 +459,14 @@ class ElmoCache:
         if 'EFML_CACHE_RECORD_SIZE' in os.environ:
             record_size = int(os.environ['EFML_CACHE_RECORD_SIZE'])
         else:
-            record_size = 32768
+            record_size = 65536
         if record_size != self.record_size:
             self.record_size = record_size
             rewrite_files = True
         if 'EFML_CACHE_VECTORS_PER_RECORD' in os.environ:
             vectors_per_record = int(os.environ['EFML_CACHE_VECTORS_PER_RECORD'])
         else:
-            vectors_per_record = 16
+            vectors_per_record = 12
         if vectors_per_record != self.vectors_per_record:
             self.vectors_per_record = vectors_per_record
             rewrite_files = True
@@ -515,7 +523,7 @@ class ElmoCache:
         # force final tab
         fields.append(b'')
         while True:
-            record = '\t'.join(fields)
+            record = b'\t'.join(fields)
             if len(record) <= self.atime_size:
                 break
             # cannot fit r_index into record
@@ -545,14 +553,16 @@ class ElmoCache:
         rows = []
         if prefix is None:
             row = b'init %d ' %r_index
+            first_line_pad_to = 128
         else:
             row = prefix + b' '
-        rows.append(self.with_padding(row, 128))
+            first_line_pad_to = 128 * int((len(prefix)+127)/128)
+        rows.append(self.with_padding(row, first_line_pad_to))
         if pad_to is None:
             record_size = self.record_size
         else:
             record_size = min(pad_to, self.record_size)
-        for pad_index in range(1, record_size/128):
+        for pad_index in range(1, int(record_size/128)):
             row = b'........ padding %d of %d for record # %d ' %(
                 pad_index, self.record_size/128-1, r_index
             )
