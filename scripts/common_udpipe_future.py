@@ -202,7 +202,7 @@ class Task:
         if 'TT_TASK_PATIENCE' in os.environ:
             patience = float(os.environ['TT_TASK_PATIENCE'])
         else:
-            patience = 36000.0
+            patience = 48 * 3600.0
         self.expires = time.time() + patience
         return self.expires
 
@@ -451,6 +451,7 @@ def worker(
 ):
     if task_processor is None:
         task_processor = Task
+    extra_kw_parameters['queue_name'] = queue_name
     tt_task_dir = utilities.bstring(os.environ['TT_TASK_DIR'])
     queue_dir  = b'/'.join((tt_task_dir, utilities.bstring(queue_name)))
     inbox_dir  = b'/'.join((queue_dir, b'inbox'))
@@ -526,7 +527,7 @@ def worker(
             os.unlink(task.active_name)
             idle_deadline = time.time() + opt_max_idle
         my_active_tasks = still_active_tasks
-        print('Tasks still active:', my_active_tasks)
+        print('Tasks still active:', len(my_active_tasks))
         if callback:
             callback.on_worker_idle()
         time.sleep(4.5)  # poll interval
