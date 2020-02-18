@@ -536,15 +536,15 @@ class ElmoCache:
             self.n_records = -1
         # check desired configuration against existing cache file
         rewrite_files = False
-        if 'EFML_CACHE_RECORD_SIZE' in os.environ:
-            record_size = int(os.environ['EFML_CACHE_RECORD_SIZE'])
+        if 'EFML_NPZ_CACHE_RECORD_SIZE' in os.environ:
+            record_size = int(os.environ['EFML_NPZ_CACHE_RECORD_SIZE'])
         else:
             record_size = 65536
         if record_size != self.record_size:
             self.record_size = record_size
             rewrite_files = True
-        if 'EFML_CACHE_VECTORS_PER_RECORD' in os.environ:
-            vectors_per_record = int(os.environ['EFML_CACHE_VECTORS_PER_RECORD'])
+        if 'EFML_NPZ_CACHE_VECTORS_PER_RECORD' in os.environ:
+            vectors_per_record = int(os.environ['EFML_NPZ_CACHE_VECTORS_PER_RECORD'])
         else:
             vectors_per_record = 12
         if vectors_per_record != self.vectors_per_record:
@@ -653,13 +653,10 @@ class ElmoCache:
         return b''.join(rows)
 
     def get_n_records(self):
-        if 'EFML_CACHE_SIZE' in os.environ:
-            cache_size = os.environ['EFML_CACHE_SIZE']
-        elif 'EFML_MAX_CACHE_ENTRIES' in os.environ:
-            print('Missing EFML_CACHE_SIZE; interpreting EFML_MAX_CACHE_ENTRIES as GiB')
-            cache_size = os.environ['EFML_MAX_CACHE_ENTRIES'] + 'GiB'
+        if 'EFML_NPZ_CACHE_SIZE' in os.environ:
+            cache_size = os.environ['EFML_NPZ_CACHE_SIZE']
         else:
-            raise ValueError('No EFML_CACHE_SIZE configured')
+            raise ValueError('No EFML_NPZ_CACHE_SIZE configured')
         multiplier = 1
         for suffix, candidate_multiplier in [
             ('TiB', 1024**4),
