@@ -35,19 +35,22 @@ if [ -n "$EFML_HDF5_CACHE_DIR" ]; then
     if [ -e "${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
         CACHE_ENTRY_SIZE=$(cat ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.size)
         cp --reflink=auto ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
-            ${OUTPUTDIR}/${HDF5_NAME} 2> /dev/null
-	if [ -e ${OUTPUTDIR}/${HDF5_NAME} ]; then
-            SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME} | cut -d' ' -f1)
+            ${OUTPUTDIR}/${HDF5_NAME}.prep 2> /dev/null
+	if [ -e ${OUTPUTDIR}/${HDF5_NAME}.prep ]; then
+            SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME}.prep | cut -d' ' -f1)
             if [ "$SIZE" == "$CACHE_ENTRY_SIZE" ]; then
                 # update last usage information
                 touch ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.hdf5
+                # finalise filename
+                mv ${OUTPUTDIR}/${HDF5_NAME}.prep ${OUTPUTDIR}/${HDF5_NAME}
                 # all done
                 cachelog "${CACHE_ENTRY} hit"
                 exit 0
             else
                 # cannot use file with wrong size
                 cachelog "${CACHE_ENTRY} wrong size ${SIZE}, expected ${CACHE_ENTRY_SIZE}, cleaning up"
-                rm ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.*
+                rm -f ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.*
+                rm -f ${OUTPUTDIR}/${HDF5_NAME}.prep
             fi
         else
             # cannot use cache entry with missing data
