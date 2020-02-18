@@ -27,32 +27,32 @@ source ${PRJ_DIR}/config/locations.sh
 
 cachelog()
 {
-    echo `date +%Y-%m-%dT%H:%M:%S` "["$(hostname):$$"]" $* >> ${EFML_CACHE_DIR}/log
+    echo `date +%Y-%m-%dT%H:%M:%S` "["$(hostname):$$"]" $* >> ${EFML_HDF5_CACHE_DIR}/log
 }
 
-if [ -n "$EFML_CACHE_DIR" ]; then
+if [ -n "$EFML_HDF5_CACHE_DIR" ]; then
     CACHE_ENTRY=${LANG_CODE}-$(sha256sum ${TRAIN_CONLLU} | cut -c-64)
-    if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
-        CACHE_ENTRY_SIZE=$(cat ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size)
-        cp --reflink=auto ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
+    if [ -e "${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
+        CACHE_ENTRY_SIZE=$(cat ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.size)
+        cp --reflink=auto ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.hdf5 \
             ${OUTPUTDIR}/${HDF5_NAME} 2> /dev/null
 	if [ -e ${OUTPUTDIR}/${HDF5_NAME} ]; then
             SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME} | cut -d' ' -f1)
             if [ "$SIZE" == "$CACHE_ENTRY_SIZE" ]; then
                 # update last usage information
-                touch ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
+                touch ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.hdf5
                 # all done
                 cachelog "${CACHE_ENTRY} hit"
                 exit 0
             else
                 # cannot use file with wrong size
                 cachelog "${CACHE_ENTRY} wrong size ${SIZE}, expected ${CACHE_ENTRY_SIZE}, cleaning up"
-                rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.*
+                rm ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.*
             fi
         else
             # cannot use cache entry with missing data
             cachelog "${CACHE_ENTRY} is missing data, cleaning up"
-            rm ${EFML_CACHE_DIR}/${CACHE_ENTRY}.*
+            rm ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.*
         fi
     else
         cachelog "${CACHE_ENTRY} miss"
@@ -106,28 +106,28 @@ fi
 
 mv ${TMP_TOKREPFILE}*ly${LAYER}.hdf5 ${OUTPUTDIR}/${HDF5_NAME}
 
-if [ -n "$EFML_CACHE_DIR" ]; then
+if [ -n "$EFML_HDF5_CACHE_DIR" ]; then
     # add output to cache
-    if [ -e "${EFML_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
+    if [ -e "${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.size" ]; then
         # a parallel process was faster
         # --> nothing to do
         cachelog "${CACHE_ENTRY} exists, not updating"
     else
         CACHE_ENTRY_SIZE=$(wc -c ${OUTPUTDIR}/${HDF5_NAME} | cut -d' ' -f1)
         cp --reflink=auto ${OUTPUTDIR}/${HDF5_NAME} \
-            ${EFML_CACHE_DIR}/${CACHE_ENTRY}.hdf5
+            ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.hdf5
         # signal that entry is ready
-        echo ${CACHE_ENTRY_SIZE} > ${EFML_CACHE_DIR}/${CACHE_ENTRY}.size
+        echo ${CACHE_ENTRY_SIZE} > ${EFML_HDF5_CACHE_DIR}/${CACHE_ENTRY}.size
         cachelog "${CACHE_ENTRY} added"
         # don't let cache grow too much
-        NUM_FILES=$(find ${EFML_CACHE_DIR}/ -name "*.size" | wc -l)
+        NUM_FILES=$(find ${EFML_HDF5_CACHE_DIR}/ -name "*.size" | wc -l)
         if [ "$NUM_FILES" -gt "$EFML_MAX_CACHE_ENTRIES" ]; then
             PICK_FROM=$(expr ${EFML_MAX_CACHE_ENTRIES} / 2)
-            EXPIRED_ENTRY=$(ls -t ${EFML_CACHE_DIR}/ | fgrep .hdf5 |
+            EXPIRED_ENTRY=$(ls -t ${EFML_HDF5_CACHE_DIR}/ | fgrep .hdf5 |
                 tail -n ${PICK_FROM} | shuf | head -n 1)
             EXPIRED_ENTRY=$(basename ${EXPIRED_ENTRY} .hdf5)
-            rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}.size
-            rm ${EFML_CACHE_DIR}/${EXPIRED_ENTRY}.hdf5
+            rm ${EFML_HDF5_CACHE_DIR}/${EXPIRED_ENTRY}.size
+            rm ${EFML_HDF5_CACHE_DIR}/${EXPIRED_ENTRY}.hdf5
             cachelog "${EXPIRED_ENTRY} expired, cleaned up"
         fi
     fi

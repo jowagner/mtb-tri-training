@@ -23,6 +23,7 @@ fi
 
 case "${SETTING}" in
 "jwagner@n1")
+    # ICHEC cluster
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
@@ -37,8 +38,8 @@ case "${SETTING}" in
     export EFML_ICHEC_CONDA=efml
     export EFML_LIB_PATH="/ichec/packages/cuda/10.1.243/lib64":"$HOME/cudnn-for-10.1/lib64"
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_MAX_CACHE_ENTRIES=100
+    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export EFML_NPZ_CACHE_SIZE=120GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
@@ -49,7 +50,7 @@ case "${SETTING}" in
     export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 "jwagner@bo-scientific-7."[67])
-    echo "Detected boole cluster"
+    # boole cluster
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
@@ -62,8 +63,8 @@ case "${SETTING}" in
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_MAX_CACHE_ENTRIES=200
+    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export EFML_NPZ_CACHE_SIZE=120GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
@@ -85,8 +86,10 @@ case "${SETTING}" in
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_CACHE_DIR=${SCRATCH}/elmo/cache
-    export EFML_MAX_CACHE_ENTRIES=20
+    export EFML_HDF5_CACHE_DIR=${SCRATCH}/elmo/cache
+    export EFML_HDF5_MAX_CACHE_ENTRIES=20
+    export EFML_NPZ_CACHE_DIR=${SCRATCH}/elmo/cache
+    export EFML_NPZ_CACHE_SIZE=12GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_DISTRIBUTIONS_DIR=${SCRATCH}/tri-training/workdirs
@@ -103,6 +106,8 @@ case "${SETTING}" in
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
+    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export EFML_NPZ_CACHE_SIZE=120GiB
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=144000
@@ -122,8 +127,8 @@ case "${SETTING}" in
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_MAX_CACHE_ENTRIES=100
+    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export EFML_NPZ_CACHE_SIZE=120GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks

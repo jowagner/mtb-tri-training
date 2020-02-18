@@ -516,7 +516,7 @@ class ElmoCache:
         self.key2entry = {}
         self.hdf5_tasks = []
         self.hdf5_workdir_usage = {}
-        cache_dir = os.environ['EFML_CACHE_DIR']
+        cache_dir = os.environ['EFML_NPZ_CACHE_DIR']
         self.atime_filename = cache_dir + '/access'
         self.data_filename  = cache_dir + '/data'
         self.config_filename  = cache_dir + '/config'
@@ -926,7 +926,7 @@ QUEUENAME:
 
     elmo-npz  for the .npz compiler with elmo cache (recommended
               to run exactly one; each instance needs its own
-              EFML_CACHE_DIR),
+              EFML_NPZ_CACHE_DIR),
 
     elmo-hdf5 for the .hdf5 workers (run as many as needed)"""
     if len(sys.argv) > 1 and sys.argv[-1] == 'elmo-npz':
