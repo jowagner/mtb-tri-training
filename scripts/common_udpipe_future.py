@@ -115,8 +115,8 @@ def my_makedirs(required_dir):
             # (in python 3, we will be able to use exist_ok=True)
             pass
 
-def run_command(command, queue_name = 'udpf'):
-    task = Task(command, queue_name)
+def run_command(command, queue_name = 'udpf', requires = None):
+    task = Task(command, queue_name, requires)
     task.run()
 
 def wait_for_tasks(task_list):
@@ -313,8 +313,8 @@ class Task:
             task_id,
         )
         if not os.path.exists(filename):
-            print('Task %s failed' %task_id)
-            raise ValueError('Task %s marked by task master as no longer active but not as complete')
+            print('Task %s failed' %utilities.std_string(task_id))
+            raise ValueError('Task %s marked by task master as no longer active but not as complete' %utilities.std_string(task_id))
         if 'TT_TASK_ARCHIVE_COMPLETED' in os.environ  and \
         os.environ['TT_TASK_ARCHIVE_COMPLETED'].lower() not in ('0', 'false'):
             archive_dir = b'/'.join((queue_dir, b'archive'))
@@ -366,7 +366,6 @@ def main(queue_name, task_processor, cache = None, last_arg = None):
         sys.exit(0)
     worker(
         queue_name, task_processor,
-        cache,
         opt_deadline, opt_stopfile, opt_debug,
         opt_max_idle
     )
@@ -389,8 +388,7 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
             try:
                 os.rename(taskfile, active_name)
             except:
-                if opt_debug:
-                    print('Task %s claimed by other worker' %task_id)
+                print('Task %s claimed by other worker' %utilities.std_string(task_id))
                 continue
             f = open(active_name, 'rb')
             eligible = True
@@ -401,7 +399,7 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
                 line = f.readline().rstrip()
                 if not line: # empty line or EOF
                     break
-                fields = line.split(b'\t')
+                fields = line.rstrip().split(b'\t')
                 if len(fields) != 2:
                     print('Deleting malformed task', task_id)
                     delete_task = True
@@ -494,9 +492,9 @@ def worker(
             print('Detected that task %r has finished' %task)
             end_time = time.time()
             # signal completion
-            bucket_dir = '%s/%s' %(final_dir, task.task_bucket)
+            bucket_dir = b'%s/%s' %(final_dir, task.task_bucket)
             my_makedirs(bucket_dir)
-            final_file = '%s/%s.task' %(bucket_dir, task.task_id)
+            final_file = b'%s/%s.task' %(bucket_dir, task.task_id)
             f = open(final_file, 'wb')
             f.write(b'duration\t%.1f\n' %(end_time-task.start_time))
             f.write(b'waiting\t%.1f\n' %(task.start_time-task.submit_time))

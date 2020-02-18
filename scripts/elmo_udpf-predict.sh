@@ -13,9 +13,13 @@ test -z $2 && echo "Missing conllu input file"
 test -z $2 && exit 1
 INPUT=$2
 
-test -z $3 && echo "Missing conllu output file"
+test -z $3 && echo "Missing npz input file"
 test -z $3 && exit 1
-OUTPUT=$3
+IN_NPZ=$3
+
+test -z $4 && echo "Missing conllu output file"
+test -z $4 && exit 1
+OUTPUT=$4
 
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
@@ -26,20 +30,7 @@ LANG_CODE=$(cat ${MODELDIR}/elmo-lcode.txt)
 
 ELMO_FILE_PREFIX=elmo
 
-${PRJ_DIR}/scripts/get-elmo-vectors.sh  \
-    ${INPUT}                            \
-    ${LANG_CODE}                        \
-    ${WORKDIR}                         \
-    ${ELMO_FILE_PREFIX}-test.hdf5       \
-    2> ${WORKDIR}/elmo-stderr-test.txt  \
-    >  ${WORKDIR}/elmo-stdout-test.txt
-
-${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
-    --elmoformanylang ${INPUT}                \
-    ${WORKDIR}/${ELMO_FILE_PREFIX}-test.hdf5  \
-    ${WORKDIR}/${ELMO_FILE_PREFIX}-test.npz
-
-rm ${WORKDIR}/${ELMO_FILE_PREFIX}-test.hdf5
+ln -s ${IN_NPZ} ${WORKDIR}/${ELMO_FILE_PREFIX}-test.npz
 
 source ${PRJ_DIR}/config/locations.sh
 

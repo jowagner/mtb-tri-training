@@ -87,7 +87,7 @@ case "${SETTING}" in
     export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_HDF5_CACHE_DIR=${SCRATCH}/elmo/cache
-    export EFML_HDF5_MAX_CACHE_ENTRIES=20
+    export EFML_HDF5_MAX_CACHE_ENTRIES=50
     export EFML_NPZ_CACHE_DIR=${SCRATCH}/elmo/cache
     export EFML_NPZ_CACHE_SIZE=12GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid

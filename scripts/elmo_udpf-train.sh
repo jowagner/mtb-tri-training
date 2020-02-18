@@ -9,9 +9,10 @@ test -z $1 && echo "Missing training conllu file"
 test -z $1 && exit 1
 TRAIN_CONLLU=$1
 
-test -z $2 && echo "Missing language code"
+test -z $2 && echo "Missing training npz file"
 test -z $2 && exit 1
-LANG_CODE=$2
+TRAIN_NPZ=$2
+
 
 test -z $3 && echo "Missing seed"
 test -z $3 && exit 1
@@ -38,7 +39,9 @@ MIN_EPOCH_SENTENCES=9600
 
 # optional args:
 DEV_SET=$7
-TEST_SET=$8
+DEV_NPZ=$8
+TEST_SET=$9
+TEST_NPZ=${10}
 
 if [ -n "$TEST_SET" ]; then
     REAL_TEST_SET=$(realpath ${TEST_SET})
@@ -63,53 +66,14 @@ hostname > ${MODELDIR}/training.start
 
 ELMO_FILE_PREFIX=elmo
 
-${PRJ_DIR}/scripts/get-elmo-vectors.sh  \
-    ${TRAIN_CONLLU}                     \
-    ${LANG_CODE}                        \
-    ${MODELDIR}                         \
-    ${ELMO_FILE_PREFIX}-train.hdf5       \
-    2> ${MODELDIR}/elmo-stderr-train.txt  \
-    >  ${MODELDIR}/elmo-stdout-train.txt
-
-#rm -f ${MODELDIR}/${ELMO_FILE_PREFIX}-train.npz
-
-${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
-    --elmoformanylang ${TRAIN_CONLLU}          \
-    ${MODELDIR}/${ELMO_FILE_PREFIX}-train.hdf5  \
-    ${MODELDIR}/${ELMO_FILE_PREFIX}-train.npz
-
-rm ${MODELDIR}/${ELMO_FILE_PREFIX}-train.hdf5
+ln -s ${TRAIN_NPZ} ${MODELDIR}/${ELMO_FILE_PREFIX}-train.npz
 
 if [ -n "$TEST_SET" ]; then
-    ${PRJ_DIR}/scripts/get-elmo-vectors.sh  \
-        ${TEST_SET}                         \
-        ${LANG_CODE}                        \
-        ${MODELDIR}                         \
-        ${ELMO_FILE_PREFIX}-test.hdf5       \
-        2> ${MODELDIR}/elmo-stderr-test.txt  \
-        >  ${MODELDIR}/elmo-stdout-test.txt
-    #rm -f ${MODELDIR}/${ELMO_FILE_PREFIX}-test.npz
-    ${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
-        --elmoformanylang ${TEST_SET}          \
-        ${MODELDIR}/${ELMO_FILE_PREFIX}-test.hdf5  \
-        ${MODELDIR}/${ELMO_FILE_PREFIX}-test.npz
-    rm ${MODELDIR}/${ELMO_FILE_PREFIX}-test.hdf5
+    ln -s ${TEST_NPZ} ${MODELDIR}/${ELMO_FILE_PREFIX}-test.npz
 fi
 
 if [ -n "$DEV_SET" ]; then
-    ${PRJ_DIR}/scripts/get-elmo-vectors.sh  \
-        ${DEV_SET}                          \
-        ${LANG_CODE}                        \
-        ${MODELDIR}                         \
-        ${ELMO_FILE_PREFIX}-dev.hdf5        \
-        2> ${MODELDIR}/elmo-stderr-dev.txt  \
-        >  ${MODELDIR}/elmo-stdout-dev.txt
-    #rm -f ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.npz
-    ${PRJ_DIR}/scripts/wrapper-elmo-hdf5-to-npz.sh  \
-        --elmoformanylang ${DEV_SET}          \
-        ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.hdf5  \
-        ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.npz
-    rm ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.hdf5
+    ln -s ${DEV_NPZ} ${MODELDIR}/${ELMO_FILE_PREFIX}-dev.npz
 fi
 
 source ${PRJ_DIR}/config/locations.sh

@@ -77,16 +77,20 @@ class ElmoNpzTask(common_udpipe_future.Task):
     def finished_processing(self):
         if self.sentences is None:
             # finished in a previous call
-            print('task.sentences indicates that npz task %s has finished and npz file is ready' %self.task_id)
+            print('Warning: repeated call to task.finished_processing() after it finished')
             return True
         _, npz_name, lcode = self.command
         n_ready = self.cache.get_n_ready(npz_name)
+        std_task_id = utilities.std_string(self.task_id)
         if n_ready < self.number_of_sentences:
             # not ready yet
-            print('%d of %d sentences for task %s are ready' %(n_ready, self.number_of_sentences, self.task_id))
+            print('%d of %d sentences for task %s are ready' %(
+                n_ready, self.number_of_sentences,
+                std_task_id
+            ))
             return False
         # all vectors are ready
-        print('All vectors for task %s are ready --> creating npz file' %self.task_id)
+        print('All vectors for task %s are ready --> creating npz file' %std_task_id)
         sentences = self.sentences
         npz_data = {}
         for index, sentence in enumerate(sentences):
@@ -165,7 +169,13 @@ class ElmoCache:
         # TODO: reduce to returning only r_index if 2nd part never used
         #print('Probing for %s part %d...' %(key, part_index))
         probe_index = 0
+        found_earlier_free = False
+        earlier_free_r_index = None
+        earlier_free_p_index = None
         while probe_index < max_probes:
+            if accept_free and found_earlier_free \
+            and probe_index > earlier_free_p_index + 10:
+                break
             h = hashlib.sha512(b'%d:%d:%s' %(
                   probe_index, part_index, key
             )).hexdigest()
@@ -173,10 +183,22 @@ class ElmoCache:
             state = self.record_states[r_index]
             if state == ord('i'):
                 #print('\t%d: record %d is initialised' %(probe_index, r_index))
+                if accept_free and found_earlier_free:
+                    return earlier_free_r_index, b'free'
                 return r_index, b'init'
-            elif state == ord('f') and accept_free:
+            elif state == ord('f'):
                 #print('\t%d: record %d is free' %(probe_index, r_index))
-                return r_index, b'free'
+                #return r_index, b'free'
+                # We now keep scanning in case there is a matching entry in a
+                # later probe in order to stabilise the positions of entries
+                # as they are removed and re-added to the cache.
+                # However, to not scan unreasonably long, we note the probe
+                # index and, at the start of the loop above, limit how far 
+                # we scan.
+                if accept_free and not found_earlier_free:
+                    found_earlier_free = True
+                    earlier_free_r_index = r_index
+                    earlier_free_p_index = probe_index
             elif state == ord('p'):
                 # pre-allocated for an earlier part of this key
                 # --> cannot use this record
@@ -193,6 +215,10 @@ class ElmoCache:
             else:
                 raise ValueError('Unknown record state %d at index %d' %(state, r_index))
             probe_index += 1
+        if accept_free and found_earlier_free:
+            # do not complain about reaching max_probes when we
+            # found and accept free records
+            return earlier_free_r_index, b'free'
         raise ValueError('Unable to find space in elmo disk cache.')
 
     def write_vectors(self, data_file, r_index, key, part_index, n_parts, partial_vectors, lcode, n_tokens):
@@ -233,6 +259,12 @@ class ElmoCache:
         return utilities.bstring(hashlib.sha256(payload).hexdigest())
 
     def prune_cache_to_max_load_factor(self, now):
+        ''' Returns list of keys for entries that should be
+            written to disk and frees disk space for all
+            remaning entries.
+            (Such entries are also removed from the in-memory
+            cache if they are not currently requested.)
+        '''
         print('Checking load factor of elmo cache...')
         vectors_per_record = self.vectors_per_record
         candidates = []
@@ -255,7 +287,7 @@ class ElmoCache:
         while n_records_so_far + candidates[n_keys][2] < max_records:
             n_records_so_far += candidates[n_keys][2]
             n_keys += 1
-        print('\t%d entries in order of recent usage require %d of %d allowed records' %(
+        print('\t%d entries, in order of recent usage, require %d of %d allowed records' %(
             n_keys, n_records_so_far, max_records
         ))
         del candidates[-1]
@@ -273,7 +305,7 @@ class ElmoCache:
                 # mark as no longer on disk
                 entry.records = []
                 entry.vectors_on_disk = False
-                entry.access_time_synced = True
+                entry.access_time_synced = True   # TODO: value should not matter
             else:
                 # without requesters, we can simply delete the full entry
                 del self.key2entry[key]
@@ -295,6 +327,7 @@ class ElmoCache:
         self.p_sync_to_disk_files(keys)
 
     def p_sync_to_disk_files(self, keys):
+        print('Syncing elmo cache to disk...')
         start_time = time.time()
         data_file = open(self.data_filename, 'r+b')
         atime_file = open(self.atime_filename, 'r+b')
@@ -304,7 +337,17 @@ class ElmoCache:
         n_entries_atime = 0
         n_records_vectors = 0
         n_records_atime = 0
+        last_verbose = start_time
+        n_keys = len(keys)
+        key_index = 0
         for _, key, n_parts in keys:
+            now = time.time()
+            if now > last_verbose + self.verbosity_interval:
+                print('\t%.1f%% of entries processed (%d of %d)' %(
+                    100.0*key_index/n_keys, key_index, n_keys
+                ))
+                last_verbose = now
+            key_index += 1
             entry = self.key2entry[key]
             n_entries_total += 1
             if entry.access_time_synced and entry.vectors_on_disk \
@@ -340,7 +383,6 @@ class ElmoCache:
         data_file.close()
         atime_file.close()
         duration = time.time() - start_time
-        print('Synced elmo cache to disk:')
         print('\t# duration: %.1f seconds' %duration)
         try:
             nan = math.nan
@@ -362,6 +404,21 @@ class ElmoCache:
             n_records_atime, self.n_records,
             100.0*n_records_atime/self.n_records if self.n_records else nan
         ))
+        self.print_record_state_stats()
+
+    def print_record_state_stats(self):
+        state2freq = {}
+        for state in self.record_states:
+            try:
+                state2freq[state] += 1
+            except KeyError:
+                state2freq[state] = 1
+        for state in sorted(list(state2freq.keys())):
+            freq = state2freq[state]
+            if state is None:
+                print('\t# unknown records:', freq)
+            else:
+                print('\t# %s records: %d' %(chr(state), freq))
 
     def load_from_disk(self):
         config = open(self.config_filename, 'rb')
@@ -520,12 +577,18 @@ class ElmoCache:
         self.atime_filename = cache_dir + '/access'
         self.data_filename  = cache_dir + '/data'
         self.config_filename  = cache_dir + '/config'
-        self.atime_size = 32
+        self.atime_size = 48
         self.max_load_factor = 0.95
         self.last_scan = 0.0
-        self.scan_interval = 2.0
+        self.scan_interval = 10.0
         self.last_sync = 0.0
-        self.sync_interval = 30.0
+        self.sync_interval = 300.0
+        self.verbosity_interval = 30.0
+        if 'TT_DEBUG' in os.environ \
+        and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
+            self.scan_interval = 1.0
+            self.sync_interval = 30.0
+            self.verbosity_interval = 1.0
         if os.path.exists(self.atime_filename) \
         and os.path.exists(self.data_filename) \
         and os.path.exists(self.config_filename):
@@ -539,14 +602,14 @@ class ElmoCache:
         if 'EFML_NPZ_CACHE_RECORD_SIZE' in os.environ:
             record_size = int(os.environ['EFML_NPZ_CACHE_RECORD_SIZE'])
         else:
-            record_size = 65536
+            record_size = 32768
         if record_size != self.record_size:
             self.record_size = record_size
             rewrite_files = True
         if 'EFML_NPZ_CACHE_VECTORS_PER_RECORD' in os.environ:
             vectors_per_record = int(os.environ['EFML_NPZ_CACHE_VECTORS_PER_RECORD'])
         else:
-            vectors_per_record = 12
+            vectors_per_record = 6
         if vectors_per_record != self.vectors_per_record:
             self.vectors_per_record = vectors_per_record
             rewrite_files = True
@@ -563,12 +626,25 @@ class ElmoCache:
             self.create_new_disk_files()
             self.sync_to_disk_files()
 
+    def p_progress_writing(self, last_verbose, last_bytes, r_index, record_size):
+        now = time.time()
+        if now > last_verbose + self.verbosity_interval:
+            now_bytes = (r_index+1) * record_size
+            speed = (now_bytes-last_bytes) / (now-last_verbose)
+            print('\t%.1f%% of elmo disk cache allocated, %.1f MiB/s' %(
+                100.0 * (r_index+1) / self.n_records,
+                speed / 1024.0**2
+            ))
+            return (now, now_bytes)
+        return (last_verbose, last_bytes)
+
     def create_new_disk_files(self):
         ''' write cache disk files pre-allocating space
             with empty records, according to
               * self.record_size  and
               * self.n_records
         '''
+        print('Allocating elmo npz disk cache...')
         self.record_states = array.array('B', self.n_records * [ord('i')])
         self.idx2key_and_part = self.n_records * [None]
         config = open(self.config_filename, 'wb')
@@ -576,13 +652,24 @@ class ElmoCache:
         config.write(b'vectors_per_record %d\n' %self.vectors_per_record)
         config.close()
         data_file = open(self.data_filename, 'wb')
+        last_verbose = time.time()
+        last_bytes = 0
         for r_index in range(self.n_records):
             data_file.write(self.get_data_record(r_index))
+            last_verbose, last_bytes = self.p_progress_writing(
+                last_verbose, last_bytes, r_index, self.record_size
+            )
         data_file.close()
         atime_file = open(self.atime_filename, 'wb')
+        last_verbose = time.time()
+        last_bytes = 0
         for r_index in range(self.n_records):
             atime_file.write(self.get_atime_record(0, r_index))
+            last_verbose, last_bytes = self.p_progress_writing(
+                last_verbose, last_bytes, r_index, self.atime_size
+            )
         atime_file.close()
+        print('\tdone')
 
     def write_atime(self, atime_file, r_index, last_access):
         atime_file.seek(r_index * self.atime_size)
@@ -700,7 +787,8 @@ class ElmoCache:
 
     def submit(self, npz_name):
         if npz_name in self.npz2ready_count:
-            raise ValueError('Duplicate request to create %s' %npz_name)
+            npz_name = utilities.std_string(npz_name)
+            raise ValueError('Duplicate request to create %s' %utilities.std_string(npz_name))
         self.npz2ready_count[npz_name] = 0
         need_hdf5 = []
         number_of_entries = 0
@@ -716,15 +804,16 @@ class ElmoCache:
                 if entry.vectors_on_disk:
                     number_on_disk += entry.length
             if npz_name in entry.requesters:
+                n_requests = entry.requesters.count(npz_name)
                 if entry.hdf5_in_progress:
-                    cache_hit_in_progress += 1
+                    cache_hit_in_progress += n_requests
                 elif entry.vectors is None:
                     need_hdf5.append(entry)
-                    cache_miss += 1
+                    cache_miss += n_requests
                     entry.hdf5_in_progress = True
                 else:
-                    self.npz2ready_count[npz_name] += 1
-                    cache_hit += 1
+                    self.npz2ready_count[npz_name] += n_requests
+                    cache_hit += n_requests
         print('Statistics for npz request %s:' %npz_name)
         print('\t# cache miss:', cache_miss)
         print('\t# cache hit:', cache_hit)
@@ -744,12 +833,14 @@ class ElmoCache:
         print('\t# on disk vectors (=tokens):', number_on_disk)
         print('\t# running hdf5 tasks:', len(self.hdf5_tasks))
         print('\t# hdf5 workdirs:', len(self.hdf5_workdir_usage))
+        self.print_record_state_stats()
 
     def p_submit(self, entries, workdir, npz_name):
         if not entries:
             return 0
         max_per_elmo_task = 5000
-        if 'TT_DEBUG' in os.environ:
+        if 'TT_DEBUG' in os.environ \
+        and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
             max_per_elmo_task = 400
         if len(entries) > max_per_elmo_task:
             middle = int(len(entries)/2)
@@ -822,6 +913,8 @@ class ElmoCache:
         if entry.vectors is None:
             raise ValueError('trying to collect vectors for hdf5_key that is not ready')
         entry.requesters.remove(npz_name)  # removes one occurrence only
+        entry.last_access = time.time()
+        entry.access_time_synced = False
         return entry.vectors
 
     def get_n_ready(self, npz_name):
@@ -839,7 +932,7 @@ class ElmoCache:
             if os.path.exists(task.hdf5_name):
                 os.unlink(task.conllu_file)
                 hdf5_data = h5py.File(task.hdf5_name, 'r')
-                print('Reading hdf5 file', task.hdf5_name)
+                print('Reading hdf5 file', utilities.std_string(task.hdf5_name))
                 for entry in task.entries:
                     entry.vectors = hdf5_data[entry.hdf5_key][()]
                     entry.hdf5_in_progress = False
@@ -848,6 +941,8 @@ class ElmoCache:
                     # to be notified that the vectors are ready
                     for npz_name in entry.requesters:
                         self.npz2ready_count[npz_name] += 1
+                    # prepare for new requesters
+                    entry.requesters = []
                 hdf5_data.close()
                 os.unlink(task.hdf5_name)
                 self.hdf5_workdir_usage[task.workdir] -= 1
@@ -861,6 +956,41 @@ class ElmoCache:
                 os.rmdir(task.workdir)
         self.hdf5_tasks = still_not_ready
 
+class NPZTasks:
+
+    def __init__(self, model_dir, lcode):
+        self.tasks = []
+        workdir = model_dir + '-npz-workdir'
+        if not os.path.exists(workdir):
+            common_udpipe_future.my_makedirs(workdir)
+        self.workdir = workdir
+        self.lcode = lcode
+        self.next_index = 1
+
+    def append(self, conllu_file):
+        npz_file = '%s/file-%d.npz' %(self.workdir, self.next_index)
+        self.next_index += 1
+        task = ElmoNpzTask([conllu_file, npz_file, self.lcode])
+        task.submit()
+        task.npz_file = npz_file
+        self.tasks.append(task)
+
+    def get_npz_files(self):
+        return [task.npz_file for task in self.tasks]
+
+    def get_last_npz_file(self):
+        return self.tasks[-1].npz_file
+
+    def cleanup(self):
+        for npz_file in self.get_npz_files():
+            if os.path.exists(npz_file):
+                os.unlink(npz_file)
+        for statsfile in ('elmo.start', 'elmo.end'):
+            statspath = '/'.join((self.workdir, statsfile))
+            if os.path.exists(statspath):
+                os.unlink(statspath)
+        os.rmdir(self.workdir)
+
 def train(
     dataset_filename, seed, model_dir,
     epoch_selection_dataset = None,
@@ -873,10 +1003,13 @@ def train(
         raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
+    npz_tasks = NPZTasks(model_dir, lcode)
     command = []
     command.append('./elmo_udpf-train.sh')
     command.append(dataset_filename)
-    command.append(lcode)
+    npz_tasks.append(dataset_filename)
+    command.append(npz_tasks.get_last_npz_file())
+    #command.append(lcode)
     if seed is None:
         raise NotImplementedError
     command.append(seed)
@@ -885,8 +1018,15 @@ def train(
     command.append(common_udpipe_future.get_training_schedule(epochs))
     for i in range(2):
         if len(monitoring_datasets) > i:
-            command.append(monitoring_datasets[i].filename)
-    common_udpipe_future.run_command(command)
+            conllu_file = monitoring_datasets[i].filename
+            command.append(conllu_file)
+            npz_tasks.append(conllu_file)
+            command.append(npz_tasks.get_last_npz_file())
+    common_udpipe_future.run_command(
+        command,
+        requires = npz_tasks.get_npz_files(),
+    )
+    npz_tasks.cleanup()
     if common_udpipe_future.incomplete(model_dir):
         if common_udpipe_future.memory_error(model_dir):
             # do not leave erroneous model behind
@@ -910,11 +1050,18 @@ def train(
 
 def predict(model_path, input_path, prediction_output_path):
     command = []
+    npz_tasks = NPZTasks(model_path, lcode)
     command.append('./elmo_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
+    command.append(npz_tasks.get_last_npz_file())
+    npz_tasks.append(input_path)
     command.append(prediction_output_path)
-    common_udpipe_future.run_command(command)
+    common_udpipe_future.run_command(
+        command,
+        requires = npz_tasks.get_npz_files(),
+    )
+    npz_tasks.cleanup()
 
 def main():
     last_arg_name = 'QUEUENAME'
@@ -942,7 +1089,7 @@ QUEUENAME:
             last_arg = (last_arg_name, last_arg_description),
         )
     elif len(sys.argv) == 5 and sys.argv[1] == 'test-npz':
-        # undocumented test mode
+        # undocumented test mode: get npz for given conllu file
         conllu_file = sys.argv[2]
         npz_file    = sys.argv[3]
         if not conllu_file.startswith('/') \
