@@ -465,16 +465,20 @@ def worker(
     final_dir  = b'/'.join((queue_dir, b'completed'))
     for required_dir in (inbox_dir, active_dir, final_dir):
         my_makedirs(required_dir)
-    idle_deadline = time.time() + opt_max_idle
+    start_time = time.time()
+    print('Worker loop starting', time.ctime(start_time))
+    if opt_max_idle:
+        idle_deadline = start_time + opt_max_idle
     my_active_tasks = []
     last_verbose = 0.0
     while True:
-        if opt_max_idle and time.time() > idle_deadline:
+        now = time.time()
+        if opt_max_idle and now > idle_deadline:
             print('\n*** Reached maximum idle time. ***\n')
             if callback:
                 callback.on_worker_exit()
             sys.exit(0)
-        if opt_deadline and time.time() > opt_deadline:
+        if opt_deadline and now > opt_deadline:
             print('\n*** Reached deadline. ***\n')
             if callback:
                 callback.on_worker_exit()
@@ -494,7 +498,8 @@ def worker(
             my_active_tasks.append(task)
         still_active_tasks = []
         for index, task in enumerate(my_active_tasks):
-            idle_deadline = time.time() + opt_max_idle
+            if opt_max_idle:
+                idle_deadline = time.time() + opt_max_idle
             if not task.finished_processing():
                 still_active_tasks.append(task)
                 continue
@@ -532,7 +537,8 @@ def worker(
             f.write(b'\n') # final newline
             f.close()
             os.unlink(task.active_name)
-            idle_deadline = time.time() + opt_max_idle
+            if opt_max_idle:
+                idle_deadline = time.time() + opt_max_idle
         my_active_tasks = still_active_tasks
         now = time.time()
         if now > last_verbose + 60.0:
