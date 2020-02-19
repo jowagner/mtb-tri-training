@@ -463,6 +463,7 @@ def worker(
         my_makedirs(required_dir)
     idle_deadline = time.time() + opt_max_idle
     my_active_tasks = []
+    last_verbose = 0.0
     while True:
         if opt_max_idle and time.time() > idle_deadline:
             print('\n*** Reached maximum idle time. ***\n')
@@ -529,7 +530,10 @@ def worker(
             os.unlink(task.active_name)
             idle_deadline = time.time() + opt_max_idle
         my_active_tasks = still_active_tasks
-        print('Tasks still active:', len(my_active_tasks))
+        now = time.time()
+        if now > last_verbose + 60.0:
+            print('Tasks still active:', len(my_active_tasks))
+            last_verbose = now
         if callback:
             callback.on_worker_idle()
         time.sleep(4.5)  # poll interval

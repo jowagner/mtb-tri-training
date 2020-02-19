@@ -801,11 +801,11 @@ class ElmoCache:
         cache_miss = 0
         cache_hit  = 0
         for key, entry in utilities.iteritems(self.key2entry):
-            number_of_entries += 1
-            if entry.vectors is not None:
-                number_of_vectors += entry.length
-                if entry.vectors_on_disk:
-                    number_on_disk += entry.length
+            #number_of_entries += 1
+            #if entry.vectors is not None:
+            #    number_of_vectors += entry.length
+            #    if entry.vectors_on_disk:
+            #        number_on_disk += entry.length
             if npz_name in entry.requesters:
                 n_requests = entry.requesters.count(npz_name)
                 if entry.hdf5_in_progress:
@@ -830,10 +830,10 @@ class ElmoCache:
             os.makedirs(workdir)
             self.next_part = 1
             self.p_submit(need_hdf5, workdir, npz_name)
-        print('Elmo cache statistics:')
-        print('\t# cache entries:', number_of_entries)
-        print('\t# stored vectors (=tokens):', number_of_vectors)
-        print('\t# on disk vectors (=tokens):', number_on_disk)
+        #print('Elmo cache statistics:')
+        #print('\t# cache entries:', number_of_entries)
+        #print('\t# stored vectors (=tokens):', number_of_vectors)
+        #print('\t# on disk vectors (=tokens):', number_on_disk)
         print('\t# running hdf5 tasks:', len(self.hdf5_tasks))
         print('\t# hdf5 workdirs:', len(self.hdf5_workdir_usage))
         self.print_record_state_stats()
@@ -904,7 +904,7 @@ class ElmoCache:
         task.hdf5_name   = b'%s/%s' %(workdir, hdf5_basename)
         task.npz_name    = npz_name
         task.workdir     = workdir
-        print('Submitted elmo-hdf5 task to produce', task.hdf5_name)
+        print('Submitted elmo-hdf5 task to produce', utilities.std_string(task.hdf5_name))
         self.hdf5_tasks.append(task)
         return 1
 
@@ -944,8 +944,10 @@ class ElmoCache:
                     # to be notified that the vectors are ready
                     for npz_name in entry.requesters:
                         self.npz2ready_count[npz_name] += 1
-                    # prepare for new requesters
-                    entry.requesters = []
+                    # must keep list of requesters to prevent entry from being
+                    # flushed out before requester has a chance to collect the
+                    # vector; new requesters may join but will trigger any new
+                    # hdf5 tasks because entry.vectors is set
                 hdf5_data.close()
                 os.unlink(task.hdf5_name)
                 self.hdf5_workdir_usage[task.workdir] -= 1
