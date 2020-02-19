@@ -135,6 +135,11 @@ class Task:
         if requires:
             for filename in requires:
                 self.requires.append(utilities.bstring(filename))
+        if 'TT_TASK_PATIENCE' in os.environ:
+            patience = float(os.environ['TT_TASK_PATIENCE'])
+        else:
+            patience = 48 * 3600.0
+        self.expires = time.time() + patience
         self.priority = int(priority)
         assert self.priority >= 0
         assert self.priority < 100
@@ -203,11 +208,6 @@ class Task:
         return task_id
 
     def get_expiry(self):
-        if 'TT_TASK_PATIENCE' in os.environ:
-            patience = float(os.environ['TT_TASK_PATIENCE'])
-        else:
-            patience = 48 * 3600.0
-        self.expires = time.time() + patience
         return self.expires
 
     def get_submit_name(self, task_id, my_task_bucket):
