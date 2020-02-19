@@ -405,9 +405,24 @@ class ElmoCache:
             100.0*n_records_atime/self.n_records if self.n_records else nan
         ))
         self.print_record_state_stats()
+        self.print_cache_stats()
+
+    def print_cache_stats(self):
         print('\t# npz names:', len(self.npz2ready_count))
         print('\t# running hdf5 tasks:', len(self.hdf5_tasks))
         print('\t# hdf5 workdirs:', len(self.hdf5_workdir_usage))
+        total_sentences = self.cache_miss + self.cache_hit + self.cache_hit_in_progress
+        if not total_sentences:
+            total_sentences = 1.0
+        print('\t# cache misses: %d (%.1f%%)' %(
+            self.cache_miss, 100.0*self.cache_miss/total_sentences
+        ))
+        print('\t# cache hits with vectors ready: %d (%.1f%%)' %(
+            self.cache_hit, 100.0*self.cache_hit/total_sentences
+        ))
+        print('\t# cache hits with hdf5 in progress: %d (%.1f%%)' %(
+            self.cache_hit_in_progress, 100.0*self.cache_hit_in_progress/total_sentences
+        ))
 
     def print_record_state_stats(self):
         state2freq = {}
@@ -592,6 +607,9 @@ class ElmoCache:
             self.scan_interval = 1.0
             self.sync_interval = 30.0
             self.verbosity_interval = 1.0
+        self.cache_hit_in_progress = 0
+        self.cache_miss = 0
+        self.cache_hit  = 0
         if os.path.exists(self.atime_filename) \
         and os.path.exists(self.data_filename) \
         and os.path.exists(self.config_filename):
@@ -817,6 +835,9 @@ class ElmoCache:
                 else:
                     self.npz2ready_count[npz_name] += n_requests
                     cache_hit += n_requests
+        self.cache_hit_in_progress += cache_hit_in_progress
+        self.cache_miss += cache_miss
+        self.cache_hit  += cache_hit
         print('Statistics for npz request %s:' %npz_name)
         print('\t# cache miss:', cache_miss)
         print('\t# cache hit:', cache_hit)
@@ -837,6 +858,7 @@ class ElmoCache:
         print('\t# running hdf5 tasks:', len(self.hdf5_tasks))
         print('\t# hdf5 workdirs:', len(self.hdf5_workdir_usage))
         self.print_record_state_stats()
+        self.print_cache_stats()
 
     def p_submit(self, entries, workdir, npz_name):
         if not entries:
@@ -963,9 +985,9 @@ class ElmoCache:
 
 class NPZTasks:
 
-    def __init__(self, model_dir, lcode):
+    def __init__(self, output_dir, lcode):
         self.tasks = []
-        workdir = model_dir + '-npz-workdir'
+        workdir = output_dir + '-npz-workdir'
         if not os.path.exists(workdir):
             common_udpipe_future.my_makedirs(workdir)
         self.workdir = workdir
@@ -1061,7 +1083,7 @@ def predict(model_path, input_path, prediction_output_path):
     lcode_file.close()
     # prepare npz files and parser command
     command = []
-    npz_tasks = NPZTasks(model_path, lcode)
+    npz_tasks = NPZTasks(prediction_output_path, lcode)
     command.append('./elmo_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
