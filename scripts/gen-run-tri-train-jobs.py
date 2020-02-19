@@ -42,6 +42,10 @@ else:
         augment_size_codes = [6,8]
     if len(sys.argv) > 1 and sys.argv[1] == 'boole+':
         augment_size_codes = [7,9]
+    if len(sys.argv) > 1 and sys.argv[1] == 'okia':
+        augment_size_codes = [0,]
+    if len(sys.argv) > 1 and sys.argv[1] == 'okia+':
+        augment_size_codes = [1,]
 
 if not os.path.exists('jobs'):
     os.mkdir('jobs')
@@ -60,6 +64,7 @@ def get_modelseedsuffix(setting):
         modelseedsuffix2setting.append(setting)
     return retval
 
+#                 0   1   2   3   4   5   6   7   8   9
 aug2iterations = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6]
 
 for augment_size_code in augment_size_codes:
@@ -85,13 +90,13 @@ for augment_size_code in augment_size_codes:
                 for disa_code, disa_options in [
                     #('a', '--all-knowledge-transfers'),  # not implemented yet
                     ('-', ''),
-                    #('d', '--min-learner-disagreement 1'),
+                    ('d', '--min-learner-disagreement 1'),
                     #('e', '--min-learner-disagreement 2'),
                 ]:
                     for decay_code, decay_options in [
                         ('-', ''),
                         ('v', '--last-k 1'),
-                        #('y', '--last-k 5'),
+                        ('y', '--last-k 5'),
                         ('z', '--last-decay 0.5'),
                     ]:
                         #if decay_code != '-' and augment_size_code < 6:
