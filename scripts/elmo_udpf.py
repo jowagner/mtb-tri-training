@@ -985,6 +985,7 @@ class ElmoCache:
                     if os.path.exists(statspath):
                         os.unlink(statspath)
                 os.rmdir(task.workdir)
+                del self.hdf5_workdir_usage[task.workdir]
         self.hdf5_tasks = still_not_ready
 
 class NPZTasks:
