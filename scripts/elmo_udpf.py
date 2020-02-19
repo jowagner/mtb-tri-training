@@ -977,11 +977,13 @@ class NPZTasks:
         task.submit()
         task.npz_file = npz_file
         self.tasks.append(task)
+        return npz_file
 
     def get_npz_files(self):
         return [task.npz_file for task in self.tasks]
 
     def get_last_npz_file(self):
+        print('Deprecation warning: Please use return value of NPZTasks.append() instead of NPZTasks.get_last_npz_file().')
         return self.tasks[-1].npz_file
 
     def cleanup(self):
@@ -1010,8 +1012,7 @@ def train(
     command = []
     command.append('./elmo_udpf-train.sh')
     command.append(dataset_filename)
-    npz_tasks.append(dataset_filename)
-    command.append(npz_tasks.get_last_npz_file())
+    command.append(npz_tasks.append(dataset_filename))
     #command.append(lcode)
     if seed is None:
         raise NotImplementedError
@@ -1024,8 +1025,7 @@ def train(
         if len(monitoring_datasets) > i:
             conllu_file = monitoring_datasets[i].filename
             command.append(conllu_file)
-            npz_tasks.append(conllu_file)
-            command.append(npz_tasks.get_last_npz_file())
+            command.append(npz_tasks.append(conllu_file))
     common_udpipe_future.run_command(
         command,
         requires = npz_tasks.get_npz_files(),
@@ -1053,13 +1053,17 @@ def train(
             raise ValueError('Model is missing essential files: ' + error_name)
 
 def predict(model_path, input_path, prediction_output_path):
+    # read lcode from model file
+    lcode_file = open('%s/elmo-lcode.txt' %model_path, 'rb')
+    lcode = lcode_file.readline().rstrip()
+    lcode_file.close()
+    # prepare npz files and parser command
     command = []
     npz_tasks = NPZTasks(model_path, lcode)
     command.append('./elmo_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
-    command.append(npz_tasks.get_last_npz_file())
-    npz_tasks.append(input_path)
+    command.append(npz_tasks.append(input_path))
     command.append(prediction_output_path)
     command.append(lcode)
     common_udpipe_future.run_command(
