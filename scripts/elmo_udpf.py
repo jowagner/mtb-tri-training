@@ -39,8 +39,12 @@ except:
 
 import common_udpipe_future
 
-def request_npz(conllu_filename, npz_filename):
-    task = ElmoNpzTask([conllu_filename, npz_filename], 'elmo-npz')
+def request_npz(conllu_filename, npz_filename, priority = 50):
+    task = ElmoNpzTask(
+        [conllu_filename, npz_filename],
+        queue_name = 'elmo-npz',
+        priority = priority,
+    )
     task.submit()
 
 class ElmoNpzTask(common_udpipe_future.Task):
@@ -985,7 +989,7 @@ class ElmoCache:
 
 class NPZTasks:
 
-    def __init__(self, output_dir, lcode):
+    def __init__(self, output_dir, lcode, priority = 50):
         self.tasks = []
         workdir = output_dir + '-npz-workdir'
         if not os.path.exists(workdir):
@@ -993,11 +997,15 @@ class NPZTasks:
         self.workdir = workdir
         self.lcode = lcode
         self.next_index = 1
+        self.priority = priority
 
     def append(self, conllu_file):
         npz_file = '%s/file-%d.npz' %(self.workdir, self.next_index)
         self.next_index += 1
-        task = ElmoNpzTask([conllu_file, npz_file, self.lcode])
+        task = ElmoNpzTask(
+            [conllu_file, npz_file, self.lcode],
+            priority = self.priority
+        )
         task.submit()
         task.npz_file = npz_file
         self.tasks.append(task)
@@ -1027,12 +1035,13 @@ def train(
     lcode = None,
     batch_size = 32,
     epochs = 60,
+    priority = 50,
 ):
     if lcode is None:
         raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
-    npz_tasks = NPZTasks(model_dir, lcode)
+    npz_tasks = NPZTasks(model_dir, lcode, priority = priority)
     command = []
     command.append('./elmo_udpf-train.sh')
     command.append(dataset_filename)
@@ -1053,6 +1062,7 @@ def train(
     common_udpipe_future.run_command(
         command,
         requires = npz_tasks.get_npz_files(),
+        priority = priority,
     )
     npz_tasks.cleanup()
     if common_udpipe_future.incomplete(model_dir):
@@ -1076,14 +1086,14 @@ def train(
             os.rename(model_dir, error_name)
             raise ValueError('Model is missing essential files: ' + error_name)
 
-def predict(model_path, input_path, prediction_output_path):
+def predict(model_path, input_path, prediction_output_path, priority = 50):
     # read lcode from model file
     lcode_file = open('%s/elmo-lcode.txt' %model_path, 'rb')
     lcode = lcode_file.readline().rstrip()
     lcode_file.close()
     # prepare npz files and parser command
     command = []
-    npz_tasks = NPZTasks(prediction_output_path, lcode)
+    npz_tasks = NPZTasks(prediction_output_path, lcode, priority = priority)
     command.append('./elmo_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
@@ -1093,6 +1103,7 @@ def predict(model_path, input_path, prediction_output_path):
     common_udpipe_future.run_command(
         command,
         requires = npz_tasks.get_npz_files(),
+        priority = priority,
     )
     npz_tasks.cleanup()
 

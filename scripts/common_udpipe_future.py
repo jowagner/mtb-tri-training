@@ -115,8 +115,8 @@ def my_makedirs(required_dir):
             # (in python 3, we will be able to use exist_ok=True)
             pass
 
-def run_command(command, queue_name = 'udpf', requires = None):
-    task = Task(command, queue_name, requires)
+def run_command(command, queue_name = 'udpf', requires = None, priority = 50):
+    task = Task(command, queue_name, requires, priority = priority)
     task.run()
 
 def wait_for_tasks(task_list):
@@ -125,7 +125,7 @@ def wait_for_tasks(task_list):
 
 class Task:
 
-    def __init__(self, command, queue_name = 'udpf', requires = None):
+    def __init__(self, command, queue_name = 'udpf', requires = None, priority = 50):
         self.command = [utilities.bstring(x) for x in command]
         self.queue_name = utilities.bstring(queue_name)
         if 'TT_TASK_DIR' in os.environ:
@@ -135,6 +135,9 @@ class Task:
         if requires:
             for filename in requires:
                 self.requires.append(utilities.bstring(filename))
+        self.priority = int(priority)
+        assert self.priority >= 0
+        assert self.priority < 100
 
     def __repr__(self):
         parts = []
@@ -181,7 +184,8 @@ class Task:
         else:
             t0 = 0.0
         command_fingerprint = hashlib.sha256(b'\n'.join(self.command)).hexdigest()
-        task_id = utilities.bstring('%05x-%s-%s-%d-%s-%s' %(
+        task_id = utilities.bstring('%02d-%05x-%s-%s-%d-%s-%s' %(
+            self.priority,
             int((time.time()-t0)/60.0),
             os.environ['HOSTNAME'].replace('-', '_'),
             os.environ['SLURM_JOB_ID'] if 'SLURM_JOB_ID' in os.environ else 'na',

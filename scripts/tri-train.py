@@ -1452,7 +1452,10 @@ def make_predictions(
             manual_prediction_needed.append(learner_rank)
         else:
             # ask model module to predict the model
-            model_module.predict(model_path, dataset.filename, prediction_path)
+            model_module.predict(
+                model_path, dataset.filename, prediction_path,
+                priority = training_round,
+            )
         predictions.append((prediction_fingerprint, prediction_path))
     if manual_prediction_needed:
         print('\n*** Manual prediction requested. ***\n')
@@ -2014,10 +2017,12 @@ def train_models(
             manual_training_needed.append(learner_rank)
         else:
             # ask model module to train the model
+            model_kwargs = opt_model_kwargs.copy()
+            model_kwargs['priority'] = training_round
             model_module.train(
                 training_set.filename, model_init_seed, model_path,
                 epoch_selection_set, monitoring_datasets,
-                **opt_model_kwargs
+                **model_kwargs
             )
         retval.append((model_fingerprint, model_path, model_module))
     if manual_training_needed:

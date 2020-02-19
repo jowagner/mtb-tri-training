@@ -69,7 +69,7 @@ case "${SETTING}" in
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
-    export TT_TASK_PATIENCE=144000
+    export TT_TASK_PATIENCE=432000
     export TT_TASK_BUCKETS=100
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
@@ -110,7 +110,7 @@ case "${SETTING}" in
     export EFML_NPZ_CACHE_SIZE=120GiB
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
-    export TT_TASK_PATIENCE=144000
+    export TT_TASK_PATIENCE=432000
     export TT_TASK_BUCKETS=100
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
@@ -133,7 +133,7 @@ case "${SETTING}" in
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
-    export TT_TASK_PATIENCE=144000
+    export TT_TASK_PATIENCE=432000
     export TT_TASK_BUCKETS=100
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise

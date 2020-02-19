@@ -26,6 +26,7 @@ def train(
     lcode = None,
     batch_size = 32,
     epochs = 60,
+    priority = 50,
 ):
     if lcode is None:
         raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
@@ -44,7 +45,7 @@ def train(
     for i in range(2):
         if len(monitoring_datasets) > i:
             command.append(monitoring_datasets[i].filename)
-    common_udpipe_future.run_command(command)
+    common_udpipe_future.run_command(command, priority = priority)
     if common_udpipe_future.incomplete(model_dir):
         if common_udpipe_future.memory_error(model_dir):
             # do not leave erroneous model behind
@@ -68,13 +69,14 @@ def train(
 
 def predict(
     model_path, input_path, prediction_output_path,
+    priority = 50,
 ):
     command = []
     command.append('./fasttext_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
     command.append(prediction_output_path)
-    common_udpipe_future.run_command(command)
+    common_udpipe_future.run_command(command, priority = priority)
 
 def main():
     raise NotImplementedError
