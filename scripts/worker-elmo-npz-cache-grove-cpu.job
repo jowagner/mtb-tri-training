@@ -19,6 +19,26 @@ rm -f $STOPFILE
 
 cd ${SCRIPTDIR}
 
+# We need numpy and hdf5 --> re-using udpf python 3 environment
+
+if [ -n "$UDPIPE_FUTURE_LIB_PATH" ]; then
+    export LD_LIBRARY_PATH=${UDPIPE_FUTURE_LIB_PATH}:${LD_LIBRARY_PATH}
+fi
+
+if [ -n "$UDPIPE_FUTURE_ICHEC_CONDA" ]; then
+    module load conda/2
+    source activate ${UDPIPE_FUTURE_ICHEC_CONDA}
+fi
+
+if [ -n "$UDPIPE_FUTURE_CONDA" ]; then
+    source ${CONDA_HOME}/etc/profile.d/conda.sh
+    conda activate ${UDPIPE_FUTURE_CONDA}
+fi
+
+if [ -n "$UDPIPE_FUTURE_ENV" ]; then
+    source ${UDPIPE_FUTURE_ENV}/bin/activate
+fi
+
 python3 ./elmo_udpf.py   \
     --deadline 27.0       \
     --stopfile $STOPFILE   \

@@ -20,8 +20,13 @@ rm -f $STOPFILE
 
 cd ${SCRIPTDIR}
 
+# any of Python 2 or 3 should do and no special python modules needed
+# (allennlp will be started from a wrapper script that loads a
+# suitable environment)
+
 ./elmo_udpf.py           \
     --deadline 27.0       \
     --stopfile $STOPFILE   \
+    --max-idle 4.0         \
     elmo-hdf5
 
