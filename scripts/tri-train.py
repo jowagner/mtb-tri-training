@@ -701,9 +701,7 @@ def main():
             elif opt_init_seed:
                 seed = 'sim:' + opt_init_seed
             if seed:
-                # For why using sha512, see Joachim's answer on
-                # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
-                random.seed(int(hashlib.sha512(seed).hexdigest(), 16))
+                init_prng_from_text(seed)
             training_data = get_subset(
                 training_data, opt_simulate_size, random, opt_simulate_attempts,
                 sentence_filter = seed_filter,
@@ -764,11 +762,9 @@ def main():
     print_t('\n== Selection of Seed Data ==\n')
 
     if opt_init_seed:
-        # For why using sha512, see Joachim's answer on
-        # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
-        random.seed(int(hashlib.sha512('seed selection %s' %(
+        init_prng_from_text('seed selection %s' %(
             opt_init_seed,
-        )).hexdigest(), 16))
+        ))
 
     seed_sets = []
     epoch_selection_sets = []
@@ -910,9 +906,9 @@ def main():
         if opt_baselines and not opt_manually_train:
             print('\nBaseline(s):')
             if opt_init_seed:
-                random.seed(int(hashlib.sha512('baselines in round %d: %s' %(
+                init_prng_from_text('baselines in round %d: %s' %(
                     training_round, opt_init_seed,
-                )).hexdigest(), 16))
+                ))
             train_and_evaluate_baselines(
                 training_data, opt_learners, training_round, dataset_module,
                 model_modules, opt_init_seed, opt_model_init_type, dev_sets,
@@ -954,9 +950,9 @@ def main():
         for subset_part_m1 in range(opt_max_subsets):
             subset_part = subset_part_m1 + 1
             if opt_init_seed:
-                random.seed(int(hashlib.sha512('round %d, subset part %d: %s' %(
+                init_prng_from_text('round %d, subset part %d: %s' %(
                     training_round, subset_part, opt_init_seed,
-                )).hexdigest(), 16))
+                ))
             print_t('\nSelecting part %d of subset of unlabelled data:' %subset_part)
             if opt_allow_oversampling_of_subset:
                 target_size = opt_subset_size
@@ -1082,9 +1078,9 @@ def main():
                     ))
                 # perform knowledge transfer for each item of the current subset
                 if opt_init_seed:
-                    random.seed(int(hashlib.sha512('Knowledge transfer %02d %03d %s' %(
+                    init_prng_from_text('Knowledge transfer %02d %03d %s' %(
                         training_round, subset_part, opt_init_seed,
-                    )).hexdigest(), 16))
+                    ))
                 for subset_index in range(len(unlabelled_subset)):
                     # simplify access to predictions for this item
                     sentence_predictions = []
@@ -1174,9 +1170,9 @@ def main():
             learner_rank = learner_index + 1
             print('\nLearner %d:' %(learner_index+1))
             if opt_init_seed:
-                random.seed(int(hashlib.sha512('New dataset %02d %03d %d %s' %(
+                init_prng_from_text('New dataset %02d %03d %d %s' %(
                     training_round, subset_part, learner_rank, opt_init_seed,
-                )).hexdigest(), 16))
+                ))
             new_dataset = basic_dataset.Concat(new_candidate_sets[learner_index])
             new_size = new_dataset.get_number_of_items()
             if new_size > opt_augment_size:
@@ -1899,6 +1895,15 @@ def adjust_size(size, data_size):
         return int(0.5 + fraction * multiplier)
     else:
         return int(size)
+
+def init_prng_from_text(seed_as_text):
+    # make sure string is binary (relevant for Python 3)
+    seed_as_text = utilities.bstring(seed_as_text)
+    # For why using sha512, see Joachim's answer on
+    # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
+    seed_as_number = int(hashlib.sha512(seed_as_text).hexdigest(), 16)
+    print('Seeding PRNG with', seed_as_number)
+    random.seed(seed_as_number)
 
 def get_model_seed(mode, main_seed, learner_rank, training_round):
     if '+' in mode:
