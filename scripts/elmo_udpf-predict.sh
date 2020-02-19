@@ -34,7 +34,7 @@ LANG_CODE=$(cat ${MODELDIR}/elmo-lcode.txt)
 
 ELMO_FILE_PREFIX=elmo
 
-ln -s ${IN_NPZ} ${WORKDIR}/${ELMO_FILE_PREFIX}-test.npz
+ln -s $(realpath "${IN_NPZ}") ${WORKDIR}/${ELMO_FILE_PREFIX}-test.npz
 
 source ${PRJ_DIR}/config/locations.sh
 
@@ -86,9 +86,13 @@ python ${PARSER_DIR}/ud_parser.py  \
     --logdir ./                            \
     --checkpoint checkpoint-inference-last  \
     ${FAKE_TBID}                            \
-    2> stderr.txt                           \
-    > stdout.txt
+    2> "${REAL_OUTPUT}"-stderr.txt                           \
+    > /dev/null
 
 cd /
 rm -rf ${WORKDIR}
+
+if [ -e "${REAL_OUTPUT}" ]; then
+    rm "${REAL_OUTPUT}"-stderr.txt
+fi
 
