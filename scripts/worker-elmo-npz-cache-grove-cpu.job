@@ -42,5 +42,6 @@ fi
 python3 ./elmo_udpf.py   \
     --deadline 27.0       \
     --stopfile $STOPFILE   \
+    --max-idle 4.0         \
     elmo-npz
 
