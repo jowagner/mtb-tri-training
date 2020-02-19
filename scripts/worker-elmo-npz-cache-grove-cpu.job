@@ -1,9 +1,9 @@
 #!/bin/bash
   
-#SBATCH -p compute       # which partition to run on
+#SBATCH -p long        # which partition to run on
 #SBATCH -J ez-cache    # name for the job
-#SBATCH --mem=
-#SBATCH --cpus-per-task=16
+#SBATCH --mem=375000
+#SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
 #SBATCH -N 1-1
 
