@@ -21,6 +21,10 @@ test -z $4 && echo "Missing conllu output file"
 test -z $4 && exit 1
 OUTPUT=$4
 
+test -z $5 && echo "Missing language code"
+test -z $5 && exit 1
+LANG_CODE=$5
+
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 WORKDIR=$(realpath "${OUTPUT}")-workdir

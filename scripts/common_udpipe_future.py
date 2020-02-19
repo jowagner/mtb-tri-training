@@ -331,7 +331,7 @@ class Task:
         os.environ['TT_TASK_CLEANUP_COMPLETED'].lower() not in ('0', 'false'):
             os.unlink(filename)
 
-def main(queue_name, task_processor, cache = None, last_arg = None):
+def main(queue_name, task_processor, last_arg = None):
     opt_help = False
     opt_debug = True
     opt_deadline = None
@@ -379,6 +379,7 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
             if filename.endswith(b'.task') and b'-' in filename:
                 candidate_tasks.append(filename)
         candidate_tasks.sort()
+        #print('# candidate tasks in inbox:', len(candidate_tasks))
         for filename in candidate_tasks:
             taskfile    = b'/'.join((inbox_dir, filename))
             task_id, task_bucket = filename[:-5].rsplit(b'-', 1)
@@ -420,6 +421,9 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
                 f.close()
                 if delete_task:
                     os.unlink(active_name)
+                else:
+                    # re-queue in inbox
+                    os.rename(active_name, taskfile)
                 continue
             command = f.read().split(b'\n')
             f.close()

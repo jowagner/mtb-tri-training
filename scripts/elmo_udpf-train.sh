@@ -37,11 +37,15 @@ LR_SCHEDULE=$6
 
 MIN_EPOCH_SENTENCES=9600
 
+test -z $7 && echo "Missing language code"
+test -z $7 && exit 1
+LANG_CODE=$7
+
 # optional args:
-DEV_SET=$7
-DEV_NPZ=$8
-TEST_SET=$9
-TEST_NPZ=${10}
+DEV_SET=$8
+DEV_NPZ=$9
+TEST_SET=${10}
+TEST_NPZ=${11}
 
 if [ -n "$TEST_SET" ]; then
     REAL_TEST_SET=$(realpath ${TEST_SET})

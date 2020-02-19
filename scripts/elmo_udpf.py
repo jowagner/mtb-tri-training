@@ -405,6 +405,9 @@ class ElmoCache:
             100.0*n_records_atime/self.n_records if self.n_records else nan
         ))
         self.print_record_state_stats()
+        print('\t# npz names:', len(self.npz2ready_count))
+        print('\t# running hdf5 tasks:', len(self.hdf5_tasks))
+        print('\t# hdf5 workdirs:', len(self.hdf5_workdir_usage))
 
     def print_record_state_stats(self):
         state2freq = {}
@@ -1016,6 +1019,7 @@ def train(
     command.append(model_dir)
     command.append('%d' %batch_size)
     command.append(common_udpipe_future.get_training_schedule(epochs))
+    command.append(lcode)
     for i in range(2):
         if len(monitoring_datasets) > i:
             conllu_file = monitoring_datasets[i].filename
@@ -1057,6 +1061,7 @@ def predict(model_path, input_path, prediction_output_path):
     command.append(npz_tasks.get_last_npz_file())
     npz_tasks.append(input_path)
     command.append(prediction_output_path)
+    command.append(lcode)
     common_udpipe_future.run_command(
         command,
         requires = npz_tasks.get_npz_files(),
