@@ -17,7 +17,6 @@ import array
 import base64
 import hashlib
 import math
-import numpy
 import os
 import subprocess
 import sys
@@ -28,8 +27,9 @@ import utilities
 
 try:
     import h5py
+    import numpy
 except:
-    # only show error if user needs h5py functionality
+    # only show error if user needs functionality
     pass
 
 try:
