@@ -1122,6 +1122,7 @@ QUEUENAME:
 
     elmo-hdf5 for the .hdf5 workers (run as many as needed)"""
     if len(sys.argv) > 1 and sys.argv[-1] == 'elmo-npz':
+        del sys.argv[-1]
         cache = ElmoCache()
         common_udpipe_future.main(
             queue_name = 'elmo-npz',
@@ -1131,6 +1132,7 @@ QUEUENAME:
             callback = cache,
         )
     elif len(sys.argv) > 1 and sys.argv[-1] == 'elmo-hdf5':
+        del sys.argv[-1]
         common_udpipe_future.main(
             queue_name = 'elmo-hdf5',
             task_processor = common_udpipe_future.Task,
