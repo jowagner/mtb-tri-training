@@ -43,5 +43,7 @@ python3 ./elmo_udpf.py   \
     --deadline 239.0       \
     --stopfile $STOPFILE   \
     --max-idle 4.0         \
-    elmo-npz
+    elmo-npz               \
+    2> ${HOME}/tri-training/elmo-npz-cache.err \
+    >  ${HOME}/tri-training/elmo-npz-cache.out
 
