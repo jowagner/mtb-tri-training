@@ -335,7 +335,15 @@ class Task:
         os.environ['TT_TASK_CLEANUP_COMPLETED'].lower() not in ('0', 'false'):
             os.unlink(filename)
 
-def main(queue_name, task_processor, last_arg = None):
+def main(
+    queue_name = 'udpf',
+    task_processor = None,
+    opt_deadline = None, opt_stopfile = None, opt_debug = False,
+    opt_max_idle = 900.0,
+    last_arg = None,
+    extra_kw_parameters = {},
+    callback = None,
+):
     opt_help = False
     opt_debug = True
     opt_deadline = None
@@ -371,7 +379,10 @@ def main(queue_name, task_processor, last_arg = None):
     worker(
         queue_name, task_processor,
         opt_deadline, opt_stopfile, opt_debug,
-        opt_max_idle
+        opt_max_idle,
+        last_arg,
+        extra_kw_parameters,
+        callback,
     )
 
 def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
