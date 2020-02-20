@@ -404,17 +404,17 @@ class TaskQueue:
             if filename.endswith(b'.task') and b'-' in filename:
                 candidate_tasks.append(filename)
                 if filename in self.filename2requires:
-                    reqired_files = self.filename2requires[filename]
-                    filename2requires[filename] = reqired_files
+                    required_files = self.filename2requires[filename]
+                    filename2requires[filename] = required_files
         self.filename2requires = filename2requires
         candidate_tasks.sort()
         #print('# candidate tasks in inbox:', len(candidate_tasks))
         for filename in candidate_tasks:
             eligible = 'unknown'
             if filename in filename2requires:
-                reqired_files = filename2requires[filename]
+                required_files = filename2requires[filename]
                 eligible = 'yes'
-                for required_file in reqired_files:
+                for required_file in required_files:
                     if not os.path.exists(required_file):
                         eligible = 'no'
                         break
@@ -443,8 +443,9 @@ class TaskQueue:
                 elif line.startswith(b'lcode'):
                     lcode = fields[1]
                 elif line.startswith(b'requires') and eligible == 'unknown':
-                    needed_file = fields[1]
-                    if not os.path.exists(needed_file):
+                    required_file = fields[1]
+                    required_files.append(required_file)
+                    if not os.path.exists(required_file):
                         eligible = 'no'
                 if delete_task:
                     break
@@ -456,7 +457,9 @@ class TaskQueue:
                 except:
                     print('Task %s claimed by other worker' %utilities.std_string(task_id))
                 continue
-            self.filename2requires[filename] = reqired_files
+            # keep list of required files to avoid reading this task file
+            # again until all required files are there
+            self.filename2requires[filename] = required_files
             if eligible == 'no':
                 f.close()
                 continue
