@@ -1052,6 +1052,8 @@ def train(
     command.append(npz_tasks.append(dataset_filename))
     #command.append(lcode)
     if seed is None:
+        # the wrapper script currently does not support
+        # calling the parser without "--seed"
         raise NotImplementedError
     command.append(seed)
     command.append(model_dir)
@@ -1069,6 +1071,8 @@ def train(
         priority = priority,
     )
     npz_tasks.cleanup()
+    if not os.path.exists(model_dir):
+        raise ValueError('Failed to train parser (missing output)')
     if common_udpipe_future.incomplete(model_dir):
         if common_udpipe_future.memory_error(model_dir):
             # do not leave erroneous model behind

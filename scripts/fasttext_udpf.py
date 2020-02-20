@@ -46,6 +46,8 @@ def train(
         if len(monitoring_datasets) > i:
             command.append(monitoring_datasets[i].filename)
     common_udpipe_future.run_command(command, priority = priority)
+    if not os.path.exists(model_dir):
+        raise ValueError('Failed to train parser (missing output)')
     if common_udpipe_future.incomplete(model_dir):
         if common_udpipe_future.memory_error(model_dir):
             # do not leave erroneous model behind
