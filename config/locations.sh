@@ -105,6 +105,8 @@ case "${SETTING}" in
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
+    export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
+    export UDPIPE_FUTURE_ENV=${UDPIPE_FUTURE_DIR}/venv-udpf
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination
     export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
     export EFML_NPZ_CACHE_SIZE=120GiB
