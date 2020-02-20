@@ -603,10 +603,10 @@ class ElmoCache:
         self.atime_size = 48
         self.max_load_factor = 0.95
         self.last_scan = 0.0
-        self.scan_interval = 10.0
+        self.scan_interval = 20.0
         self.last_sync = 0.0
-        self.sync_interval = 300.0
-        self.verbosity_interval = 30.0
+        self.sync_interval = 900.0
+        self.verbosity_interval = 60.0
         if 'TT_DEBUG' in os.environ \
         and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
             self.scan_interval = 1.0

@@ -596,7 +596,7 @@ def worker(
         if callback:
             callback.on_worker_idle()
         sys.stdout.flush()
-        time.sleep(4.5)  # poll interval
+        time.sleep(12.0)  # poll interval
 
 if __name__ == "__main__":
     main('udpf', Task)
