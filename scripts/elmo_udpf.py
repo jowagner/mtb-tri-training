@@ -332,6 +332,7 @@ class ElmoCache:
 
     def p_sync_to_disk_files(self, keys):
         print('Syncing elmo cache to disk...')
+        sys.stdout.flush()
         start_time = time.time()
         data_file = open(self.data_filename, 'r+b')
         atime_file = open(self.atime_filename, 'r+b')
@@ -408,7 +409,6 @@ class ElmoCache:
             n_records_atime, self.n_records,
             100.0*n_records_atime/self.n_records if self.n_records else nan
         ))
-        self.print_record_state_stats()
         self.print_cache_stats()
 
     def print_cache_stats(self):
@@ -427,8 +427,6 @@ class ElmoCache:
         print('\t# cache hits with hdf5 in progress: %d (%.1f%%)' %(
             self.cache_hit_in_progress, 100.0*self.cache_hit_in_progress/total_sentences
         ))
-
-    def print_record_state_stats(self):
         state2freq = {}
         for state in self.record_states:
             try:
@@ -441,8 +439,11 @@ class ElmoCache:
                 print('\t# unknown records:', freq)
             else:
                 print('\t# %s records: %d' %(chr(state), freq))
+        sys.stdout.flush()
 
     def load_from_disk(self):
+        print('Loading elmo cache from disk...')
+        sys.stdout.flush()
         config = open(self.config_filename, 'rb')
         line = config.readline()
         if not line.startswith(b'record_size'):
@@ -585,10 +586,10 @@ class ElmoCache:
                 n_normal += 1
         for key in incomplete:
             del self.key2entry[key]
-        print('Loaded elmo cache from disk:')
         print('\t# normal entries found:', n_normal)
         print('\t# entries with inconsistent acess time:', n_atime_not_synced)
         print('\t# incomplete entries discarded:', len(incomplete))
+        sys.stdout.flush()
 
     def __init__(self):
         self.npz2ready_count = {}
@@ -660,6 +661,7 @@ class ElmoCache:
                 100.0 * (r_index+1) / self.n_records,
                 speed / 1024.0**2
             ))
+            sys.stdout.flush()
             return (now, now_bytes)
         return (last_verbose, last_bytes)
 
@@ -670,6 +672,7 @@ class ElmoCache:
               * self.n_records
         '''
         print('Allocating elmo npz disk cache...')
+        sys.stdout.flush()
         self.record_states = array.array('B', self.n_records * [ord('i')])
         self.idx2key_and_part = self.n_records * [None]
         config = open(self.config_filename, 'wb')
@@ -695,6 +698,7 @@ class ElmoCache:
             )
         atime_file.close()
         print('\tdone')
+        sys.stdout.flush()
 
     def write_atime(self, atime_file, r_index, last_access):
         atime_file.seek(r_index * self.atime_size)
@@ -861,7 +865,6 @@ class ElmoCache:
         #print('\t# on disk vectors (=tokens):', number_on_disk)
         print('\t# running hdf5 tasks:', len(self.hdf5_tasks))
         print('\t# hdf5 workdirs:', len(self.hdf5_workdir_usage))
-        self.print_record_state_stats()
         self.print_cache_stats()
 
     def p_submit(self, entries, workdir, npz_name):

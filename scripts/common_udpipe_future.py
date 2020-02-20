@@ -557,6 +557,7 @@ def worker(
             last_verbose = now
         if callback:
             callback.on_worker_idle()
+        sys.stdout.flush()
         time.sleep(4.5)  # poll interval
 
 if __name__ == "__main__":
