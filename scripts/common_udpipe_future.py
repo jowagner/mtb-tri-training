@@ -385,32 +385,48 @@ def main(
         callback,
     )
 
-def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
-    if task_processor is None:
-        raise ValueError('Missing task processor')
-    else:
+class TaskQueue:
+
+    def __init__(self, inbox_dir, active_dir, delete_dir, task_processor, extra_kw_parameters):
+        if task_processor is None:
+            raise ValueError('Missing task processor')
+        self.inbox_dir = inbox_dir
+        self.active_dir = active_dir
+        self.delete_dir = delete_dir
+        self.task_processor = task_processor
+        self.extra_kw_parameters = extra_kw_parameters
+        self.filename2requires = {}
+
+    def pick_task(self):
         candidate_tasks = []
-        for filename in os.listdir(inbox_dir):
+        filename2requires = {}
+        for filename in os.listdir(self.inbox_dir):
             if filename.endswith(b'.task') and b'-' in filename:
                 candidate_tasks.append(filename)
+                if filename in self.filename2requires:
+                    reqired_files = self.filename2requires[filename]
+                    filename2requires[filename] = reqired_files
+        self.filename2requires = filename2requires
         candidate_tasks.sort()
         #print('# candidate tasks in inbox:', len(candidate_tasks))
         for filename in candidate_tasks:
-            taskfile    = b'/'.join((inbox_dir, filename))
-            task_id, task_bucket = filename[:-5].rsplit(b'-', 1)
-            bucket_dir  = b'/'.join((active_dir, task_bucket))
-            my_makedirs(bucket_dir)
-            active_name = b'%s/%s.task' %(bucket_dir, task_id)
-            try:
-                os.rename(taskfile, active_name)
-            except:
-                print('Task %s claimed by other worker' %utilities.std_string(task_id))
+            eligible = 'unknown'
+            if filename in filename2requires:
+                reqired_files = filename2requires[filename]
+                eligible = 'yes'
+                for required_file in reqired_files:
+                    if not os.path.exists(required_file):
+                        eligible = 'no'
+                        break
+            if eligible == 'no':
                 continue
-            f = open(active_name, 'rb')
-            eligible = True
+            # read contents of task file
+            taskfile = b'/'.join((self.inbox_dir, filename))
+            f = open(taskfile, 'rb')
             delete_task = False
             expires = 0.0
             lcode = None
+            required_files = []
             while True:
                 line = f.readline().rstrip()
                 if not line: # empty line or EOF
@@ -426,27 +442,41 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
                         delete_task = True
                 elif line.startswith(b'lcode'):
                     lcode = fields[1]
-                elif line.startswith(b'requires'):
+                elif line.startswith(b'requires') and eligible == 'unknown':
                     needed_file = fields[1]
                     if not os.path.exists(needed_file):
-                        eligible = False
-                if delete_task or not eligible:
-                    break
-            if delete_task or not eligible:
-                f.close()
+                        eligible = 'no'
                 if delete_task:
-                    os.unlink(active_name)
-                else:
-                    # re-queue in inbox
-                    os.rename(active_name, taskfile)
+                    break
+            if delete_task:
+                f.close()
+                delete_name = '%s/%s' %(self.delete_dir, filename)
+                try:
+                    os.rename(taskfile, delete_name)
+                except:
+                    print('Task %s claimed by other worker' %utilities.std_string(task_id))
+                continue
+            self.filename2requires[filename] = reqired_files
+            if eligible == 'no':
+                f.close()
                 continue
             command = f.read().split(b'\n')
             f.close()
+            # try to claim this task
+            task_id, task_bucket = filename[:-5].rsplit(b'-', 1)
+            bucket_dir  = b'/'.join((self.active_dir, task_bucket))
+            my_makedirs(bucket_dir)
+            active_name = b'%s/%s.task' %(bucket_dir, task_id)
+            try:
+                os.rename(taskfile, active_name)
+            except:
+                print('Task %s claimed by other worker' %utilities.std_string(task_id))
+                continue
             # handle last line with linebreak
             if command and command[-1] == b'':
                 del command[-1]
             # found the first task eligible to run
-            task = task_processor(command, **extra_kw_parameters)
+            task = self.task_processor(command, **self.extra_kw_parameters)
             task.active_name = active_name
             task.submit_time = os.path.getmtime(active_name)
             task.task_id = task_id
@@ -455,7 +485,7 @@ def pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters):
             if lcode:
                 task.lcode = lcode
             return task
-    return None
+        return None
 
 def worker(
     queue_name = 'udpf',
@@ -473,9 +503,14 @@ def worker(
     queue_dir  = b'/'.join((tt_task_dir, utilities.bstring(queue_name)))
     inbox_dir  = b'/'.join((queue_dir, b'inbox'))
     active_dir = b'/'.join((queue_dir, b'active'))
+    delete_dir = b'/'.join((queue_dir, b'deleted'))
     final_dir  = b'/'.join((queue_dir, b'completed'))
-    for required_dir in (inbox_dir, active_dir, final_dir):
+    for required_dir in (inbox_dir, delete_dir, active_dir, final_dir):
         my_makedirs(required_dir)
+    task_queue = TaskQueue(
+        inbox_dir, active_dir, delete_dir,
+        task_processor, extra_kw_parameters
+    )
     start_time = time.time()
     print('Worker loop starting', time.ctime(start_time))
     if opt_max_idle:
@@ -499,7 +534,7 @@ def worker(
             if callback:
                 callback.on_worker_exit()
             sys.exit(0)
-        task = pick_task(inbox_dir, active_dir, task_processor, extra_kw_parameters)
+        task = task_queue.pick_task()
         if task is not None:
             task.start_time = time.time()
             print('Running task %r' %task)
