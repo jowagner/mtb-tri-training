@@ -1120,6 +1120,7 @@ def main():
                     learner_rank = learner_index + 1
                     dataset = new_candidate_sets[learner_index][-1]
                     # write new labelled data to file
+                    # (this data may be bigger than the configured augment size)
                     tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
                         opt_workdir, training_round, subset_part, learner_rank
                     )
@@ -1182,6 +1183,7 @@ def main():
                     opt_augment_attempts, with_replacement = False,
                     prefer_smaller = True,
                 )
+            # keep conllu copy of the data after pruning to augment size
             write_dataset(new_dataset, '%s/new-selected-set-%02d-%d.conllu' %(
                 opt_workdir, training_round, learner_rank
             ))
