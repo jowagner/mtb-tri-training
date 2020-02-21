@@ -101,6 +101,10 @@ p2text = {
     'g': '+fasttext',
     'h': '+elmo',
 }
+v2text = {
+    '-': 'no, using copy of seed sample',
+    'o': 'yes, labelled data oversampled to size of unlabelled data',
+}
 s2text = {
     '-': 'bootstrap samples of labelled data',
     'w': 'permutations of labelled data',
@@ -109,6 +113,7 @@ s2text = {
 d2text = {
     '-': 'use all',
     'v': 'vanilla',
+    'y': 'last 5',
     'z': 'decaying',
 }
 
@@ -313,7 +318,7 @@ def print_n_round_for_language_and_parser(target_language, target_parser):
                         setting_key = (self.target_language, p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
                         n_rounds = setting2rounds[setting_key]
                         row.append('%d' %n_rounds)
-    print('<h4>Number of Rounds for Language %s and Parser %s</h4>' %(
+    print('<h4>Number of Rounds for %s and Parser %s</h4>' %(
         l2text[target_language], p2text[target_parser]
     ))
     row_producer = RowProducer(target_language, target_parser)
@@ -348,7 +353,7 @@ def print_n_round_for_language_by_parser(target_language):
                             values.append(n_rounds)
                         n_rounds = min(values)
                         row.append('%d' %n_rounds)
-    print('<h4>Number of Rounds for Language %s by Parser</h4>' %(
+    print('<h4>Number of Rounds for %s by Parser</h4>' %(
         l2text[target_language]
     ))
     row_producer = RowProducer(target_language)
@@ -383,7 +388,7 @@ def print_n_round_for_language_by_sample(target_language):
                             values.append(n_rounds)
                         n_rounds = min(values)
                         row.append('%d' %n_rounds)
-    print('<h4>Number of Rounds for Language %s by Seed Sampling Method</h4>' %(
+    print('<h4>Number of Rounds for %s by Seed Sampling Method</h4>' %(
         l2text[target_language]
     ))
     row_producer = RowProducer(target_language)
@@ -461,6 +466,7 @@ def print_n_round_overall():
     print_n_round_overall_by_parser()
     print_n_round_overall_by_sample()
 
+best_score = None
 for row in rows:
     parser, sample = row[1].split()
     language = row[0]
@@ -475,6 +481,25 @@ for row in rows:
         distribution = None
     if last_language != language and last_language is not None:
         print(legend)
+        if best_score is not None:
+            print('<h4>Best Model for %s</h4>' %l2text[last_language])
+            best_model_description = []
+            best_model_description.append('score = %.1f' %best_score)
+            best_ag_k = int(0.5+5*(2.0**0.5)**int(best_augsize))
+            best_model_description.append('augsize = %s (%dk)' %(best_augsize, best_ag_k))
+            best_model_description.append('parser = %s' %(p2text[best_parser]))
+            best_model_description.append('seed sampling = %s' %(s2text[best_sample]))
+            best_model_description.append('decay = %s' %(d2text[best_decay]))
+            best_model_description.append('oversampling = %s' %(v2text[best_oversampling]))
+            best_model_description.append('round = %s' %best_n_rounds)
+            best_model_description.append('experiment code = %s%s%s%s%s%s3%s' %(
+                last_language, best_parser, best_oversampling, best_sample,
+                '-', best_decay, best_augsize
+            ))
+            best_model_description = '</br>\n'.join(best_model_description)
+            print('<p>%s</p>' %best_model_description)
+            best_score = None
+        best_model = None
         print_n_round_for_language(last_language)
     if language is None:
         break
@@ -520,6 +545,14 @@ for row in rows:
         print('%s<b>%s</b></td>' %(tdcode, sccode))
     else:
         print('%s%s</td>' %(tdcode, sccode))
+    if best_score is None or score > best_score:
+        best_score = score
+        best_augsize = augsize
+        best_parser = parser
+        best_sample = sample
+        best_decay = decay
+        best_oversampling = oversampling
+        best_n_rounds = n_rounds
     rowbaseline = score
     for text in row[baseline_column+1:]:
         tt_round += 1
@@ -535,6 +568,14 @@ for row in rows:
             print('%s<b><font color="red">%s</font></b></td>' %(tdcode, sccode))
         else:
             print('%s%s</td>' %(tdcode, sccode))
+        if score > best_score:
+            best_score = score
+            best_augsize = augsize
+            best_parser = parser
+            best_sample = sample
+            best_decay = decay
+            best_oversampling = oversampling
+            best_n_rounds = n_rounds
     last_sample = sample
     last_parser = parser
     last_language = language
