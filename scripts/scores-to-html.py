@@ -13,6 +13,7 @@
 
 from __future__ import print_function
 
+from collections import defaultdict
 import os
 import sys
 
@@ -261,6 +262,205 @@ legend = '\n'.join(legend)
 
 print(legend)
 
+setting2rounds = defaultdict(lambda: 0)
+
+def remove_zero(row):
+    for i in range(len(row)):
+        if row[i] == '0':
+            row[i] = ''
+
+def print_n_round_table(row_producer):
+    print('<table cellpadding="4" border="1">')
+    row_producer.print_top_header(left_columns = 1)
+    row = []
+    row.append('aug_size')
+    row_producer.get_secondary_header(row)
+    row = '</th><th>'.join(row)
+    print('<tr><th>%s</th></tr>' %row)
+    for p_augsize in '0123456789':
+        augsize_k = int(0.5+5*(2.0**0.5)**int(p_augsize))
+        row = []
+        row.append('%s: %dk' %(p_augsize, augsize_k))
+        row_producer.get_row(row, p_augsize)
+        remove_zero(row)
+        row = '</td><td align="right">'.join(row)
+        print('<tr><td>%s</td></tr>' %row)
+    print('</table>')
+
+def print_n_round_for_language_and_parser(target_language, target_parser):
+    class RowProducer:
+        def __init__(self, target_language, target_parser):
+            self.target_language = target_language
+            self.target_parser   = target_parser
+        def print_top_header(self, left_columns):
+            print('<tr><th colspan="%d">' %left_columns)
+            row = []
+            row.append('')
+            for p_sample in '-wx':
+                row.append(s2text[p_sample])
+            print('</th><th colspan="4">'.join(row))
+            print('</th></tr>')
+        def get_secondary_header(self, row):
+            for p_sample in '-wx':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        p_code = '%s%s%s%s-%s' %(self.target_language, self.target_parser, p_oversampling, p_sample, p_decay)
+                        row.append(p_code)
+        def get_row(self, row, p_augsize):
+            for p_sample in '-wx':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        setting_key = (self.target_language, p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
+                        n_rounds = setting2rounds[setting_key]
+                        row.append('%d' %n_rounds)
+    print('<h4>Number of Rounds for Language %s and Parser %s</h4>' %(
+        l2text[target_language], p2text[target_parser]
+    ))
+    row_producer = RowProducer(target_language, target_parser)
+    print_n_round_table(row_producer)
+
+def print_n_round_for_language_by_parser(target_language):
+    class RowProducer:
+        def __init__(self, target_language):
+            self.target_language = target_language
+        def print_top_header(self, left_columns):
+            print('<tr><th colspan="%d">' %left_columns)
+            row = []
+            row.append('')
+            for p_parser in 'fgh':
+                row.append(p2text[p_parser])
+            print('</th><th colspan="4">'.join(row))
+            print('</th></tr>')
+        def get_secondary_header(self, row):
+            for p_parser in 'fgh':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        p_code = '%s%s%s%s-%s' %(self.target_language, p_parser, p_oversampling, '*', p_decay)
+                        row.append(p_code)
+        def get_row(self, row, p_augsize):
+            for p_parser in 'fgh':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        values = []
+                        for p_sample in '-wx':
+                            setting_key = (self.target_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                            n_rounds = setting2rounds[setting_key]
+                            values.append(n_rounds)
+                        n_rounds = min(values)
+                        row.append('%d' %n_rounds)
+    print('<h4>Number of Rounds for Language %s by Parser</h4>' %(
+        l2text[target_language]
+    ))
+    row_producer = RowProducer(target_language)
+    print_n_round_table(row_producer)
+
+def print_n_round_for_language_by_sample(target_language):
+    class RowProducer:
+        def __init__(self, target_language):
+            self.target_language = target_language
+        def print_top_header(self, left_columns):
+            print('<tr><th colspan="%d">' %left_columns)
+            row = []
+            row.append('')
+            for p_sample in '-wx':
+                row.append(s2text[p_sample])
+            print('</th><th colspan="4">'.join(row))
+            print('</th></tr>')
+        def get_secondary_header(self, row):
+            for p_sample in '-wx':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        p_code = '%s%s%s%s-%s' %(self.target_language, '*', p_oversampling, p_sample, p_decay)
+                        row.append(p_code)
+        def get_row(self, row, p_augsize):
+            for p_sample in '-wx':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        values = []
+                        for p_parser in 'fgh':
+                            setting_key = (self.target_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                            n_rounds = setting2rounds[setting_key]
+                            values.append(n_rounds)
+                        n_rounds = min(values)
+                        row.append('%d' %n_rounds)
+    print('<h4>Number of Rounds for Language %s by Seed Sampling Method</h4>' %(
+        l2text[target_language]
+    ))
+    row_producer = RowProducer(target_language)
+    print_n_round_table(row_producer)
+
+def print_n_round_overall_by_parser():
+    class RowProducer:
+        def print_top_header(self, left_columns):
+            print('<tr><th colspan="%d">' %left_columns)
+            row = []
+            row.append('')
+            for p_parser in 'fgh':
+                row.append(p2text[p_parser])
+            print('</th><th colspan="4">'.join(row))
+            print('</th></tr>')
+        def get_secondary_header(self, row):
+            for p_parser in 'fgh':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        p_code = '%s%s%s%s-%s' %('*', p_parser, p_oversampling, '*', p_decay)
+                        row.append(p_code)
+        def get_row(self, row, p_augsize):
+            for p_parser in 'fgh':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        values = []
+                        for p_sample in '-wx':
+                            for p_language in 'ehuv':
+                                setting_key = (p_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                                n_rounds = setting2rounds[setting_key]
+                                values.append(n_rounds)
+                        n_rounds = min(values)
+                        row.append('%d' %n_rounds)
+    print('<h4>Number of Rounds overall by Parser</h4>')
+    row_producer = RowProducer()
+    print_n_round_table(row_producer)
+
+def print_n_round_overall_by_sample():
+    class RowProducer:
+        def print_top_header(self, left_columns):
+            print('<tr><th colspan="%d">' %left_columns)
+            row = []
+            row.append('')
+            for p_sample in '-wx':
+                row.append(s2text[p_sample])
+            print('</th><th colspan="4">'.join(row))
+            print('</th></tr>')
+        def get_secondary_header(self, row):
+            for p_sample in '-wx':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        p_code = '%s%s%s%s-%s' %('*', '*', p_oversampling, p_sample, p_decay)
+                        row.append(p_code)
+        def get_row(self, row, p_augsize):
+            for p_sample in '-wx':
+                for p_decay in '-v':
+                    for p_oversampling in '-o':
+                        values = []
+                        for p_parser in 'fgh':
+                            for p_language in 'ehuv':
+                                setting_key = (p_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                                n_rounds = setting2rounds[setting_key]
+                                values.append(n_rounds)
+                        n_rounds = min(values)
+                        row.append('%d' %n_rounds)
+    print('<h4>Number of Rounds overall by Seed Sampling Method</h4>')
+    row_producer = RowProducer()
+    print_n_round_table(row_producer)
+
+def print_n_round_for_language(target_language):
+    print_n_round_for_language_by_parser(target_language)
+    print_n_round_for_language_by_sample(target_language)
+
+def print_n_round_overall():
+    print_n_round_overall_by_parser()
+    print_n_round_overall_by_sample()
+
 for row in rows:
     parser, sample = row[1].split()
     language = row[0]
@@ -268,9 +468,14 @@ for row in rows:
     if (last_language, last_parser, last_sample) != (language, parser, sample) \
     and last_sample is not None:
         print('</table>')
+        if (last_language, last_parser) != (language, parser) \
+        and last_language is not None \
+        and last_parser is not None:
+            print_n_round_for_language_and_parser(last_language, last_parser)
         distribution = None
     if last_language != language and last_language is not None:
         print(legend)
+        print_n_round_for_language(last_language)
     if language is None:
         break
     if last_language != language:
@@ -292,7 +497,13 @@ for row in rows:
             continue
         print('<td>%s</td>' %row[i])
     # number of rounds
-    print('<td>%s</td>' %row[baseline_column-2])
+    n_rounds = row[baseline_column-2]
+    print('<td>%s</td>' %n_rounds)
+    oversampling, _, agreement, decay = row[baseline_column-6]
+    if agreement != '-':
+        raise ValueError('Only default agreement supported so far')
+    setting_key = (language, augsize, parser, sample, decay, oversampling)
+    setting2rounds[setting_key] = int(n_rounds)
     # size in last round
     print('<td>%.1fk</td>' %(0.001*int(row[baseline_column-1])))
     bestbaselinescore = langandparser2bestbaseline[(language, parser, sample)]
@@ -301,9 +512,9 @@ for row in rows:
     score, date, n_tokens, n_sentences = unpack_score(text)
     tt_round = 0
     if distribution is None:
-        tdcode = '<td>'
+        tdcode = '<td align="right">'
     else:
-        tdcode = '<td bgcolor="#%s">' %distribution.colour(score)
+        tdcode = '<td bgcolor="#%s" align="right">' %distribution.colour(score)
     sccode = get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score)
     if score == bestbaselinescore:
         print('%s<b>%s</b></td>' %(tdcode, sccode))
@@ -314,9 +525,9 @@ for row in rows:
         tt_round += 1
         score, date, n_tokens, n_sentences = unpack_score(text)
         if distribution is None:
-            tdcode = '<td>'
+            tdcode = '<td align="right">'
         else:
-            tdcode = '<td bgcolor="#%s">' %distribution.colour(score)
+            tdcode = '<td bgcolor="#%s" align="right">' %distribution.colour(score)
         sccode = get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score)
         if score >= bestbaselinescore:
             print('%s<b>%s</b></td>' %(tdcode, sccode))
@@ -330,6 +541,9 @@ for row in rows:
     last_augsize = augsize
 
 print('<body></html>')
+
+print('<h2>Overall Number of Rounds</h2>')
+print_n_round_overall()
 
 example_input = """
 Language	Parser	AugmentSizeIndex	Method	NumberOfLearners	Learner	TestSetIndex	Rounds	0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19
