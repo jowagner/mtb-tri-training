@@ -106,22 +106,31 @@ def incomplete(model_dir):
     return False
 
 def my_makedirs(required_dir):
-    if not os.path.exists(required_dir):
-        try:
-            os.makedirs(required_dir)
-        except OSError:
-            # folder was created by another process
-            # between the to calls above
-            # (in python 3, we will be able to use exist_ok=True)
-            pass
+    utilities.makedirs(required_dir)
 
-def run_command(command, queue_name = 'udpf', requires = None, priority = 50):
+def run_command(
+    command, queue_name = 'udpf', requires = None, priority = 50,
+    submit_and_return = False,
+    cleanup = None,
+):
     task = Task(command, queue_name, requires, priority = priority)
-    task.run()
+    if submit_and_return:
+        task.submit()
+        task.cleanup_object = cleanup
+        return task
+    else:
+        task.run()
+        cleanup.cleanup()
 
 def wait_for_tasks(task_list):
     for task in task_list:
         task.wait()
+        try:
+            cleanup = task.cleanup_object
+        except:
+            cleanup = None
+        if cleanup is not None:
+            cleanup.cleanup()
 
 class Task:
 

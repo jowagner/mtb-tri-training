@@ -1040,6 +1040,8 @@ def train(
     batch_size = 32,
     epochs = 60,
     priority = 50,
+    multi_treebank = False,
+    submit_and_return = False,
 ):
     if lcode is None:
         raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
@@ -1065,10 +1067,12 @@ def train(
             conllu_file = monitoring_datasets[i].filename
             command.append(conllu_file)
             command.append(npz_tasks.append(conllu_file))
-    common_udpipe_future.run_command(
+    task = common_udpipe_future.run_command(
         command,
         requires = npz_tasks.get_npz_files(),
         priority = priority,
+        submit_and_return = submit_and_return,
+        cleanup = npz_tasks,
     )
     npz_tasks.cleanup()
     if not os.path.exists(model_dir):

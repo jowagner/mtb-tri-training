@@ -8,6 +8,8 @@
 
 # Author: Joachim Wagner
 
+import os
+
 def hex2base62(h, min_length = 0):
     s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
     i = int(h, 16)
@@ -48,3 +50,12 @@ def iteritems(d):
     except AttributeError:
         return d.items()
 
+def makedirs(required_dir):
+    if not os.path.exists(required_dir):
+        try:
+            os.makedirs(required_dir)
+        except OSError:
+            # folder was created by another process
+            # between the to calls above
+            # (in python 3, we will be able to use exist_ok=True)
+            pass
