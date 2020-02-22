@@ -482,7 +482,7 @@ for row in rows:
     if last_language != language and last_language is not None:
         print(legend)
         if best_score is not None:
-            print('<h4>Best Model for %s</h4>' %l2text[last_language])
+            print('<h4>Best Model without Oversampling for %s</h4>' %l2text[last_language])
             best_model_description = []
             best_model_description.append('score = %.1f' %best_score)
             best_ag_k = int(0.5+5*(2.0**0.5)**int(best_augsize))
@@ -545,7 +545,8 @@ for row in rows:
         print('%s<b>%s</b></td>' %(tdcode, sccode))
     else:
         print('%s%s</td>' %(tdcode, sccode))
-    if best_score is None or score > best_score:
+    if oversampling == '-' \
+    and (best_score is None or score > best_score):
         best_score = score
         best_augsize = augsize
         best_parser = parser
@@ -568,7 +569,8 @@ for row in rows:
             print('%s<b><font color="red">%s</font></b></td>' %(tdcode, sccode))
         else:
             print('%s%s</td>' %(tdcode, sccode))
-        if score > best_score:
+        if oversampling == '-' \
+        and (best_score is None or score > best_score):
             best_score = score
             best_augsize = augsize
             best_parser = parser
