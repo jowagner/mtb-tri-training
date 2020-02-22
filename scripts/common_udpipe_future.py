@@ -64,6 +64,8 @@ def get_training_schedule(epochs = 60):
     if 'TT_DEBUG' in os.environ \
     and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
         epochs = 1 + int(epochs/20)
+    if 'UDPIPE_FUTURE_EPOCHS' in os.environ:
+        epochs = int(os.environ['UDPIPE_FUTURE_EPOCHS'])
     if epochs < 1:
         raise ValueError('Need at least 1 epoch to train a model.')
     ref_remaining = 60
