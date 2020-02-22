@@ -240,6 +240,9 @@ def main():
 
                     time.sleep(0.5)
                     print()
+                    print('# tasks so far:', len(tasks))
+                    print()
+
 
     # we must wait for training and prediction tasks to finish in order for
     # temporary files to be deleted
