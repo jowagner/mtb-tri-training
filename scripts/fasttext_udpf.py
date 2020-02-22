@@ -27,6 +27,8 @@ def train(
     batch_size = 32,
     epochs = 60,
     priority = 50,
+    is_multi_treebank = False,
+    submit_and_return = False,
 ):
     if lcode is None:
         raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
@@ -42,43 +44,62 @@ def train(
     command.append(model_dir)
     command.append('%d' %batch_size)
     command.append(common_udpipe_future.get_training_schedule(epochs))
+    if is_multi_treebank:
+        command.append('--extra_input tbemb')
+    else:
+        command.append('')
     for i in range(2):
         if len(monitoring_datasets) > i:
-            command.append(monitoring_datasets[i].filename)
-    common_udpipe_future.run_command(command, priority = priority)
+            conllu_file = monitoring_datasets[i]
+            if type(conllu_file) is tuple:
+                conllu_file = conllu_file[0]
+            if type(conllu_file) is not str:
+                conllu_file = conllu_file.filename
+            command.append(conllu_file)
+    task = common_udpipe_future.run_command(
+        command,
+        priority = priority,
+        submit_and_return = submit_and_return,
+    )
+    if submit_and_return:
+        return task
+    check_model(model_dir)
+
+def check_model(model_dir):
     if not os.path.exists(model_dir):
         raise ValueError('Failed to train parser (missing output)')
     if common_udpipe_future.incomplete(model_dir):
+        # do not leave erroneous model behind
         if common_udpipe_future.memory_error(model_dir):
-            # do not leave erroneous model behind
-            os.rename(model_dir, model_dir+('-oom-%d' %batch_size))
-            # try again with smaller batch size:
-            if batch_size == 1:
-                raise ValueError('Cannot train parser even with batch size 1.')
-            new_batch_size = int(batch_size/2)
-            print('Parser ran out of memory. Re-trying with batch size %d' %new_batch_size)
-            train(dataset_filename, seed, model_dir,
-                epoch_selection_dataset = epoch_selection_dataset,
-                monitoring_datasets = monitoring_datasets,
-                lcode = lcode,
-                batch_size = new_batch_size,
-            )
+            # out-of-memory error detected
+            error_name = model_dir + '-oom'
         else:
-            # do not leave incomplete model behind
+            # other errors
             error_name = model_dir + '-incomplete'
-            os.rename(model_dir, error_name)
-            raise ValueError('Model is missing essential files: ' + error_name)
+        os.rename(model_dir, error_name)
+        raise ValueError('Model is missing essential files: ' + error_name)
 
 def predict(
     model_path, input_path, prediction_output_path,
     priority = 50,
+    is_multi_treebank = False,
+    submit_and_return = False,
 ):
     command = []
     command.append('./fasttext_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
     command.append(prediction_output_path)
-    common_udpipe_future.run_command(command, priority = priority)
+    if is_multi_treebank:
+        command.append('--extra_input tbemb')
+    else:
+        command.append('')
+    task = common_udpipe_future.run_command(
+        command, priority = priority,
+        submit_and_return = submit_and_return,
+    )
+    if submit_and_return:
+        return task
 
 def main():
     raise NotImplementedError

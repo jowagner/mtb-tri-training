@@ -25,6 +25,8 @@ test -z $5 && echo "Missing language code"
 test -z $5 && exit 1
 LANG_CODE=$5
 
+EXTRA_OPTIONS="$6"
+
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 WORKDIR=$(realpath "${OUTPUT}")-workdir
@@ -78,6 +80,7 @@ for ENTRY in   \
 done
 
 python ${PARSER_DIR}/ud_parser.py  \
+    ${EXTRA_OPTIONS}                \
     --predict                        \
     --predict_input "${REAL_INPUT}"    \
     --predict_output "${REAL_OUTPUT}"   \

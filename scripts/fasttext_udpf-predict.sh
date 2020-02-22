@@ -17,6 +17,8 @@ test -z $3 && echo "Missing conllu output file"
 test -z $3 && exit 1
 OUTPUT=$3
 
+EXTRA_OPTIONS="$4"
+
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 source ${PRJ_DIR}/config/locations.sh
@@ -65,6 +67,7 @@ for ENTRY in   \
 done
 
 python ${PARSER_DIR}/ud_parser.py  \
+    ${EXTRA_OPTIONS}                \
     --predict                        \
     --predict_input "${REAL_INPUT}"    \
     --predict_output "${REAL_OUTPUT}"    \

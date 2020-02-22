@@ -42,10 +42,11 @@ test -z $7 && exit 1
 LANG_CODE=$7
 
 # optional args:
-DEV_SET=$8
-DEV_NPZ=$9
-TEST_SET=${10}
-TEST_NPZ=${11}
+EXTRA_OPTIONS="$8"
+DEV_SET=$9
+DEV_NPZ=${10}
+TEST_SET=${11}
+TEST_NPZ=${12}
 
 if [ -n "$TEST_SET" ]; then
     REAL_TEST_SET=$(realpath ${TEST_SET})
@@ -134,6 +135,7 @@ echo "Batch size is $BATCH_SIZE" >> training.start
 echo "Minimum number of batches in each epoch: $MIN_EPOCH_BATCHES" >> training.start
 
 python ${PARSER_DIR}/ud_parser.py \
+    ${EXTRA_OPTIONS}              \
     --elmo ${ELMO_FILE_PREFIX}    \
     --embeddings fasttext.npz     \
     --seed ${SEED}                \

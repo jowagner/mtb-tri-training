@@ -870,7 +870,7 @@ class ElmoCache:
     def p_submit(self, entries, workdir, npz_name):
         if not entries:
             return 0
-        max_per_elmo_task = 5000
+        max_per_elmo_task = 2000
         if 'TT_DEBUG' in os.environ \
         and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
             max_per_elmo_task = 400
@@ -1040,7 +1040,7 @@ def train(
     batch_size = 32,
     epochs = 60,
     priority = 50,
-    multi_treebank = False,
+    is_multi_treebank = False,
     submit_and_return = False,
 ):
     if lcode is None:
@@ -1062,9 +1062,17 @@ def train(
     command.append('%d' %batch_size)
     command.append(common_udpipe_future.get_training_schedule(epochs))
     command.append(lcode)
+    if is_multi_treebank:
+        command.append('--extra_input tbemb')
+    else:
+        command.append('')
     for i in range(2):
         if len(monitoring_datasets) > i:
-            conllu_file = monitoring_datasets[i].filename
+            conllu_file = monitoring_datasets[i]
+            if type(conllu_file) is tuple:
+                conllu_file = conllu_file[0]
+            if type(conllu_file) is not str:
+                conllu_file = conllu_file.filename
             command.append(conllu_file)
             command.append(npz_tasks.append(conllu_file))
     task = common_udpipe_future.run_command(
@@ -1074,7 +1082,8 @@ def train(
         submit_and_return = submit_and_return,
         cleanup = npz_tasks,
     )
-    npz_tasks.cleanup()
+    if submit_and_return:
+        return task
     if not os.path.exists(model_dir):
         raise ValueError('Failed to train parser (missing output)')
     if common_udpipe_future.incomplete(model_dir):
@@ -1098,7 +1107,12 @@ def train(
             os.rename(model_dir, error_name)
             raise ValueError('Model is missing essential files: ' + error_name)
 
-def predict(model_path, input_path, prediction_output_path, priority = 50):
+def predict(
+    model_path, input_path, prediction_output_path,
+    priority = 50,
+    is_multi_treebank = False,
+    submit_and_return = False,
+):
     # read lcode from model file
     lcode_file = open('%s/elmo-lcode.txt' %model_path, 'rb')
     lcode = lcode_file.readline().rstrip()
@@ -1112,12 +1126,19 @@ def predict(model_path, input_path, prediction_output_path, priority = 50):
     command.append(npz_tasks.append(input_path))
     command.append(prediction_output_path)
     command.append(lcode)
+    if is_multi_treebank:
+        command.append('--extra_input tbemb')
+    else:
+        command.append('')
     common_udpipe_future.run_command(
         command,
         requires = npz_tasks.get_npz_files(),
         priority = priority,
+        submit_and_return = submit_and_return,
+        cleanup = npz_tasks,
     )
-    npz_tasks.cleanup()
+    if submit_and_return:
+        return task
 
 def main():
     last_arg_name = 'QUEUENAME'

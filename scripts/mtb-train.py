@@ -19,6 +19,9 @@ import string
 import sys
 import time
 
+import common_udpipe_future
+import fasttext_udpf
+import elmo_udpf
 import utilities
 
 def include_all(is_orig, is_seed_set, learner, tt_round):
@@ -62,10 +65,10 @@ def no_label(is_orig, is_seed_set, learner, tt_round):
     return 'na'
 
 def main():
-    n_seeds = 11
+    n_seeds = 5
     workdir = 'workdirs'
     tb_dir = os.environ['UD_TREEBANK_DIR']
-    oversample_ratios = [1,2,5,10,20,25,50]
+    oversample_ratios = [1,]
     settings = []
     for constraint in range(n_seeds+len(oversample_ratios)):
         for seed_index in range(n_seeds):
@@ -75,15 +78,18 @@ def main():
     tasks = []
     for setting_idx, setting in enumerate(settings):
         seed_index, oversample_ratio = setting
-        model_init_seed = 101 + seed_index
-        print('== Setting %d of %d: Seed %d with oversampling ratio %d ==' %(
-            setting_idx+1, len(settings), seed, oversample_ratio
+        model_init_seed = '%03d' %(101 + seed_index)
+        print('\n\n== Setting %d of %d: Seed %s with oversampling ratio %d ==\n' %(
+            setting_idx+1, len(settings), model_init_seed, oversample_ratio
         ))
         for lcode, source_experiment, source_round, tbid, tbname in [
-            ('en', 'ehox--38', 5, 'en_ewt',    'English-EWT'),
-            ('hu', 'hhox--38', 5, 'hu_szeged', 'Hungarian-Szeged'),
-            ('ug', 'uhox--38', 5, 'ug_udt',    'Uyghur-UDT'),
-            ('vi', 'vh-x--36', 9, 'vi_vtb',    'Vietnamese-VTB'),
+            #'en', 'ehox--38', 5, 'en_ewt',    'English-EWT'),      # LAS 84.9
+            ('en', 'eh-x--38', 5, 'en_ewt',    'English-EWT'),      # LAS 84.8
+            #'hu', 'hhox--38', 5, 'hu_szeged', 'Hungarian-Szeged'), # LAS 85.8
+            ('hu', 'hh-x--38', 5, 'hu_szeged', 'Hungarian-Szeged'), # LAS 85.8
+            #'ug', 'uhox--38', 5, 'ug_udt',    'Uyghur-UDT'),       # LAS 71.9
+            ('ug', 'uh-x--36', 9, 'ug_udt',    'Uyghur-UDT'),       # LAS 71.9
+            ('vi', 'vh-x--36', 9, 'vi_vtb',    'Vietnamese-VTB'),   # LAS 68.0
         ]:
             if source_experiment[5] != '-':
                 raise ValueError('Subsampling of synthethic training data not yet supported')
@@ -125,9 +131,9 @@ def main():
                 continue
             # create the different multi-treebank partitions
             for data_short_name, is_included in [
-                ('plus1',   include_plus_1),
+                #('plus1',   include_plus_1),
                 ('learners', include_learners_only),
-                ('all',      include_all),
+                #('all',      include_all),
             ]:
                 for label_short_name, labeller in [
                     ('concat', no_label),
@@ -136,10 +142,12 @@ def main():
                     ('byboth', label_by_learner_and_type),
                     ('byround', label_by_round),
                 ]:
-                    exp_dir = '%s/mtb/%s/%s/%s/osr-%02d/seed-%d' %(
+                    exp_dir = '%s/mtb/%s/%s/%s/osr-%02d/seed-%s' %(
                         workdir, lcode, data_short_name, label_short_name,
-                        oversample_ratio, seed
+                        oversample_ratio, model_init_seed
                     )
+                    print(exp_dir)
+                    print()
                     utilities.makedirs(exp_dir)
                     tcode = 'xyz' # data_short_name + label_short_name
                     # get label set
@@ -154,7 +162,7 @@ def main():
                         continue
                     is_multi_treebank = n_labels > 1
                     f = open('%s/labels.txt' %exp_dir, 'w')
-                    for label in labels:
+                    for label in sorted(list(labels)):
                         f.write(label)
                         f.write('\n')
                     f.close()
@@ -166,7 +174,11 @@ def main():
                             label = labeller(is_orig, is_seed_set, learner, tt_round)
                             f.write(b'# tbemb=%s\n' %utilities.bstring(label))
                             conllu_input = open(input_path, 'rb')
-                            f.write(conllu_input.read())
+                            conllu_data = conllu_input.read()
+                            f.write(conllu_data)
+                            if (is_orig or is_seed_set) and oversample_ratio > 1:
+                                for _ in range(oversample_ratio-1):
+                                    f.write(conllu_data)
                             conllu_input.close()
                     f.close()
                     # create test files
@@ -190,27 +202,21 @@ def main():
 
                     # submit tasks to train parsers
                     model_details = []
-                    if is_multi_treebank:
-                        # train multi-treebank model
-                        pass # raise NotImplementedError
-                        # TODO: can we use is_multi_treebank as below?
-                    else:
-                        # train mono-treebank model, if it doesn't exist yet
-                        for (parser_name, parser_module) in [
-                            ('elmo_udpf', elmo_udpf),
-                            ('fasttext_udpf', fasttext_udpf),
-                        ]:
-                            model_path = '%s/%s' %(exp_dir, parser_name)
-                            if not os.path.exists(model_path):
-                                tasks.append(parser_module.train(
-                                    tr_path, model_init_seed, model_path,
-                                    epoch_selection_set = None,
-                                    monitoring_datasets = test_details,
-                                    priority = 0,
-                                    is_multi_treebank = is_multi_treebank,
-                                    submit_and_return = True,
-                                ))
-                            model_details.append((model_path, parser_module, parser_name))
+                    for (parser_name, parser_module) in [
+                        ('elmo_udpf', elmo_udpf),
+                        #('fasttext_udpf', fasttext_udpf),
+                    ]:
+                        model_path = '%s/%s' %(exp_dir, parser_name)
+                        if not os.path.exists(model_path):
+                            tasks.append(parser_module.train(
+                                tr_path, model_init_seed, model_path,
+                                monitoring_datasets = test_details,
+                                lcode = lcode,
+                                priority = int(50*setting_idx/len(settings)),
+                                is_multi_treebank = is_multi_treebank,
+                                submit_and_return = True,
+                            ))
+                        model_details.append((model_path, parser_module, parser_name))
 
                     # submit tasks to make predictions for all test files and models
                     prediction_paths = []
@@ -231,6 +237,9 @@ def main():
                     # submit tasks to evaluate predictions
                     for prediction_path, test_path in prediction_paths:
                         requires = [prediction_path]
+
+                    time.sleep(0.5)
+                    print()
 
     # we must wait for training and prediction tasks to finish in order for
     # temporary files to be deleted
