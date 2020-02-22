@@ -1,0 +1,21 @@
+#!/bin/bash
+  
+#SBATCH -p compute       # which partition to run on
+#SBATCH -J mtb-tr5   # name for the job
+#SBATCH -d singleton
+#SBATCH --mem=25000
+#SBATCH --cpus-per-task=2
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+
+source ${HOME}/tri-training/mtb-tri-training/config/locations.sh
+
+SCRIPTDIR=${PRJ_DIR}/scripts
+
+cd ${SCRIPTDIR}
+
+export UDPIPE_FUTURE_EPOCHS=20
+
+./mtb-train.py
+
