@@ -238,9 +238,14 @@ def main():
                     for prediction_path, test_path in prediction_paths:
                         requires = [prediction_path]
 
-                    time.sleep(0.5)
                     print()
                     print('# tasks so far:', len(tasks))
+                    if setting_idx == 0:
+                        print('sleeping 1 minute')
+                        time.sleep(60.0)
+                    else:
+                        print('sleeping 20 minutes')
+                        time.sleep(1200.0)
                     print()
 
 
