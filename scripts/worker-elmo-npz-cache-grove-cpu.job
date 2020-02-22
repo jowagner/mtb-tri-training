@@ -44,6 +44,6 @@ python3 ./elmo_udpf.py   \
     --stopfile $STOPFILE   \
     --max-idle 4.0         \
     elmo-npz               \
-    2> ${HOME}/tri-training/elmo-npz-cache.err \
-    >  ${HOME}/tri-training/elmo-npz-cache.out
+    2> ${HOME}/tri-training/elmo-npz-cache-${SLURM_JOB_ID}.err \
+    >  ${HOME}/tri-training/elmo-npz-cache-${SLURM_JOB_ID}.out
 
