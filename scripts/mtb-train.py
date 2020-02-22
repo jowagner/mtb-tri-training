@@ -66,7 +66,7 @@ def no_label(is_orig, is_seed_set, learner, tt_round):
 
 def main():
     n_seeds = 5
-    workdir = 'workdirs'
+    workdir = '/'.join((os.environ['PRJ_DIR'], 'workdirs'))
     tb_dir = os.environ['UD_TREEBANK_DIR']
     oversample_ratios = [1,]
     settings = []
