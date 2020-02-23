@@ -68,6 +68,10 @@ def main():
     n_seeds = 5
     workdir = '/'.join((os.environ['PRJ_DIR'], 'workdirs'))
     tb_dir = os.environ['UD_TREEBANK_DIR']
+    if 'TT_MTB_SEED_START' in os.environ:
+        seed_start = int(os.environ['TT_MTB_SEED_START']
+    else:
+        seed_start = 101
     oversample_ratios = [1,]
     settings = []
     for constraint in range(n_seeds+len(oversample_ratios)):
@@ -78,7 +82,7 @@ def main():
     tasks = []
     for setting_idx, setting in enumerate(settings):
         seed_index, oversample_ratio = setting
-        model_init_seed = '%03d' %(101 + seed_index)
+        model_init_seed = '%03d' %(seed_start + seed_index)
         print('\n\n== Setting %d of %d: Seed %s with oversampling ratio %d ==\n' %(
             setting_idx+1, len(settings), model_init_seed, oversample_ratio
         ))
