@@ -69,7 +69,7 @@ def main():
     workdir = '/'.join((os.environ['PRJ_DIR'], 'workdirs'))
     tb_dir = os.environ['UD_TREEBANK_DIR']
     if 'TT_MTB_SEED_START' in os.environ:
-        seed_start = int(os.environ['TT_MTB_SEED_START']
+        seed_start = int(os.environ['TT_MTB_SEED_START'])
     else:
         seed_start = 101
     oversample_ratios = [1,]
