@@ -164,13 +164,9 @@ class ElmoCache:
                 self.length = len(tokens)      # only needed for stats
             else:
                 self.length = -1
-            if 'EFML_NPZ_CACHE_MAX_WRITE' in os.environ:
-                self.npz_write_limit = utilities.float_with_suffix(
-                    os.environ['EFML_NPZ_CACHE_MAX_WRITE']
-                )
-            else:
-                self.npz_write_limit = None
-            self.npz_bytes_written = 0
+            #
+            # Reminder: ElmoCache.__init__() is further below
+            #
 
     def check_limits(self):
         if self.npz_write_limit \
@@ -621,6 +617,13 @@ class ElmoCache:
         self.last_sync = 0.0
         self.sync_interval = 900.0
         self.verbosity_interval = 60.0
+        if 'EFML_NPZ_CACHE_MAX_WRITE' in os.environ:
+            self.npz_write_limit = utilities.float_with_suffix(
+                os.environ['EFML_NPZ_CACHE_MAX_WRITE']
+            )
+        else:
+            self.npz_write_limit = None
+        self.npz_bytes_written = 0
         if 'TT_DEBUG' in os.environ \
         and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
             self.scan_interval = 1.0
