@@ -105,7 +105,7 @@ class ElmoNpzTask(common_udpipe_future.Task):
         # write npz file
         numpy.savez(utilities.std_string(npz_name) + '.prep.npz', **npz_data)
         os.rename(npz_name + b'.prep.npz', npz_name)
-        self.npz_bytes_written += os.path.getsize(npz_name)
+        self.cache.npz_bytes_written += os.path.getsize(npz_name)
         # clean up and mark as finished
         del self.cache.npz2ready_count[npz_name]
         self.sentences = None
