@@ -773,27 +773,7 @@ class ElmoCache:
             cache_size = os.environ['EFML_NPZ_CACHE_SIZE']
         else:
             raise ValueError('No EFML_NPZ_CACHE_SIZE configured')
-        multiplier = 1
-        for suffix, candidate_multiplier in [
-            ('TiB', 1024**4),
-            ('GiB', 1024**3),
-            ('MiB', 1024**2),
-            ('KiB', 1024),
-            ('TB', 1000**4),
-            ('GB', 1000**3),
-            ('MB', 1000**2),
-            ('KB', 1000),
-            ('T', 1000**4),
-            ('G', 1000**3),
-            ('M', 1000**2),
-            ('K', 1000),
-            ('B', 1),
-        ]:
-            if cache_size.endswith(suffix):
-                multiplier = candidate_multiplier
-                cache_size = cache_size[:-len(suffix)]
-                break
-        n_bytes = float(cache_size) * multiplier
+        n_bytes = utilities.float_with_suffix(cache_size)
         return int(n_bytes/self.record_size)
 
     def get_cache_key(self, tokens, hdf5_key, lcode):

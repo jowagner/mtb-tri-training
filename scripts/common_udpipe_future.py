@@ -509,10 +509,16 @@ def worker(
     last_arg = None,
     extra_kw_parameters = {},
     callback = None,
+    opt_require_quota_remaining = None,
 ):
     if task_processor is None:
         task_processor = Task
     extra_kw_parameters['queue_name'] = queue_name
+    if opt_require_quota_remaining is None \
+    and 'TT_TASK_QUOTA_REQUIRE_REMAINING' in os.environ:
+        opt_require_quota_remaining = utilities.float_with_suffix(
+            os.environ['TT_TASK_QUOTA_REQUIRE_REMAINING']
+        )
     tt_task_dir = utilities.bstring(os.environ['TT_TASK_DIR'])
     queue_dir  = b'/'.join((tt_task_dir, utilities.bstring(queue_name)))
     inbox_dir  = b'/'.join((queue_dir, b'inbox'))
@@ -533,18 +539,18 @@ def worker(
     last_verbose = 0.0
     while True:
         now = time.time()
+        exit_reason = None
         if opt_max_idle and now > idle_deadline:
-            print('\n*** Reached maximum idle time. ***\n')
-            if callback:
-                callback.on_worker_exit()
-            sys.exit(0)
+            exit_reason = 'Reached maximum idle time'
         if opt_deadline and now > opt_deadline:
-            print('\n*** Reached deadline. ***\n')
-            if callback:
-                callback.on_worker_exit()
-            sys.exit(0)
+            exit_reason = 'Reached deadline'
         if opt_stopfile and os.path.exists(opt_stopfile):
-            print('\n*** Found stop file. ***\n')
+            exit_reason = 'Found stop file'
+        if opt_require_quota_remaining \
+        and utilities.quota_remaining() < opt_require_quota_remaining:
+            exit_reason = 'Remaining disk quota too low'
+        if exit_reason:
+            print('\n*** %s ***\n' %exit_reason)
             if callback:
                 callback.on_worker_exit()
             sys.exit(0)

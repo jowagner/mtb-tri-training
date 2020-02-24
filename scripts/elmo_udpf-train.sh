@@ -157,3 +157,6 @@ touch training.end
 cd /
 mv $MODELDIR $FINAL_MODELDIR
 
+if [ -n "$UDPIPE_FUTURE_DELETE_INPUT_NPZ" ]; then
+   rm -f "$TRAIN_NPZ" "$TEST_NPZ" "$DEV_NPZ"
+fi

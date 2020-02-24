@@ -56,6 +56,7 @@ case "${SETTING}" in
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
     export UDPIPE_FUTURE_DIR=${HOME}/tri-training/UDPipe-Future
     export UDPIPE_FUTURE_LIB_PATH=/home/support/nvidia/cuda10/lib64:/home/support/nvidia/cudnn/cuda10_cudnn7_7.5/lib64
+    export UDPIPE_FUTURE_DELETE_INPUT_NPZ=set-means-yes
     export CONDA_HOME=${HOME}/anaconda3
     export UDPIPE_FUTURE_CONDA=udpf
     export CONLLU_COMBINER_DIR=${HOME}/tri-training/ADAPT-DCU/combination

@@ -9,6 +9,46 @@
 # Author: Joachim Wagner
 
 import os
+import subprocess
+
+def float_with_suffix(size):
+    multiplier = 1
+    for suffix, candidate_multiplier in [
+        ('TiB', 1024**4),
+        ('GiB', 1024**3),
+        ('MiB', 1024**2),
+        ('KiB', 1024),
+        ('TB', 1000**4),
+        ('GB', 1000**3),
+        ('MB', 1000**2),
+        ('KB', 1000),
+        ('T', 1000**4),
+        ('G', 1000**3),
+        ('M', 1000**2),
+        ('K', 1000),
+        ('B', 1),
+    ]:
+        if size.endswith(suffix):
+            multiplier = candidate_multiplier
+            size = size[:-len(suffix)]
+            break
+    return float(size) * multiplier
+
+def quota_remaining(mountpoint = None):
+    if mountpoint is None:
+        if 'TT_TASK_QUOTA_MOUNTPOINT' in os.environ:
+            mountpoint = os.environ['TT_TASK_QUOTA_MOUNTPOINT']
+        else:
+            mountpoint = '/home'
+    # Following 4 lines adapted from ssoto's answer on
+    # https://stackoverflow.com/questions/9781071/python-access-to-nfs-quota-information/16294121
+    command = ['quota', '-f', mountpoint, '-pw']
+    output = subprocess.check_output(command)
+    # The 3rd line has the data
+    fields = output.split('\n')[2].split()
+    bytes_used  = 1024 * int(fields[1])
+    bytes_quota = 1024 * int(fields[2])
+    return bytes_quota - bytes_used
 
 def hex2base62(h, min_length = 0):
     s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'

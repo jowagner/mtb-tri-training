@@ -99,3 +99,7 @@ if [ -e "${REAL_OUTPUT}" ]; then
     rm "${REAL_OUTPUT}"-stderr.txt
 fi
 
+if [ -n "$UDPIPE_FUTURE_DELETE_INPUT_NPZ" ]; then
+   rm -f "$IN_NPZ"
+fi
+
