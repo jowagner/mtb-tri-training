@@ -549,6 +549,8 @@ def worker(
         if opt_require_quota_remaining \
         and utilities.quota_remaining() < opt_require_quota_remaining:
             exit_reason = 'Remaining disk quota too low'
+        if callback:
+            exit_reason = callback.check_limits()
         if exit_reason:
             print('\n*** %s ***\n' %exit_reason)
             if callback:

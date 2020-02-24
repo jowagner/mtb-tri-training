@@ -105,6 +105,7 @@ class ElmoNpzTask(common_udpipe_future.Task):
         # write npz file
         numpy.savez(utilities.std_string(npz_name) + '.prep.npz', **npz_data)
         os.rename(npz_name + b'.prep.npz', npz_name)
+        self.npz_bytes_written += os.path.getsize(npz_name)
         # clean up and mark as finished
         del self.cache.npz2ready_count[npz_name]
         self.sentences = None
@@ -163,6 +164,19 @@ class ElmoCache:
                 self.length = len(tokens)      # only needed for stats
             else:
                 self.length = -1
+            if 'EFML_NPZ_CACHE_MAX_WRITE' in os.environ:
+                self.npz_write_limit = utilities.float_with_suffix(
+                    os.environ['EFML_NPZ_CACHE_MAX_WRITE']
+                )
+            else:
+                self.npz_write_limit = None
+            self.npz_bytes_written = 0
+
+    def check_limits(self):
+        if self.npz_write_limit \
+        and self.npz_bytes_written > self.npz_write_limit:
+            return 'NPZ write limit reached'
+        return None
 
     def allocate(self, data_file, key, part_index):
         r_index, _ = self.get_location(data_file, key, part_index, accept_free = True)
