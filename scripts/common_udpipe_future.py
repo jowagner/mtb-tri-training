@@ -553,10 +553,14 @@ def worker(
             exit_reason = callback.check_limits()
         if exit_reason:
             print('\n*** %s ***\n' %exit_reason)
-            if callback:
-                callback.on_worker_exit()
-            sys.exit(0)
-        task = task_queue.pick_task()
+            if not my_active_tasks:
+                if callback:
+                    callback.on_worker_exit()
+                sys.exit(0)
+            print('Waiting for active tasks to finish, not accepting new tasks')
+            task = None
+        else:
+            task = task_queue.pick_task()
         if task is not None:
             task.start_time = time.time()
             print('Running task %r' %task)
