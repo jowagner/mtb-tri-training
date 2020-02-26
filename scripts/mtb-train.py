@@ -251,10 +251,10 @@ def main():
                                     submit_and_return = opt_parallel,
                                     wait_for_model = True,
                                 ))
-                            prediction_paths.append((prediction_path, test_path, test_type))
+                            prediction_paths.append((prediction_path, label, test_path, test_type))
 
                     # submit tasks to evaluate predictions
-                    for prediction_path, test_path, test_type in prediction_paths:
+                    for prediction_path, label, test_path, test_type in prediction_paths:
                         if opt_parallel and not os.path.exists(prediction_path):
                             print('Parallel evaluation not supported. Please re-run this script when all predictions are ready.')
                             continue
@@ -269,6 +269,7 @@ def main():
                             source_experiment, source_round,
                             oversample_ratio,
                             data_short_name, label_short_name,
+                            label,
                         )
                         if not key in results:
                             results[key] = []
@@ -286,11 +287,16 @@ def main():
                         time.sleep(1200)
                     print()
 
-    if results:
-        for key in sorted(list(results.keys())):
-            scores = results[key]
-            scores.sort()
-            print(key, scores)
+                    if results:
+                        print()
+                        for key in sorted(list(results.keys())):
+                            scores = results[key]
+                            scores.sort()
+                            short_scores = ', '.join(['%.1f' %(score[0]) for score in scores])
+                            used_seeds   = ', '.join([score[-1]          for score in scores])
+                            print(key, short_scores, 'seeds:', used_seeds)
+                        print()
+                        print()
 
     # we must wait for training and prediction tasks to finish in order for
     # temporary files to be deleted
