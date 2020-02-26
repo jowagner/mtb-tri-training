@@ -122,10 +122,13 @@ def run_command(
         return task
     else:
         task.run()
-        cleanup.cleanup()
+        if cleanup is not None:
+            cleanup.cleanup()
 
 def wait_for_tasks(task_list):
     for task in task_list:
+        if task is None:
+            continue
         task.wait()
         try:
             cleanup = task.cleanup_object
@@ -152,6 +155,10 @@ class Task:
             patience = 48 * 3600.0
         self.expires = time.time() + patience
         self.priority = int(priority)
+        if 'TT_TASK_POLL_FREQUENCY' in os.environ:
+            self.poll_frequency = float(os.environ['TT_TASK_POLL_FREQUENCY'])
+        else:
+            self.poll_frequency = 1.0
         assert self.priority >= 0
         assert self.priority < 100
 
@@ -276,6 +283,7 @@ class Task:
         start_time_interval = (submit_time, time.time())
         while time.time() < expires and os.path.exists(self.submit_name):
             duration = 30.0 + int(task_fingerprint[iteration % fp_length], 16)
+            duration = duration / self.poll_frequency
             now = time.time()
             start_time_interval = (now, now+duration)
             time.sleep(duration)
@@ -291,7 +299,7 @@ class Task:
         # did it expire?
         has_expired = True
         # check for file in active queue
-        time.sleep(5.0) # just in case moving the file is not atomic
+        time.sleep(5.0/self.poll_frequency) # just in case moving the file is not atomic
         filename = b'%s/active/%d/%s.task' %(
             queue_dir,
             my_task_bucket,
@@ -309,8 +317,7 @@ class Task:
             next_verbose = min(next_verbose, start_time + verbosity_interval)
             while os.path.exists(filename):
                 duration = 30.0 + int(task_fingerprint[iteration % fp_length], 16)
-                now = time.time()
-                end_time_interval = (now, now+duration)
+                duration = duration / self.poll_frequency
                 time.sleep(duration)
                 iteration += 1
                 now = time.time()
@@ -519,6 +526,10 @@ def worker(
         opt_require_quota_remaining = utilities.float_with_suffix(
             os.environ['TT_TASK_QUOTA_REQUIRE_REMAINING']
         )
+    if 'TT_TASK_POLL_FREQUENCY' in os.environ:
+        poll_frequency = float(os.environ['TT_TASK_POLL_FREQUENCY'])
+    else:
+        poll_frequency = 1.0
     tt_task_dir = utilities.bstring(os.environ['TT_TASK_DIR'])
     queue_dir  = b'/'.join((tt_task_dir, utilities.bstring(queue_name)))
     inbox_dir  = b'/'.join((queue_dir, b'inbox'))
@@ -619,7 +630,7 @@ def worker(
         if callback:
             callback.on_worker_idle()
         sys.stdout.flush()
-        time.sleep(12.0)  # poll interval
+        time.sleep(12.0/poll_frequency)  # poll interval
 
 if __name__ == "__main__":
     main('udpf', Task)
