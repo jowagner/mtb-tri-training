@@ -17,6 +17,7 @@ import hashlib
 import itertools
 import os
 import string
+import StringIO
 import sys
 import time
 
@@ -287,6 +288,8 @@ def main():
 
                     if results:
                         print()
+                        prec1 = StringIO.StringIO()
+                        prec2 = StringIO.StringIO()
                         part1_keys = set()
                         part2_keys = set()
                         part3_keys = set()
@@ -295,11 +298,14 @@ def main():
                             scores.sort()
                             short_scores = ', '.join(['%.1f' %(score[0]) for score in scores])
                             used_seeds   = ', '.join([score[-1]          for score in scores])
-                            print(key, short_scores, 'seeds:', used_seeds)
+                            print(key, short_scores, 'seeds:', used_seeds, file=prec1)
+                            short_scores = ', '.join(['%.2f' %(score[0]) for score in scores])
+                            print(key, short_scores, 'seeds:', used_seeds, file=prec2)
                             part1_keys.add(key[0])
                             part2_keys.add(key[1:3])
                             part3_keys.add(key[3:])
-                        print()
+                        print(file=prec1)
+                        print(file=prec2)
                         for key1 in sorted(list(part1_keys)):
                             for key3 in sorted(list(part3_keys)):
                                 avg_scores = []
@@ -322,7 +328,13 @@ def main():
                                 score_stats = utilities.get_score_stats(avg_scores)
                                 # min_score, score025, score250, median, score750, score975, num_scores
                                 short_scores = ', '.join(['%.1f' %score for score in score_stats])
-                                print(key1, key3, short_scores, '(over %d averages)' %len(avg_scores))
+                                print(key1, key3, short_scores, '(over %d averages)' %len(avg_scores), file=prec1)
+                                short_scores = ', '.join(['%.2f' %score for score in score_stats])
+                                print(key1, key3, short_scores, '(over %d averages)' %len(avg_scores), file=prec2)
+                        prec1.seek(0)
+                        print(prec1.read())
+                        prec2.seek(0)
+                        print(prec2.read())
                         print()
 
     # we must wait for training and prediction tasks to finish in order for
