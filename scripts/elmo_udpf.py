@@ -1109,6 +1109,8 @@ def predict(
     priority = 50,
     is_multi_treebank = False,
     submit_and_return = False,
+    wait_for_input = False,
+    wait_for_model = False,
 ):
     # read lcode from model file
     lcode_file = open('%s/elmo-lcode.txt' %model_path, 'rb')
@@ -1127,9 +1129,14 @@ def predict(
         command.append('--extra_input tbemb')
     else:
         command.append('')
+    requires = npz_tasks.get_npz_files()
+    if wait_for_input:
+        requires.append(input_path)
+    if wait_for_model:
+        requires.append(model_path)
     common_udpipe_future.run_command(
         command,
-        requires = npz_tasks.get_npz_files(),
+        requires = requires,
         priority = priority,
         submit_and_return = submit_and_return,
         cleanup = npz_tasks,

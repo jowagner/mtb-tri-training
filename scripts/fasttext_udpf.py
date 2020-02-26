@@ -84,6 +84,8 @@ def predict(
     priority = 50,
     is_multi_treebank = False,
     submit_and_return = False,
+    wait_for_input = False,
+    wait_for_model = False,
 ):
     command = []
     command.append('./fasttext_udpf-predict.sh')
@@ -94,8 +96,15 @@ def predict(
         command.append('--extra_input tbemb')
     else:
         command.append('')
+    requires = []
+    if wait_for_input:
+        requires.append(input_path)
+    if wait_for_model:
+        requires.append(model_path)
     task = common_udpipe_future.run_command(
-        command, priority = priority,
+        command,
+        requires = requires,
+        priority = priority,
         submit_and_return = submit_and_return,
     )
     if submit_and_return:
