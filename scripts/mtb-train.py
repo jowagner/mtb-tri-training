@@ -14,6 +14,7 @@
 from __future__ import print_function
 
 import hashlib
+import itertools
 import os
 import string
 import sys
@@ -107,26 +108,22 @@ def main():
                 raise ValueError('Subsampling of synthethic training data not yet supported')
             n_learners = int(source_experiment[6])
             # find relevant conllu files
-            seed_files = []
-            synth_files = []
             # format: path, is_orig, is_seed_set, learner, tt_round
             datasets = []
             for i in range(n_learners):
-                seed_files.append('%s/%s/seed-set-%d.conllu' %(
+                seed_file = '%s/%s/seed-set-%d.conllu' %(
                     workdir, source_experiment, i+1
-                ))
-                datasets.append((seed_files[-1], False, True, i+1, -1))
-                synth_files.append([])
+                )
+                datasets.append((seed_file, False, True, i+1, -1))
                 for j in range(source_round):
                     # reminder what the different files are:
                     #   * new-candidate-set: raw knowledge transfer output
                     #   * new-selected-set: pruned down to augment size
                     #   * new-training-set: seed_set + selected data
-                    synth_files[-1].append('%s/%s/new-selected-set-%02d-%d.conllu' %(
+                    synth_file = '%s/%s/new-selected-set-%02d-%d.conllu' %(
                         workdir, source_experiment, j+1, i+1
-                    ))
-
-                    datasets.append((synth_files[-1][-1], False, False, i+1, j+1))
+                    )
+                    datasets.append((synth_file, False, False, i+1, j+1))
             # we forgot to keep a copy of the downsampled seed data
             # (for synthetic low-resource scenarios) but we can get
             # it from the experiments with "w" sampling
@@ -241,7 +238,8 @@ def main():
                                 exp_dir, label, parser_name, lcode, tcode, test_type
                             )
                             if not os.path.exists(prediction_path):
-                                if not opt_parallel and not os.path.exists(model_path):
+                                model_ckp = model_path + '/checkpoint-inference-last.index'
+                                if not opt_parallel and not os.path.exists(model_ckp):
                                     print('Cannot make predictions in sequential mode if model is not ready yet')
                                     continue
                                 tasks.append(parser_module.predict(
@@ -289,13 +287,42 @@ def main():
 
                     if results:
                         print()
+                        part1_keys = set()
+                        part2_keys = set()
+                        part3_keys = set()
                         for key in sorted(list(results.keys())):
                             scores = results[key]
                             scores.sort()
                             short_scores = ', '.join(['%.1f' %(score[0]) for score in scores])
                             used_seeds   = ', '.join([score[-1]          for score in scores])
                             print(key, short_scores, 'seeds:', used_seeds)
+                            part1_keys.add(key[0])
+                            part2_keys.add(key[1:3])
+                            part3_keys.add(key[3:])
                         print()
+                        for key1 in sorted(list(part1_keys)):
+                            for key3 in sorted(list(part3_keys)):
+                                avg_scores = []
+                                pick_from = []
+                                for key2 in part2_keys:
+                                    key = (key1,) + key2 + key3
+                                    if not key in results:
+                                        if key3[-1] in ('round_6', 'round_7', 'round_8', 'round_9'):
+                                            key = (key1,) + key2 + key3[:-1] + ('round_5',)
+                                            if not key in results:
+                                                break
+                                        else:
+                                            break
+                                    scores = [score[0] for score in results[key]]
+                                    pick_from.append(scores)
+                                if len(pick_from) < len(part2_keys):
+                                    continue
+                                for combination in itertools.product(*pick_from):
+                                    avg_scores.append(sum(combination)/len(combination))
+                                score_stats = utilities.get_score_stats(avg_scores)
+                                # min_score, score025, score250, median, score750, score975, num_scores
+                                short_scores = ', '.join(['%.1f' %score for score in score_stats])
+                                print(key1, key3, short_scores, '(over %d averages)' %len(avg_scores))
                         print()
 
     # we must wait for training and prediction tasks to finish in order for
