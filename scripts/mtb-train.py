@@ -19,6 +19,7 @@ import string
 import sys
 import time
 
+import conllu_dataset
 import common_udpipe_future
 import fasttext_udpf
 import elmo_udpf
@@ -66,23 +67,30 @@ def no_label(is_orig, is_seed_set, learner, tt_round):
 
 def main():
     n_seeds = 5
+    opt_renew_all = False    # do not cover models
+    opt_skip_training = True
+    opt_parallel = False
+    opt_sleep = False
+    opt_wait_for_completion = False
     workdir = '/'.join((os.environ['PRJ_DIR'], 'workdirs'))
     tb_dir = os.environ['UD_TREEBANK_DIR']
     if 'TT_MTB_SEED_START' in os.environ:
-        seed_start = int(os.environ['TT_MTB_SEED_START'])
+        seed_starts = [int(os.environ['TT_MTB_SEED_START'])]
     else:
-        seed_start = 101
+        seed_starts = [101, 201, 301]
     oversample_ratios = [1,]
     settings = []
     for constraint in range(n_seeds+len(oversample_ratios)):
         for seed_index in range(n_seeds):
             for o_index, oversample_ratio in enumerate(oversample_ratios):
                 if seed_index + o_index == constraint:
-                    settings.append((seed_index, oversample_ratio))
+                    for seed_start in seed_starts:
+                        model_init_seed = '%03d' %(seed_start + seed_index)
+                        settings.append((seed_index, oversample_ratio, model_init_seed))
     tasks = []
+    results = {}
     for setting_idx, setting in enumerate(settings):
-        seed_index, oversample_ratio = setting
-        model_init_seed = '%03d' %(seed_start + seed_index)
+        seed_index, oversample_ratio, model_init_seed = setting
         print('\n\n== Setting %d of %d: Seed %s with oversampling ratio %d ==\n' %(
             setting_idx+1, len(settings), model_init_seed, oversample_ratio
         ))
@@ -150,6 +158,7 @@ def main():
                         workdir, lcode, data_short_name, label_short_name,
                         oversample_ratio, model_init_seed
                     )
+                    priority = int(50*setting_idx/len(settings))
                     print(exp_dir)
                     print()
                     utilities.makedirs(exp_dir)
@@ -172,36 +181,38 @@ def main():
                     f.close()
                     # create training file
                     tr_path = '%s/%s_%s-ud-train.conllu' %(exp_dir, lcode, tcode)
-                    f = open(tr_path, 'wb')
-                    for input_path, is_orig, is_seed_set, learner, tt_round in datasets:
-                        if is_included(is_orig, is_seed_set, learner, tt_round):
-                            label = labeller(is_orig, is_seed_set, learner, tt_round)
-                            f.write(b'# tbemb=%s\n' %utilities.bstring(label))
-                            conllu_input = open(input_path, 'rb')
-                            conllu_data = conllu_input.read()
-                            f.write(conllu_data)
-                            if (is_orig or is_seed_set) and oversample_ratio > 1:
-                                for _ in range(oversample_ratio-1):
-                                    f.write(conllu_data)
-                            conllu_input.close()
-                    f.close()
+                    if opt_renew_all or not os.path.exists(tr_path):
+                        f = open(tr_path, 'wb')
+                        for input_path, is_orig, is_seed_set, learner, tt_round in datasets:
+                            if is_included(is_orig, is_seed_set, learner, tt_round):
+                                label = labeller(is_orig, is_seed_set, learner, tt_round)
+                                f.write(b'# tbemb=%s\n' %utilities.bstring(label))
+                                conllu_input = open(input_path, 'rb')
+                                conllu_data = conllu_input.read()
+                                f.write(conllu_data)
+                                if (is_orig or is_seed_set) and oversample_ratio > 1:
+                                    for _ in range(oversample_ratio-1):
+                                        f.write(conllu_data)
+                                conllu_input.close()
+                        f.close()
                     # create test files
                     test_details = []
                     for label in labels:
                         for input_path, test_type in [
                             ('%s/UD_%s/%s-ud-dev.conllu'  %(tb_dir, tbname, tbid), 'dev'),
-                            ('%s/UD_%s/%s-ud-test.conllu' %(tb_dir, tbname, tbid), 'test'),
+                            #('%s/UD_%s/%s-ud-test.conllu' %(tb_dir, tbname, tbid), 'test'),
                         ]:
                             utilities.makedirs('%s/proxy-%s' %(exp_dir, label))
                             test_filename = '%s/proxy-%s/gold-%s_%s-ud-%s.conllu' %(
                                 exp_dir, label, lcode, tcode, test_type
                             )
-                            f = open(test_filename, 'wb')
-                            f.write(b'# tbemb=%s\n' %utilities.bstring(label))
-                            conllu_input = open(input_path, 'rb')
-                            f.write(conllu_input.read())
-                            conllu_input.close()
-                            f.close()
+                            if opt_renew_all or not os.path.exists(test_filename):
+                                f = open(test_filename, 'wb')
+                                f.write(b'# tbemb=%s\n' %utilities.bstring(label))
+                                conllu_input = open(input_path, 'rb')
+                                f.write(conllu_input.read())
+                                conllu_input.close()
+                                f.close()
                             test_details.append((test_filename, label, lcode, tcode, test_type))
 
                     # submit tasks to train parsers
@@ -211,14 +222,14 @@ def main():
                         #('fasttext_udpf', fasttext_udpf),
                     ]:
                         model_path = '%s/%s' %(exp_dir, parser_name)
-                        if not os.path.exists(model_path):
+                        if not opt_skip_training and not os.path.exists(model_path):
                             tasks.append(parser_module.train(
                                 tr_path, model_init_seed, model_path,
                                 monitoring_datasets = test_details,
                                 lcode = lcode,
-                                priority = int(50*setting_idx/len(settings)),
+                                priority = priority,
                                 is_multi_treebank = is_multi_treebank,
-                                submit_and_return = True,
+                                submit_and_return = opt_parallel,
                             ))
                         model_details.append((model_path, parser_module, parser_name))
 
@@ -226,36 +237,65 @@ def main():
                     prediction_paths = []
                     for test_path, label, lcode, tcode, test_type in test_details:
                         for model_path, parser_module, parser_name in model_details:
-                            # the model must be ready
-                            # before the prediction task can start
-                            requires = [model_path]
                             prediction_path = '%s/proxy-%s/prediction-%s-%s_%s-ud-%s.conllu' %(
                                 exp_dir, label, parser_name, lcode, tcode, test_type
                             )
-                            if is_multi_treebank:
-                                pass
-                            else:
-                                pass
-                            prediction_paths.append((prediction_path, test_path))
+                            if not os.path.exists(prediction_path):
+                                if not opt_parallel and not os.path.exists(model_path):
+                                    print('Cannot make predictions in sequential mode if model is not ready yet')
+                                    continue
+                                tasks.append(parser_module.predict(
+                                    model_path, test_path, prediction_path,
+                                    priority = priority,
+                                    is_multi_treebank = is_multi_treebank,
+                                    submit_and_return = opt_parallel,
+                                    wait_for_model = True,
+                                ))
+                            prediction_paths.append((prediction_path, test_path, test_type))
 
                     # submit tasks to evaluate predictions
-                    for prediction_path, test_path in prediction_paths:
-                        requires = [prediction_path]
+                    for prediction_path, test_path, test_type in prediction_paths:
+                        if opt_parallel and not os.path.exists(prediction_path):
+                            print('Parallel evaluation not supported. Please re-run this script when all predictions are ready.')
+                            continue
+                        if not os.path.exists(prediction_path):
+                            print('Cannot evaluate predictions in sequential mode if prediction is not ready yet.')
+                            continue
+                        score = conllu_dataset.evaluate(
+                            prediction_path, test_path
+                        )
+                        key = (
+                            test_type,
+                            source_experiment, source_round,
+                            oversample_ratio,
+                            data_short_name, label_short_name,
+                        )
+                        if not key in results:
+                            results[key] = []
+                        # add seed to score info
+                        score = tuple(list(score) + [model_init_seed])
+                        results[key].append(score)
 
                     print()
                     print('# tasks so far:', len(tasks))
-                    if setting_idx == 0:
+                    if opt_sleep and setting_idx == 0:
                         print('sleeping 1 minute')
-                        time.sleep(60.0)
-                    else:
+                        time.sleep(60)
+                    elif opt_sleep:
                         print('sleeping 20 minutes')
-                        time.sleep(1200.0)
+                        time.sleep(1200)
                     print()
 
+    if results:
+        for key in sorted(list(results.keys())):
+            scores = results[key]
+            scores.sort()
+            print(key, scores)
 
     # we must wait for training and prediction tasks to finish in order for
     # temporary files to be deleted
-    common_udpipe_future.wait_for_tasks(tasks)
+    if opt_parallel and opt_wait_for_completion:
+        common_udpipe_future.wait_for_tasks(tasks)
 
 if __name__ == "__main__":
     main()
