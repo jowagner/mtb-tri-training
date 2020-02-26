@@ -11,6 +11,31 @@
 import os
 import subprocess
 
+def get_score_stats(scores):
+    scores.sort()
+    min_score = scores[0]
+    max_score = scores[-1]
+    num_scores = len(scores)
+    if (num_scores % 2):
+        # odd number of scores
+        median = scores[(num_scores-1)/2]
+    else:
+        # even number of scores
+        median = (scores[num_scores/2-1] + scores[num_scores/2])/2.0
+    backup = scores
+    prune = int(0.025*len(scores))
+    if prune:
+        scores = scores[prune:-prune]
+    score025 = scores[0]
+    score975 = scores[-1]
+    scores = backup
+    prune = int(0.25*len(scores))
+    if prune:
+        scores = scores[prune:-prune]
+    score250 = scores[0]
+    score750 = scores[-1]
+    return (min_score, score025, score250, median, score750, score975, max_score)
+
 def float_with_suffix(size):
     multiplier = 1
     for suffix, candidate_multiplier in [
@@ -45,7 +70,7 @@ def quota_remaining(mountpoint = None):
     command = ['quota', '-f', mountpoint, '-pw']
     output = subprocess.check_output(command)
     # The 3rd line has the data
-    fields = output.split('\n')[2].split()
+    fields = output.split(b'\n')[2].split()
     bytes_used  = 1024 * int(fields[1])
     bytes_quota = 1024 * int(fields[2])
     return bytes_quota - bytes_used
