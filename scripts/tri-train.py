@@ -1329,7 +1329,7 @@ def main():
             opt_cumulative_ensemble = opt_cumulative_ensemble,
             opt_tolerant = opt_tolerant,
             opt_rename_dispensable = opt_rename_dispensable,
-            opt_verbose = opt_verbose
+            opt_verbose = opt_verbose,
             opt_round_priority = opt_round_priority,
         )
 
