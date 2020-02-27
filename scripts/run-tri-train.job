@@ -36,7 +36,7 @@ rm -rf stop *workdir
 cd ${SCRIPTDIR}
 ./tri-train.py   \
     --max-subsets 1  \
-    --round-priority 50/%(last_iterations)d
+    --round-priority 50/%(last_iterations)d  \
     --init-seed %(seed)s       \
     %(lang_options)s   \
     %(more_options)s   \
