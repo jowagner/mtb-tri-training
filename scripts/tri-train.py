@@ -151,6 +151,19 @@ Options:
                             Can be specified multiple times to specify more
                             than one non-standard argument.
 
+    --round-priority  NUMBER or FRACTION
+                            The model module's training and prediction
+                            functions are provided with a priority parameter
+                            set to NUMBER times the current tri-training
+                            iteration, capped at 99.
+                            The module may coordinate with other tri-training
+                            experiments running in parallel to allocate shared
+                            resources, e.g. GPUs, first to experiments that are
+                            behind, adjusted with this round priority factor.
+                            If a fraction a/b is provided, NUMBER is set to
+                            a / float(b).
+                            (Default: 1.0)
+
     --seed-size  NUMBER     How many tokens to sample (with replacement) from
                             the labelled data for each learner.
                             As full sentences are selected the actual number
@@ -434,6 +447,7 @@ def main():
     opt_model_modules  = []
     opt_model_init_type = None
     opt_model_kwargs = {}
+    opt_round_priority = 1.0
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
     opt_seed_with_replacement = True
@@ -542,6 +556,13 @@ def main():
             value = sys.argv[2]
             opt_model_kwargs[key] = value
             del sys.argv[1]   # consume two args
+            del sys.argv[1]
+        elif option == '--round-priority':
+            if '/' in sys.argv[1]:
+                a, b = sys.argv[1].split('/')
+                opt_round_priority = float(a) / float(b)
+            else:
+                opt_round_priority = float(sys.argv[1])
             del sys.argv[1]
         elif option == '--seed-size':
             opt_seed_size = sys.argv[1]
@@ -850,6 +871,7 @@ def main():
             opt_model_kwargs = opt_model_kwargs,
             opt_tolerant = opt_tolerant,
             opt_rename_dispensable = opt_rename_dispensable,
+            opt_round_priority = opt_round_priority,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -865,6 +887,7 @@ def main():
         opt_model_kwargs = opt_model_kwargs,
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
+        opt_round_priority = opt_round_priority,
     )
 
     # evaluate models using all dev sets (and test sets if --final-test)
@@ -883,6 +906,7 @@ def main():
         opt_verbose = opt_verbose,
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
+        opt_round_priority = opt_round_priority,
     )
 
     drop_all_targets = basic_dataset.SentenceDropout(
@@ -924,6 +948,7 @@ def main():
                 opt_model_kwargs = opt_model_kwargs,
                 opt_tolerant = opt_tolerant,
                 opt_rename_dispensable = opt_rename_dispensable,
+                opt_round_priority = opt_round_priority,
             )
         # prepare processing of subsets
         if opt_tolerant \
@@ -1023,6 +1048,7 @@ def main():
                 opt_manually_predict = opt_manually_predict,
                 opt_tolerant = opt_tolerant,
                 opt_rename_dispensable = opt_rename_dispensable,
+                opt_round_priority = opt_round_priority,
             )
             if opt_quit_after_prediction:
                 print('\n*** Manual intervention requested. ***\n')
@@ -1284,6 +1310,7 @@ def main():
             opt_model_kwargs = opt_model_kwargs,
             opt_tolerant = opt_tolerant,
             opt_rename_dispensable = opt_rename_dispensable,
+            opt_round_priority = opt_round_priority,
         )
 
         print_t('\nEvaluating new models:')
@@ -1303,6 +1330,7 @@ def main():
             opt_tolerant = opt_tolerant,
             opt_rename_dispensable = opt_rename_dispensable,
             opt_verbose = opt_verbose
+            opt_round_priority = opt_round_priority,
         )
 
     print_t('\n== Final Model ==\n')
@@ -1350,6 +1378,7 @@ def make_predictions(
     deadline = None, stopfile = None,
     opt_tolerant = False, opt_rename_dispensable = False,
     fingerprint_length = 20,
+    opt_round_priority = 1.0,
 ):
     ''' makes predictions for the given dataet for all learners
     '''
@@ -1452,7 +1481,7 @@ def make_predictions(
             # ask model module to predict the model
             model_module.predict(
                 model_path, dataset.filename, prediction_path,
-                priority = training_round,
+                priority = min(99, int(opt_round_priority * training_round)),
             )
         predictions.append((prediction_fingerprint, prediction_path))
     if manual_prediction_needed:
@@ -1478,6 +1507,7 @@ def evaluate(
     prefix = '',
     deadline = None, stopfile = None,
     opt_tolerant = False, opt_rename_dispensable = False,
+    opt_round_priority = 1.0,
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -1501,6 +1531,7 @@ def evaluate(
                 deadline = deadline, stopfile = stopfile,
                 opt_tolerant = opt_tolerant,
                 opt_rename_dispensable = opt_rename_dispensable,
+                opt_round_priority = opt_round_priority,
             )
             gold_path = dataset.filename
             if gold_path not in all_prediction_paths:
@@ -1570,6 +1601,7 @@ def train_and_evaluate_baselines(
     opt_deadline, opt_stopfile,
     opt_model_kwargs = {},
     opt_tolerant = False, opt_rename_dispensable = False,
+    opt_round_priority = 1.0,
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -1583,6 +1615,7 @@ def train_and_evaluate_baselines(
         opt_model_kwargs = opt_model_kwargs,
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
+        opt_round_priority = opt_round_priority,
     )
     evaluate(
         models,
@@ -1952,6 +1985,7 @@ def train_models(
     deadline = None, stopfile = None,
     opt_model_kwargs = {},
     opt_tolerant = False, opt_rename_dispensable = False,
+    opt_round_priority = 1.0,
 ):
     retval = []
     manual_training_needed = []
@@ -2025,7 +2059,10 @@ def train_models(
         else:
             # ask model module to train the model
             model_kwargs = opt_model_kwargs.copy()
-            model_kwargs['priority'] = training_round
+            model_kwargs['priority'] = min(
+                99,
+                int(opt_round_priority * training_round)
+            )
             model_module.train(
                 training_set.filename, model_init_seed, model_path,
                 epoch_selection_set, monitoring_datasets,

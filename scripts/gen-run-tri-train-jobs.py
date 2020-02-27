@@ -64,8 +64,11 @@ def get_modelseedsuffix(setting):
         modelseedsuffix2setting.append(setting)
     return retval
 
-#                 0   1   2   3   4   5   6   7   8   9
-aug2iterations = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6]
+#                      0   1   2   3   4   5   6   7   8   9
+aug2iterations      = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6]
+
+aug2last_iterations = [24, 21, 17, 15, 14, 11,  9,  7,  5,  2]    # for --round-priority
+
 
 for augment_size_code in augment_size_codes:
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
@@ -116,6 +119,7 @@ for augment_size_code in augment_size_codes:
                         ]:
                             #iterations = min(24, int(0.5+0.002*unlabelled_size/augsize))
                             iterations = aug2iterations[augment_size_code]
+                            last_iterations = aug2last_iterations[augment_size_code]
                             #if wrpl_code != 'x':
                             #    iterations = 0
                             for parser_code, model_module in [
