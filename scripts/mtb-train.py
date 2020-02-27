@@ -145,12 +145,12 @@ def main():
                 ('learners', include_learners_only),
                 #('all',      include_all),
             ]:
-                for label_short_name, labeller in [
-                    ('concat', no_label),
-                    ('bytype', label_by_type),
-                    ('bylearner', label_by_learner),
-                    ('byboth', label_by_learner_and_type),
-                    ('byround', label_by_round),
+                for model_latex_name, label_short_name, labeller in [
+                    ('concat',  'concat',    no_label),
+                    ('mtb-2',   'bytype',    label_by_type),
+                    ('mtb-3',   'bylearner', label_by_learner),
+                    ('mtb-6',   'byboth',    label_by_learner_and_type),
+                    ('mtb-itr', 'byround',   label_by_round),
                 ]:
                     exp_dir = '%s/mtb/%s/%s/%s/osr-%02d/seed-%s' %(
                         workdir, lcode, data_short_name, label_short_name,
@@ -266,6 +266,7 @@ def main():
                         key = (
                             test_type,
                             source_experiment, source_round,
+                            model_latex_name,
                             oversample_ratio,
                             data_short_name, label_short_name,
                             label,
@@ -290,6 +291,9 @@ def main():
                         print()
                         prec1 = StringIO.StringIO()
                         prec2 = StringIO.StringIO()
+                        latex1 = StringIO.StringIO()
+                        latex2 = StringIO.StringIO()
+                        latex = {}
                         part1_keys = set()
                         part2_keys = set()
                         part3_keys = set()
@@ -301,9 +305,16 @@ def main():
                             print(key, short_scores, 'seeds:', used_seeds, file=prec1)
                             short_scores = ', '.join(['%.2f' %(score[0]) for score in scores])
                             print(key, short_scores, 'seeds:', used_seeds, file=prec2)
-                            part1_keys.add(key[0])
-                            part2_keys.add(key[1:3])
-                            part3_keys.add(key[3:])
+                            key1 = key[0]    # test_type
+                            key2 = key[1:3]  # language (treebank and tri-training setting)
+                            key3 = key[3:]   # latex name, mtb oversampling, partitions and test proxy
+                            part1_keys.add(key1)
+                            part2_keys.add(key2)
+                            part3_keys.add(key3)
+                            score_stats = utilities.get_score_stats([score[0] for score in scores])
+                            median = score_stats[3]
+                            plusminus = max(score_stats[-1] - median, median - score_stats[0])
+                            latex[(key1, key2, key3)] = (median, plusminus)
                         print(file=prec1)
                         print(file=prec2)
                         for key1 in sorted(list(part1_keys)):
@@ -331,6 +342,28 @@ def main():
                                 print(key1, key3, short_scores, '(over %d averages)' %len(avg_scores), file=prec1)
                                 short_scores = ', '.join(['%.2f' %score for score in score_stats])
                                 print(key1, key3, short_scores, '(over %d averages)' %len(avg_scores), file=prec2)
+                                # dev (1, 'learners', 'byround', 'round_2')
+                                # latex
+                                # \textbf{mtb-itr} & round\_0     & 77.53 $\pm$ 0.22 & ... \\
+                                row = []
+                                row.append('\\textbf{%s}' %(key3[0]))
+                                row.append(key3[-1].replace('_', '\\_'))
+                                for key2 in sorted(list(part2_keys)):
+                                    try:
+                                        median, plusminus = latex[(key1, key2, key3)]
+                                        median    = '%.2f' %median
+                                        plusminus = '%.2f' %plusminus
+                                    except KeyError:
+                                        median    = '--'
+                                        plusminus = '--'
+                                    row.append('%s $\\pm$ %s' %(median, plusminus))
+                                median = score_stats[3]
+                                plusminus = max(score_stats[-1] - median, median - score_stats[0])
+                                row.append('%.2f $\\pm$ %.2f' %(median, plusminus))
+                                latex2.write(' & '.join(row))
+                                latex2.write(' \\\\\n')
+                        latex2.seek(0)
+                        print(latex2.read())
                         prec1.seek(0)
                         print(prec1.read())
                         prec2.seek(0)
