@@ -71,6 +71,7 @@ def main():
     n_seeds = 5
     opt_renew_all = False    # do not cover models
     opt_skip_training = True
+    opt_predict = True
     opt_parallel = False
     opt_sleep = False
     opt_wait_for_completion = False
@@ -238,7 +239,7 @@ def main():
                             prediction_path = '%s/proxy-%s/prediction-%s-%s_%s-ud-%s.conllu' %(
                                 exp_dir, label, parser_name, lcode, tcode, test_type
                             )
-                            if not os.path.exists(prediction_path):
+                            if opt_predict and not os.path.exists(prediction_path):
                                 model_ckp = model_path + '/checkpoint-inference-last.index'
                                 if not opt_parallel and not os.path.exists(model_ckp):
                                     print('Cannot make predictions in sequential mode if model is not ready yet')
