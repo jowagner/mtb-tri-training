@@ -115,5 +115,10 @@ python ${PARSER_DIR}/ud_parser.py \
 touch training.end
 
 cd /
-mv $MODELDIR $FINAL_MODELDIR
+if [ -e "$MODELDIR/checkpoint-inference-last.index" ]; then
+    mv $MODELDIR $FINAL_MODELDIR
+else
+    SUFFIX=$(head -c 80 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 12)
+    mv $MODELDIR ${FINAL_MODELDIR}-incomplete-${SUFFIX}
+fi
 

@@ -155,8 +155,15 @@ rm ${ELMO_FILE_PREFIX}*.npz
 touch training.end
 
 cd /
-mv $MODELDIR $FINAL_MODELDIR
+
+if [ -e "$MODELDIR/checkpoint-inference-last.index" ]; then
+    mv $MODELDIR $FINAL_MODELDIR
+else
+    SUFFIX=$(head -c 80 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 12)
+    mv $MODELDIR ${FINAL_MODELDIR}-incomplete-${SUFFIX}
+fi
 
 if [ -n "$UDPIPE_FUTURE_DELETE_INPUT_NPZ" ]; then
    rm -f "$TRAIN_NPZ" "$TEST_NPZ" "$DEV_NPZ"
 fi
+
