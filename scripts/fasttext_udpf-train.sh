@@ -41,11 +41,17 @@ EXTRA_OPTIONS="$7"
 DEV_SET=$8
 TEST_SET=$9
 
-if [ -n "$TEST_SET" ]; then
-    REAL_TEST_SET=$(realpath ${TEST_SET})
-fi
 if [ -n "$DEV_SET" ]; then
-    REAL_DEV_SET=$(realpath ${DEV_SET})
+    if [ -n "$TEST_SET" ]; then
+        REAL_DEV_SET=$(realpath ${DEV_SET})
+    else
+        # only 1 monitoring set specified
+        # --> make this the test set as udpipe-future
+        #     requires a test set
+        TEST_SET="$DEV_SET"
+        unset DEV_SET
+    fi
+    REAL_TEST_SET=$(realpath ${TEST_SET})
 fi
 
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
