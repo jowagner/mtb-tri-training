@@ -723,7 +723,7 @@ class ElmoCache:
         last_bytes = 0
         for r_index in range(self.n_records):
             data_file.write(self.get_data_record(r_index))
-            last_verbose, last_bytes = self.p_progress_writing(
+            last_verbose, last_bytes = self.p_progress(
                 last_verbose, last_bytes, r_index, self.record_size,
                 'of elmo disk cache data records allocated',
             )
@@ -733,8 +733,8 @@ class ElmoCache:
         last_bytes = 0
         for r_index in range(self.n_records):
             atime_file.write(self.get_atime_record(0, r_index))
-            last_verbose, last_bytes = self.p_progress_writing(
-                last_verbose, last_bytes, r_index, self.atime_size
+            last_verbose, last_bytes = self.p_progress(
+                last_verbose, last_bytes, r_index, self.atime_size,
                 'of elmo disk cache access records allocated',
             )
         atime_file.close()
