@@ -474,9 +474,19 @@ class ElmoCache:
         data_file = open(self.data_filename, 'rb')
         atime_file = open(self.atime_filename, 'rb')
         n_discarded_records = 0
+        last_verbose = time.time()
+        last_bytes = 0
+        bytes_so_far = 0
         for r_index in range(self.n_records):
+            last_verbose, last_bytes = self.p_progress(
+                last_verbose, last_bytes, r_index, self.record_size,
+                'of elmo disk cache records read',
+                is_after = False,
+                bytes_so_far = bytes_so_far,
+            )
             data_file.seek(r_index * self.record_size)
             line = data_file.readline(self.record_size)
+            bytes_so_far += len(line)
             #          [0]  [1] [2] [3]
             # example: data 123 500 xyz
             #  [0] = 'data' marks this record as containing data
@@ -499,6 +509,7 @@ class ElmoCache:
             payload_lines = []
             while n_payload:
                 line = data_file.readline(self.record_size)
+                bytes_so_far += len(line)
                 if line.startswith(b'#'):
                     continue
                 payload_lines.append(line)
@@ -531,6 +542,7 @@ class ElmoCache:
             # get time of last access
             atime_file.seek(self.atime_size*r_index)
             line = atime_file.readline()
+            bytes_so_far += len(line)
             try:
                 atime = float(line.split()[0])
             except:
@@ -669,13 +681,23 @@ class ElmoCache:
             self.create_new_disk_files()
             self.sync_to_disk_files()
 
-    def p_progress_writing(self, last_verbose, last_bytes, r_index, record_size):
+    def p_progress(self,
+        last_verbose, last_bytes, r_index, record_size,
+        what, is_after = True,
+        bytes_so_far = None
+    ):
+        if is_after:
+            r_index += 1
         now = time.time()
         if now > last_verbose + self.verbosity_interval:
-            now_bytes = (r_index+1) * record_size
+            if bytes_so_far is None:
+                now_bytes = r_index * record_size
+            else:
+                now_bytes = bytes_so_far
             speed = (now_bytes-last_bytes) / (now-last_verbose)
-            print('\t%.1f%% of elmo disk cache allocated, %.1f MiB/s' %(
-                100.0 * (r_index+1) / self.n_records,
+            print('\t%.1f%% %s, %.1f MiB/s' %(
+                100.0 * r_index / self.n_records,
+                what,
                 speed / 1024.0**2
             ))
             sys.stdout.flush()
@@ -702,7 +724,8 @@ class ElmoCache:
         for r_index in range(self.n_records):
             data_file.write(self.get_data_record(r_index))
             last_verbose, last_bytes = self.p_progress_writing(
-                last_verbose, last_bytes, r_index, self.record_size
+                last_verbose, last_bytes, r_index, self.record_size,
+                'of elmo disk cache data records allocated',
             )
         data_file.close()
         atime_file = open(self.atime_filename, 'wb')
@@ -712,6 +735,7 @@ class ElmoCache:
             atime_file.write(self.get_atime_record(0, r_index))
             last_verbose, last_bytes = self.p_progress_writing(
                 last_verbose, last_bytes, r_index, self.atime_size
+                'of elmo disk cache access records allocated',
             )
         atime_file.close()
         print('\tdone')
