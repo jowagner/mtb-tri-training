@@ -8,8 +8,10 @@
 
 # Author: Joachim Wagner
 
+import hashlib
 import os
 import subprocess
+import time
 
 def get_score_stats(scores):
     scores.sort()
