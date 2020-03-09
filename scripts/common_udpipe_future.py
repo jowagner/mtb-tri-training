@@ -415,19 +415,21 @@ class TaskQueue:
         self.extra_kw_parameters = extra_kw_parameters
         self.filename2requires = {}
 
-    def pick_task(self):
+    def pick_task(self, opt_ignore_expiry = False):
         candidate_tasks = []
         filename2requires = {}
         for filename in os.listdir(self.inbox_dir):
             if filename.endswith(b'.task') and b'-' in filename:
-                candidate_tasks.append(filename)
+                priority = filename[:2]
+                candidate_tasks.append((priority, utilities.random(), filename))
                 if filename in self.filename2requires:
                     required_files = self.filename2requires[filename]
                     filename2requires[filename] = required_files
         self.filename2requires = filename2requires
         candidate_tasks.sort()
         #print('# candidate tasks in inbox:', len(candidate_tasks))
-        for filename in candidate_tasks:
+        for _, _, filename in candidate_tasks:
+            task_id, task_bucket = filename[:-5].rsplit(b'-', 1)
             eligible = 'unknown'
             if filename in filename2requires:
                 required_files = filename2requires[filename]
@@ -440,7 +442,11 @@ class TaskQueue:
                 continue
             # read contents of task file
             taskfile = b'/'.join((self.inbox_dir, filename))
-            f = open(taskfile, 'rb')
+            try:
+                f = open(taskfile, 'rb')
+            except IOError:
+                # task claimed by another worker or not readable
+                continue
             delete_task = False
             expires = 0.0
             lcode = None
@@ -455,7 +461,7 @@ class TaskQueue:
                     delete_task = True
                 elif line.startswith(b'expires'):
                     expires = float(fields[1])
-                    if time.time() > expires:
+                    if time.time() > expires and not opt_ignore_expiry:
                         print('Deleting expired task', task_id)
                         delete_task = True
                 elif line.startswith(b'lcode'):
@@ -484,7 +490,6 @@ class TaskQueue:
             command = f.read().split(b'\n')
             f.close()
             # try to claim this task
-            task_id, task_bucket = filename[:-5].rsplit(b'-', 1)
             bucket_dir  = b'/'.join((self.active_dir, task_bucket))
             my_makedirs(bucket_dir)
             active_name = b'%s/%s.task' %(bucket_dir, task_id)
@@ -542,6 +547,7 @@ def worker(
         inbox_dir, active_dir, delete_dir,
         task_processor, extra_kw_parameters
     )
+    utilities.random_delay(5.0)
     start_time = time.time()
     print('Worker loop starting', time.ctime(start_time))
     if opt_max_idle:
@@ -619,7 +625,10 @@ def worker(
             f.write(b'\n'.join(task.command))
             f.write(b'\n') # final newline
             f.close()
-            os.unlink(task.active_name)
+            try:
+                os.unlink(task.active_name)
+            except OSError:
+                print('Error: Could not remove finished task %r from active queue' %task.task_id)
             if opt_max_idle:
                 idle_deadline = time.time() + opt_max_idle
         my_active_tasks = still_active_tasks
@@ -630,7 +639,10 @@ def worker(
         if callback:
             callback.on_worker_idle()
         sys.stdout.flush()
-        time.sleep(12.0/poll_frequency)  # poll interval
+        utilities.random_delay(
+            12.0/poll_frequency,
+            0.8, 1.2
+        )
 
 if __name__ == "__main__":
     main('udpf', Task)
