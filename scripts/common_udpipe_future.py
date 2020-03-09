@@ -363,7 +363,7 @@ def main(
     callback = None,
 ):
     opt_help = False
-    opt_debug = True
+    opt_debug = False
     opt_deadline = None
     opt_stopfile = None
     opt_max_idle = 900.0
@@ -373,6 +373,9 @@ def main(
         del sys.argv[1]
         if option in ('--help', '-h'):
             opt_help = True
+            break
+        elif option == '--debug':
+            opt_debug = True
             break
         elif option == '--deadline':
             opt_deadline = 3600.0 * float(sys.argv[1])
@@ -415,7 +418,7 @@ class TaskQueue:
         self.extra_kw_parameters = extra_kw_parameters
         self.filename2requires = {}
 
-    def pick_task(self, opt_ignore_expiry = False):
+    def pick_task(self, opt_ignore_expiry = False, opt_debug = False):
         candidate_tasks = []
         filename2requires = {}
         for filename in os.listdir(self.inbox_dir):
@@ -427,7 +430,8 @@ class TaskQueue:
                     filename2requires[filename] = required_files
         self.filename2requires = filename2requires
         candidate_tasks.sort()
-        #print('# candidate tasks in inbox:', len(candidate_tasks))
+        if opt_debug:
+            print('Candidate tasks in inbox:', len(candidate_tasks))
         for _, _, filename in candidate_tasks:
             task_id, task_bucket = filename[:-5].rsplit(b'-', 1)
             eligible = 'unknown'
@@ -439,14 +443,19 @@ class TaskQueue:
                         eligible = 'no'
                         break
             if eligible == 'no':
+                if opt_debug:
+                    print('Task %s not eligible to run' %task_id)
                 continue
             # read contents of task file
             taskfile = b'/'.join((self.inbox_dir, filename))
             try:
                 f = open(taskfile, 'rb')
             except IOError:
-                # task claimed by another worker or not readable
+                if opt_debug:
+                    print('Task %s claimed by another worker or not readable' %task_id)
                 continue
+            if opt_debug:
+                print('Reading details of task', task_id)
             delete_task = False
             expires = 0.0
             lcode = None
@@ -480,12 +489,16 @@ class TaskQueue:
                     os.rename(taskfile, delete_name)
                 except:
                     print('Task %s claimed by other worker' %utilities.std_string(task_id))
+                if opt_debug:
+                    print('Deleted task', task_id)
                 continue
             # keep list of required files to avoid reading this task file
             # again until all required files are there
             self.filename2requires[filename] = required_files
             if eligible == 'no':
                 f.close()
+                if opt_debug:
+                    print('Task %s not eligible to run' %task_id)
                 continue
             command = f.read().split(b'\n')
             f.close()
@@ -498,6 +511,8 @@ class TaskQueue:
             except:
                 print('Task %s claimed by other worker' %utilities.std_string(task_id))
                 continue
+            if opt_debug:
+                print('Successfully claimed task', task_id)
             # handle last line with linebreak
             if command and command[-1] == b'':
                 del command[-1]
@@ -511,6 +526,8 @@ class TaskQueue:
             if lcode:
                 task.lcode = lcode
             return task
+        if opt_debug:
+            print('No eligible task found')
         return None
 
 def worker(
@@ -550,8 +567,16 @@ def worker(
     utilities.random_delay(5.0)
     start_time = time.time()
     print('Worker loop starting', time.ctime(start_time))
+    if opt_deadline:
+        print('Deadline:', time.ctime(opt_deadline))
+    if opt_stopfile:
+        print('Stopfile:', opt_stopfile)
     if opt_max_idle:
         idle_deadline = start_time + opt_max_idle
+        print(
+            'Idle deadline (will be pushed forward on each activity):',
+            time.ctime(idle_deadline)
+        )
     my_active_tasks = []
     last_verbose = 0.0
     while True:
@@ -577,7 +602,7 @@ def worker(
             print('Waiting for active tasks to finish, not accepting new tasks')
             task = None
         else:
-            task = task_queue.pick_task()
+            task = task_queue.pick_task(opt_debug = opt_debug)
         if task is not None:
             task.start_time = time.time()
             print('Running task %r' %task)
@@ -589,6 +614,8 @@ def worker(
         for index, task in enumerate(my_active_tasks):
             if opt_max_idle:
                 idle_deadline = time.time() + opt_max_idle
+                if opt_debug:
+                    print('Moved idle deadline to', time.ctime(idle_deadline))
             if not task.finished_processing():
                 still_active_tasks.append(task)
                 continue
@@ -631,9 +658,11 @@ def worker(
                 print('Error: Could not remove finished task %r from active queue' %task.task_id)
             if opt_max_idle:
                 idle_deadline = time.time() + opt_max_idle
+                if opt_debug:
+                    print('Moved idle deadline to', time.ctime(idle_deadline))
         my_active_tasks = still_active_tasks
         now = time.time()
-        if now > last_verbose + 60.0:
+        if opt_debug or now > last_verbose + 60.0:
             print('Tasks still active:', len(my_active_tasks))
             last_verbose = now
         if callback:
