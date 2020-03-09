@@ -290,11 +290,12 @@ def main():
 
                     if results:
                         print()
-                        prec1 = StringIO.StringIO()
-                        prec2 = StringIO.StringIO()
-                        latex1 = StringIO.StringIO()
-                        latex2 = StringIO.StringIO()
+                        prec1 = open('prec1.txt', 'r+b') # StringIO.StringIO()
+                        prec2 = open('prec2.txt', 'r+b') # StringIO.StringIO()
+                        latex1 = open('latex1.txt', 'r+b') # StringIO.StringIO()
+                        latex2 = open('latex2.txt', 'r+b') # StringIO.StringIO()
                         latex = {}
+                        column2best_median = {}
                         part1_keys = set()
                         part2_keys = set()
                         part3_keys = set()
@@ -316,6 +317,12 @@ def main():
                             median = score_stats[3]
                             plusminus = max(score_stats[-1] - median, median - score_stats[0])
                             latex[(key1, key2, key3)] = (median, plusminus)
+                            column_key = (key1, key2)
+                            if column_key in column2best_median:
+                                if median > column2best_median[column_key]:
+                                    column2best_median[column_key] = median
+                            else:
+                                column2best_median[column_key] = median
                         print(file=prec1)
                         print(file=prec2)
                         for key1 in sorted(list(part1_keys)):
@@ -352,8 +359,12 @@ def main():
                                 for key2 in sorted(list(part2_keys)):
                                     try:
                                         median, plusminus = latex[(key1, key2, key3)]
+                                        is_best = (key1, key2) in column2best_median \
+                                                  and median == column2best_median[(key1, key2)]
                                         median    = '%.2f' %median
                                         plusminus = '%.2f' %plusminus
+                                        if is_best:
+                                            median = '\\textbf{%s}' %median
                                     except KeyError:
                                         median    = '--'
                                         plusminus = '--'
@@ -363,13 +374,44 @@ def main():
                                 row.append('%.2f $\\pm$ %.2f' %(median, plusminus))
                                 latex2.write(' & '.join(row))
                                 latex2.write(' \\\\\n')
+                                row = []
+                                row.append('\\textbf{%s}' %(key3[0]))
+                                row.append(key3[-1].replace('_', '\\_'))
+                                for key2 in sorted(list(part2_keys)):
+                                    try:
+                                        median, plusminus = latex[(key1, key2, key3)]
+                                        is_best = (key1, key2) in column2best_median \
+                                                  and median == column2best_median[(key1, key2)]
+                                        median    = '%.1f' %median
+                                        plusminus = '%.1f' %plusminus
+                                        if is_best:
+                                            median = '\\textbf{%s}' %median
+                                    except KeyError:
+                                        median    = '--'
+                                        plusminus = '--'
+                                    row.append('%s $\\pm$ %s' %(median, plusminus))
+                                median = score_stats[3]
+                                plusminus = max(score_stats[-1] - median, median - score_stats[0])
+                                row.append('%.1f $\\pm$ %.1f' %(median, plusminus))
+                                latex1.write(' & '.join(row))
+                                latex1.write(' \\\\\n')
+                        latex1.truncate()
+                        latex1.seek(0)
+                        print(latex1.read())
+                        latex2.truncate()
                         latex2.seek(0)
                         print(latex2.read())
+                        prec1.truncate()
                         prec1.seek(0)
                         print(prec1.read())
+                        prec2.truncate()
                         prec2.seek(0)
                         print(prec2.read())
                         print()
+                        latex1.close()
+                        latex2.close()
+                        prec1.close()
+                        prec2.close()
 
     # we must wait for training and prediction tasks to finish in order for
     # temporary files to be deleted
