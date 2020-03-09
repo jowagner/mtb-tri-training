@@ -36,14 +36,21 @@ def unpack_score(score):
     return float(score), date, int(tokens), int(sentences)
 
 def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
+    content = []
+    if date > '2020-02-25' and date != '????-??-??':
+       content.append('new')
+    if date == '????-??-??':
+       content.append('no model')
+    content.append('%.1f' %score)
+    content = '<br>'.join(content)
     return '&#10;'.join([
         '<div title="Round %d with LAS %s' %(
             tt_round, text.split(':')[0]
         ),
         'Model trained %s' %date,
         '%.1fk unlabelled tokens' %(n_tokens/1000.0),
-        '%.1fk unlabelled sentences">%.1f</div>' %(
-            n_sentences/1000.0, score
+        '%.1fk unlabelled sentences">%s</div>' %(
+            n_sentences/1000.0, content
         ),
     ])
 
