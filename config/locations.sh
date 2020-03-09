@@ -102,7 +102,7 @@ case "${SETTING}" in
     export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 "jwagner@g0-debian-10")
-    echo "Detected grove cluster CPU node"
+    #echo "Detected grove cluster CPU node"
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
@@ -116,13 +116,13 @@ case "${SETTING}" in
     export EFML_NPZ_CACHE_SIZE=120GiB
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
-    export TT_TASK_PATIENCE=432000
+    export TT_TASK_PATIENCE=1728000
     export TT_TASK_BUCKETS=100
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
 "jwagner@g1-debian-10")
-    echo "Detected grove cluster GPU node"
+    #echo "Detected grove cluster GPU node"
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
     export CONLL2017_DIR=${HOME}/data/conll2017/clean
@@ -139,7 +139,7 @@ case "${SETTING}" in
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
-    export TT_TASK_PATIENCE=432000
+    export TT_TASK_PATIENCE=1728000
     export TT_TASK_BUCKETS=100
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
