@@ -376,7 +376,6 @@ def main(
             break
         elif option == '--debug':
             opt_debug = True
-            break
         elif option == '--deadline':
             opt_deadline = 3600.0 * float(sys.argv[1])
             if opt_deadline:
