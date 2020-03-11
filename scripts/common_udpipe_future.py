@@ -160,7 +160,7 @@ class Task:
         else:
             self.poll_frequency = 1.0
         assert self.priority >= 0
-        assert self.priority < 100
+        assert self.priority < 1000
 
     def __repr__(self):
         parts = []
@@ -207,7 +207,7 @@ class Task:
         else:
             t0 = 0.0
         command_fingerprint = hashlib.sha256(b'\n'.join(self.command)).hexdigest()
-        task_id = utilities.bstring('%02d-%05x-%s-%s-%d-%s-%s' %(
+        task_id = utilities.bstring('%03d-%05x-%s-%s-%d-%s-%s' %(
             self.priority,
             int((time.time()-t0)/60.0),
             os.environ['HOSTNAME'].replace('-', '_'),
@@ -422,7 +422,7 @@ class TaskQueue:
         filename2requires = {}
         for filename in os.listdir(self.inbox_dir):
             if filename.endswith(b'.task') and b'-' in filename:
-                priority = filename[:2]
+                priority = filename[:3]
                 candidate_tasks.append((priority, utilities.random(), filename))
                 if filename in self.filename2requires:
                     required_files = self.filename2requires[filename]

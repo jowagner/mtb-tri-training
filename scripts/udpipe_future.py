@@ -47,7 +47,7 @@ def train(
             command.append(monitoring_datasets[i].filename)
     task = common_udpipe_future.run_command(
         command,
-        priority = priority,
+        priority = 400+priority,
         submit_and_return = submit_and_return,
     )
     if submit_and_return:

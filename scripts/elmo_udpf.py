@@ -1100,7 +1100,7 @@ def train(
     task = common_udpipe_future.run_command(
         command,
         requires = npz_tasks.get_npz_files(),
-        priority = priority,
+        priority = 400+priority,
         submit_and_return = submit_and_return,
         cleanup = npz_tasks,
     )

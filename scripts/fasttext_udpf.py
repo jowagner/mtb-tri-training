@@ -58,7 +58,7 @@ def train(
             command.append(conllu_file)
     task = common_udpipe_future.run_command(
         command,
-        priority = priority,
+        priority = 400+priority,
         submit_and_return = submit_and_return,
     )
     if submit_and_return:
