@@ -498,7 +498,7 @@ for row in rows:
             best_model_description.append('seed sampling = %s' %(s2text[best_sample]))
             best_model_description.append('decay = %s' %(d2text[best_decay]))
             best_model_description.append('oversampling = %s' %(v2text[best_oversampling]))
-            best_model_description.append('round = %s' %best_n_rounds)
+            best_model_description.append('round = %s' %best_round)
             best_model_description.append('experiment code = %s%s%s%s%s%s3%s' %(
                 last_language, best_parser, best_oversampling, best_sample,
                 '-', best_decay, best_augsize
@@ -560,7 +560,7 @@ for row in rows:
         best_sample = sample
         best_decay = decay
         best_oversampling = oversampling
-        best_n_rounds = n_rounds
+        best_round = tt_round
     rowbaseline = score
     for text in row[baseline_column+1:]:
         tt_round += 1
@@ -584,7 +584,7 @@ for row in rows:
             best_sample = sample
             best_decay = decay
             best_oversampling = oversampling
-            best_n_rounds = n_rounds
+            best_round = tt_round
     last_sample = sample
     last_parser = parser
     last_language = language
