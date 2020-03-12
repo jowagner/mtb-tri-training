@@ -15,12 +15,21 @@ from __future__ import print_function
 
 import getpass
 import os
+import random
 import subprocess
 import sys
 import time
 from collections import defaultdict
 
+
 def main():
+    opt_jobs = [
+        ('udpfr30h', 'worker-udpf-grove-rtx.job',      0, 12),
+        ('udpft30h', 'worker-udpf-grove-tesla.job',    0,  4),
+        ('udpf430h', 'worker-udpf-grove-titanv.job',   0,  1),
+        ('e5wo-30h', 'worker-elmo-hdf5-grove-cpu.job', 0,  8),
+    ]
+    opt_max_submit_per_occasion = 2
     opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))
     opt_stopfile = 'stop-fill-queue'
     opt_stop_check_interval = 12.0
@@ -65,12 +74,9 @@ def main():
         for key in queue:
             print('\t%r with frequency %d' %(key, queue[key]))
         # check what to submit
-        for job_name, script_name, max_waiting, max_running in [
-            ('udpfr30h', 'worker-udpf-grove-rtx.job',      0, 10),
-            ('udpft30h', 'worker-udpf-grove-tesla.job',    0,  4),
-            ('udpf430h', 'worker-udpf-grove-titanv.job',   0,  1),
-            ('e5wo-30h', 'worker-elmo-hdf5-grove-cpu.job', 0,  8),
-        ]:
+        random.shuffle(opt_jobs)
+        n_submitted = 0
+        for job_name, script_name, max_waiting, max_running in opt_jobs:
             if queue[(job_name, 'PD')] > max_waiting:
                 continue
             if queue[(job_name, 'R')] > max_running:
@@ -83,8 +89,10 @@ def main():
             now = time.time()
             while earliest_next_submit <= now:
                 earliest_next_submit += opt_submit_interval
-            # only submit 1 job per occasion
-            break
+            # limit how many jobs to submit at each occasion
+            n_submitted += 1
+            if n_submitted >= opt_max_submit_per_occasion:
+                break
 
 if __name__ == "__main__":
     main()
