@@ -20,7 +20,7 @@ import time
 from collections import defaultdict
 
 def main():
-    opt_script_dir = 'mtb-tri-training/scripts'
+    opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))
     opt_stopfile = 'stop-fill-queue'
     opt_stop_check_interval = 12.0
     opt_submit_interval = 3600.0
