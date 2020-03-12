@@ -639,9 +639,9 @@ class ElmoCache:
         self.npz_bytes_written = 0
         if 'TT_DEBUG' in os.environ \
         and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
-            self.scan_interval = 1.0
-            self.sync_interval = 30.0
-            self.verbosity_interval = 1.0
+            self.scan_interval = 8.5
+            self.sync_interval = 720.0
+            self.verbosity_interval = 5.0
         self.cache_hit_in_progress = 0
         self.cache_miss = 0
         self.cache_hit  = 0
