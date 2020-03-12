@@ -24,10 +24,10 @@ from collections import defaultdict
 
 def main():
     opt_jobs = [
-        ('udpfr30h', 'worker-udpf-grove-rtx.job',      0, 12),
-        ('udpft30h', 'worker-udpf-grove-tesla.job',    0,  4),
-        ('udpf430h', 'worker-udpf-grove-titanv.job',   0,  1),
-        ('e5wo-30h', 'worker-elmo-hdf5-grove-cpu.job', 0,  8),
+        ('udpfr', 'worker-udpf-grove-rtx.job',      0, 12),
+        ('udpft', 'worker-udpf-grove-tesla.job',    0,  4),
+        ('udpfv', 'worker-udpf-grove-titanv.job',   0,  1),
+        ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  8),
     ]
     opt_max_submit_per_occasion = 2
     opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))
@@ -67,7 +67,7 @@ def main():
             assert len(fields) == 8
             assert fields[3] == opt_username
             # extract data
-            job_name = fields[2]
+            job_name = fields[2][:-3]  # remove suffix with estimated duration
             job_state = fields[4]
             queue[(job_name, job_state)] += 1
         print('My jobs at', time.ctime(now))
