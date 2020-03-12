@@ -68,6 +68,7 @@ def main():
             # submit job
             command = ['sbatch', '/'.join((opt_script_dir, script_name))]
             subprocess.call(command)
+            print('Submitted %s (%s)' %(job_name, script_name))
             # move forward time for next job submission
             now = time.time()
             while earliest_next_submit <= now:
