@@ -61,7 +61,9 @@ def main():
             job_name = fields[2]
             job_state = fields[4]
             queue[(job_name, job_state)] += 1
-        print('My jobs at %s: %r' %(time.ctime(now), queue))
+        print('My jobs at', time.ctime(now))
+        for key in queue:
+            print('\t%r with frequency %d' %(key, queue[key]))
         # check what to submit
         for job_name, script_name, max_waiting, max_running in [
             ('udpfr30h', 'worker-udpf-grove-rtx.job',      0, 10),
