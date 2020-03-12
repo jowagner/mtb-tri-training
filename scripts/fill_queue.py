@@ -47,10 +47,17 @@ def main():
             continue
         # get queue state
         command = ['squeue', '--noheader', '--user=' + opt_username]
-        output = subprocess.check_output(command) 
+        output = subprocess.check_output(command) # an exception is raised if the command fails
         queue = defaultdict(lambda: 0)
         for row in output.split('\n'):
+            row.rstrip()
+            if not row:
+                continue
             fields = row.split()
+            # light check for expected format
+            assert len(fields) == 8
+            assert fields[3] == opt_username
+            # extract data
             job_name = fields[2]
             job_state = fields[4]
             queue[(job_name, job_state)] += 1
