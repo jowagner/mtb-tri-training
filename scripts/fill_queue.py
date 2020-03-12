@@ -82,6 +82,7 @@ def main():
             if queue[(job_name, 'R')] > max_running:
                 continue
             # submit job
+            sys.stdout.flush()   # make sure command output appears after our last output
             command = ['sbatch', '/'.join((opt_script_dir, script_name))]
             subprocess.call(command)
             print('Submitted %s (%s)' %(job_name, script_name))
