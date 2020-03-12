@@ -71,10 +71,10 @@ def main():
             job_state = fields[4]
             queue[(job_name, job_state)] += 1
         print('My jobs at', time.ctime(now))
-        for key in queue:
+        for key in sorted(list(queue.keys())):
             print('\t%r with frequency %d' %(key, queue[key]))
         # check what to submit
-        random.shuffle(opt_jobs)
+        random.shuffle(opt_jobs)   # give each type of job a chance
         n_submitted = 0
         for job_name, script_name, max_waiting, max_running in opt_jobs:
             if queue[(job_name, 'PD')] > max_waiting:
