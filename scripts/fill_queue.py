@@ -93,6 +93,7 @@ def main():
             n_submitted += 1
             if n_submitted >= opt_max_submit_per_occasion:
                 break
+        sys.stdout.flush()
 
 if __name__ == "__main__":
     main()
