@@ -151,7 +151,7 @@ root*)
     ;;
 *)
     # default config
-    echo "Warning: cluster not recognised; using default config"
+    echo "Warning: cluster "${SETTING}" not recognised; using default config"
     export UD_TREEBANK_DIR=${HOME}/ud-treebanks-v2.3
     ;;
 esac
