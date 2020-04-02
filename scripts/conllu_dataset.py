@@ -8,6 +8,8 @@
 
 # Author: Joachim Wagner
 
+from __future__ import print_function
+
 import collections
 import hashlib
 import os
@@ -144,9 +146,17 @@ class ConlluDataset(basic_dataset.Dataset):
         sentence = None
         while True:
             line = f_in.readline()
+            if '\0' in line:
+                print(
+                    'Warning: Skipping line containing NULL byte in file %r: %r' %(
+                        f_in, line,
+                    ),
+                    file=sys.stderr,
+                )
+                continue
             if not line:
                 if sentence is not None:
-                    raise ValueError('unexpected end of file in conllu sentence')
+                    raise ValueError('unexpected end of file in conllu sentence, file %r' %f_in)
                 break
             elif sentence is None:
                 sentence = ConlluSentence()
