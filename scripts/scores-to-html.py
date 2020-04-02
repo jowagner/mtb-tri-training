@@ -37,10 +37,12 @@ def unpack_score(score):
 
 def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
     content = []
-    if date > '2020-02-25' and date != '????-??-??':
-       content.append('new')
     if date == '????-??-??':
        content.append('no model')
+    elif date > '2020-03-30':
+       content.append('newest')
+    elif date > '2020-02-25':
+       content.append('new')
     content.append('%.1f' %score)
     content = '<br>'.join(content)
     return '&#10;'.join([
@@ -511,9 +513,9 @@ for row in rows:
     if language is None:
         break
     if last_language != language:
-        print('<h2>%s</h2>' %l2text[language])
+        print('<h2>Language: %s</h2>' %l2text[language])
     if (last_language, last_parser) != (language, parser):
-        print('<h3>%s</h3>' %p2text[parser])
+        print('<h3>Parser: %s</h3>' %p2text[parser])
     if (last_language, last_parser, last_sample) != (language, parser, sample):
         print('<h4>Using %s for round 0 models</h4>' %s2text[sample])
         print('<table cellpadding="4" border="1">')
