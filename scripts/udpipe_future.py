@@ -31,8 +31,6 @@ def train(
 ):
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
-    if is_multi_treebank:
-        raise ValueError('Multi-treebank models not supported by current wrapper script.')
     command = []
     command.append('./udpipe_future-train.sh')
     command.append(dataset_filename)
@@ -42,6 +40,10 @@ def train(
     command.append(model_dir)
     command.append('%d' %batch_size)
     command.append(common_udpipe_future.get_training_schedule(epochs))
+    if is_multi_treebank:
+        command.append('--extra_input tbemb')  # will be split into 2 args in wrapper script
+    else:
+        command.append('')
     for i in range(2):
         if len(monitoring_datasets) > i:
             command.append(monitoring_datasets[i].filename)
@@ -76,13 +78,13 @@ def predict(
     wait_for_input = False,
     wait_for_model = False,
 ):
-    if is_multi_treebank:
-        raise ValueError('Multi-treebank models not supported by current wrapper script.')
     command = []
     command.append('./udpipe_future-predict.sh')
     command.append(model_path)
     command.append(input_path)
     command.append(prediction_output_path)
+    if is_multi_treebank:
+        command.append('--extra_input tbemb')  # will be split into 2 args in wrapper script
     requires = []
     if wait_for_input:
         requires.append(input_path)
