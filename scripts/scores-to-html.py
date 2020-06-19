@@ -25,8 +25,21 @@ langandparser2bestbaseline = {}
 langandparser2worstbaseline = {}
 
 baseline_column = header.index('0')
+language_column = header.index('Language')
+parser_column   = header.index('Parser')
+try:
+    run_column  = header.index('Run')
+except:
+    run_column  = None
+aug_column      = header.index('AugmentSizeIndex')
+method_column   = header.index('Method')
 learner_column  = header.index('Learner')
 testset_column  = header.index('TestSetIndex')
+rounds_column   = header.index('Rounds')
+
+example_header = """Language        Parser  Run     AugmentSizeIndex        Method  NumberOfLearners        Learner TestSetIndex    Rounds  UnlabelledTokensInLastRound    0       1
+"""
+
 
 def unpack_score(score):
     if ':' in score:
@@ -39,10 +52,10 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
     content = []
     if date == '????-??-??':
        content.append('no model')
-    elif date > '2020-03-30':
-       content.append('newest')
-    elif date > '2020-02-25':
-       content.append('new')
+    #elif date >= '2020-06-21':
+    #   content.append('newest')
+    #elif date >= '2020-06-11':
+    #   content.append('new')
     content.append('%.1f' %score)
     content = '<br>'.join(content)
     return '&#10;'.join([
@@ -68,9 +81,9 @@ while True:
         continue
     rows.append(row)
     # find best and worst baseline scores
-    language = row[0]
-    parser   = row[1]
-    method   = row[3]
+    language = row[language_column]
+    parser   = row[parser_column]
+    method   = row[method_column]
     sample   = method[1]
     key = (language, parser, sample)
     baselinescore, _, _, _ = unpack_score(row[baseline_column])
@@ -87,12 +100,12 @@ while True:
     if baselinescore < worstscore:
         langandparser2worstbaseline[key] = baselinescore
     # append sampling to parser information
-    row[1] = '%s\t%s' %(parser, sample)
+    row[parser_column] = '%s\t%s' %(parser, sample)
 
 rows.sort()
 print('<p>%d rows</p>' %len(rows))
 
-rows.append((None, 'n/a n/a', None))
+rows.append((None, 'n/a n/a', '1', None))
 
 last_language = None
 last_parser   = None
@@ -324,7 +337,7 @@ def print_n_round_for_language_and_parser(target_language, target_parser):
             for p_sample in '-wx':
                 for p_decay in '-v':
                     for p_oversampling in '-o':
-                        setting_key = (self.target_language, p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
+                        setting_key = (self.target_language, '1', '-', p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
                         n_rounds = setting2rounds[setting_key]
                         row.append('%d' %n_rounds)
     print('<h4>Number of Rounds for %s and Parser %s</h4>' %(
@@ -357,7 +370,7 @@ def print_n_round_for_language_by_parser(target_language):
                     for p_oversampling in '-o':
                         values = []
                         for p_sample in '-wx':
-                            setting_key = (self.target_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                            setting_key = (self.target_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                             n_rounds = setting2rounds[setting_key]
                             values.append(n_rounds)
                         n_rounds = min(values)
@@ -392,7 +405,7 @@ def print_n_round_for_language_by_sample(target_language):
                     for p_oversampling in '-o':
                         values = []
                         for p_parser in 'fgh':
-                            setting_key = (self.target_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                            setting_key = (self.target_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                             n_rounds = setting2rounds[setting_key]
                             values.append(n_rounds)
                         n_rounds = min(values)
@@ -426,7 +439,7 @@ def print_n_round_overall_by_parser():
                         values = []
                         for p_sample in '-wx':
                             for p_language in 'ehuv':
-                                setting_key = (p_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                                setting_key = (p_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                                 n_rounds = setting2rounds[setting_key]
                                 values.append(n_rounds)
                         n_rounds = min(values)
@@ -458,7 +471,7 @@ def print_n_round_overall_by_sample():
                         values = []
                         for p_parser in 'fgh':
                             for p_language in 'ehuv':
-                                setting_key = (p_language, p_augsize, p_parser, p_sample, p_decay, p_oversampling)
+                                setting_key = (p_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                                 n_rounds = setting2rounds[setting_key]
                                 values.append(n_rounds)
                         n_rounds = min(values)
@@ -477,9 +490,16 @@ def print_n_round_overall():
 
 best_score = None
 for row in rows:
-    parser, sample = row[1].split()
-    language = row[0]
-    augsize = row[2]
+    parser, sample = row[parser_column].split()
+    language = row[language_column]
+    if run_column is None:
+        run = '1'
+    else:
+        run = row[run_column]
+    try:
+        augsize = row[aug_column]
+    except:
+        raise ValueError('No index %d in row %r' %(aug_column, row))
     if (last_language, last_parser, last_sample) != (language, parser, sample) \
     and last_sample is not None:
         print('</table>')
@@ -497,13 +517,16 @@ for row in rows:
             best_ag_k = int(0.5+5*(2.0**0.5)**int(best_augsize, 16))
             best_model_description.append('augsize = %s (%dk)' %(best_augsize, best_ag_k))
             best_model_description.append('parser = %s' %(p2text[best_parser]))
+            best_model_description.append('run = %s' %run)
             best_model_description.append('seed sampling = %s' %(s2text[best_sample]))
             best_model_description.append('decay = %s' %(d2text[best_decay]))
             best_model_description.append('oversampling = %s' %(v2text[best_oversampling]))
             best_model_description.append('round = %s' %best_round)
-            best_model_description.append('experiment code = %s%s%s%s%s%s3%s' %(
+            best_model_description.append('experiment code = %s%s%s%s%s%s%d%s' %(
                 last_language, best_parser, best_oversampling, best_sample,
-                '-', best_decay, best_augsize
+                '-', best_decay,
+                2 + int(run),
+                best_augsize
             ))
             best_model_description = '</br>\n'.join(best_model_description)
             print('<p>%s</p>' %best_model_description)
@@ -524,19 +547,17 @@ for row in rows:
     if last_augsize is not None and last_augsize != augsize:
         print('<tr><td></td></tr>')
     print('<tr>')
-    for i in range(0,baseline_column-5):
-        if i == baseline_column-7:
+    for i in range(0, method_column+1):
+        if i == aug_column:
             augsize_k = int(0.5+5*(2.0**0.5)**int(row[i], 16))
             print('<td>%s: %dk</td>' %(row[i], augsize_k))
             continue
         print('<td>%s</td>' %row[i])
     # number of rounds
-    n_rounds = row[baseline_column-2]
+    n_rounds = row[rounds_column]
     print('<td>%s</td>' %n_rounds)
-    oversampling, _, agreement, decay = row[baseline_column-6]
-    if agreement != '-':
-        raise ValueError('Only default agreement supported so far')
-    setting_key = (language, augsize, parser, sample, decay, oversampling)
+    oversampling, _, agreement, decay = row[method_column]
+    setting_key = (language, run, agreement, augsize, parser, sample, decay, oversampling)
     setting2rounds[setting_key] = int(n_rounds)
     # size in last round
     print('<td>%.1fk</td>' %(0.001*int(row[baseline_column-1])))
