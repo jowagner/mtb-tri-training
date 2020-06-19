@@ -41,10 +41,10 @@ while True:
         parser = code[1]
         method = code[2:6]
         num_learners = int(code[6])
-        run = 1
+        run = '1'
         if num_learners == 4:
             num_learners = 3
-            run = 2
+            run = '2'
         augment_size_index = int(code[7], 16)
         last_filename = filename
         tt_round = 0
@@ -88,6 +88,7 @@ while True:
             learner = 'Ensemble'
         key = (
             lang, parser,
+            run,
             '%X' %augment_size_index,
             method, '%d' %num_learners,
             learner, '%d' %test_set_index
@@ -130,6 +131,7 @@ while True:
 
 key_and_rounds_header = '\t'.join([
     'Language', 'Parser',
+    'Run',
     'AugmentSizeIndex',
     'Method', 'NumberOfLearners',
     'Learner', 'TestSetIndex', 'Rounds',
@@ -144,10 +146,10 @@ if len(sys.argv) > 1:
     if os.path.exists(filename):
         f = open(filename, 'rb')
         old_header = f.readline()
-        scores_start = 9
+        scores_start = 10
         if not old_header.startswith(key_and_rounds_header):
-            scores_start = 8
-            #raise ValueError('Unsupported tsv format')
+            # TODO: detect old format and set scores_start
+            raise ValueError('Unsupported tsv format')
         while True:
             line = f.readline()
             if not line:
@@ -159,6 +161,9 @@ if len(sys.argv) > 1:
                 n_tokens = -1
             else:
                 n_tokens = int(fields[8])
+            if scores_start < 10:
+                # newer keys contain a run number
+                key = key[:2] + ('1',) + key[2:]
             if key not in key2scores \
             or len(scores) > len(key2scores[key]):
                 plain_scores = []
