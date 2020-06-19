@@ -24,6 +24,7 @@ from collections import defaultdict
 
 def main():
     opt_jobs = [
+        # job_name_prefix, script_name, max_waiting, max_running
         ('udpfr', 'worker-udpf-grove-rtx.job',      0, 12),
         ('udpft', 'worker-udpf-grove-tesla.job',    0,  4),
         ('udpfv', 'worker-udpf-grove-titanv.job',   0,  1),
