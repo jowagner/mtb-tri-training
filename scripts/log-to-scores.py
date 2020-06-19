@@ -41,7 +41,11 @@ while True:
         parser = code[1]
         method = code[2:6]
         num_learners = int(code[6])
-        augment_size_index = int(code[7])
+        run = 1
+        if num_learners == 4:
+            num_learners = 3
+            run = 2
+        augment_size_index = int(code[7], 16)
         last_filename = filename
         tt_round = 0
         score_index = 0
@@ -84,7 +88,7 @@ while True:
             learner = 'Ensemble'
         key = (
             lang, parser,
-            '%d' %augment_size_index,
+            '%X' %augment_size_index,
             method, '%d' %num_learners,
             learner, '%d' %test_set_index
         )

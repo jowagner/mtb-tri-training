@@ -291,8 +291,8 @@ def print_n_round_table(row_producer):
     row_producer.get_secondary_header(row)
     row = '</th><th>'.join(row)
     print('<tr><th>%s</th></tr>' %row)
-    for p_augsize in '0123456789':
-        augsize_k = int(0.5+5*(2.0**0.5)**int(p_augsize))
+    for p_augsize in '0123456789ABCDEF':
+        augsize_k = int(0.5+5*(2.0**0.5)**int(p_augsize, 16))
         row = []
         row.append('%s: %dk' %(p_augsize, augsize_k))
         row_producer.get_row(row, p_augsize)
@@ -494,7 +494,7 @@ for row in rows:
             print('<h4>Best Model without Oversampling for %s</h4>' %l2text[last_language])
             best_model_description = []
             best_model_description.append('score = %.1f' %best_score)
-            best_ag_k = int(0.5+5*(2.0**0.5)**int(best_augsize))
+            best_ag_k = int(0.5+5*(2.0**0.5)**int(best_augsize, 16))
             best_model_description.append('augsize = %s (%dk)' %(best_augsize, best_ag_k))
             best_model_description.append('parser = %s' %(p2text[best_parser]))
             best_model_description.append('seed sampling = %s' %(s2text[best_sample]))
@@ -526,7 +526,7 @@ for row in rows:
     print('<tr>')
     for i in range(0,baseline_column-5):
         if i == baseline_column-7:
-            augsize_k = int(0.5+5*(2.0**0.5)**int(row[i]))
+            augsize_k = int(0.5+5*(2.0**0.5)**int(row[i], 16))
             print('<td>%s: %dk</td>' %(row[i], augsize_k))
             continue
         print('<td>%s</td>' %row[i])

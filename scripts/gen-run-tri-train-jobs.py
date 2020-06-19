@@ -18,6 +18,13 @@ from __future__ import print_function
 import os
 import sys
 
+if len(sys.argv) > 1 and sys.argv[1] == '--repeat':
+    # repeat run with different main seed
+    repeat_run = 1
+    del sys.argv[1]
+else:
+    repeat_run = 0
+
 if len(sys.argv) > 1 and sys.argv[1].startswith('ichec'):
     template = open('template-ichec-2x.job', 'rb').read()
     if sys.argv[1][-1] == 'c':
@@ -29,11 +36,17 @@ if len(sys.argv) > 1 and sys.argv[1].startswith('ichec'):
     ]
 else:
     template = open('run-tri-train.job', 'rb').read()
-    augment_size_codes = [0,2,4,6,8]
+    augment_size_codes = [0,2,4,6,8,10,12,14]
     gpu_list = [
-        ('tesla', 'tesla'),
-        ('rtx',   'rtx2080ti'),
+        #('tesla', 'tesla'),
+        #('rtx',   'rtx2080ti'),
+        ('task',   'none'),
     ]
+    if len(sys.argv) > 1 and len(sys.argv[1]) == 1:
+        augment_size_codes = []
+        augment_size_codes.append(int(sys.argv[1]))
+    if len(sys.argv) > 1 and sys.argv[1] == 'big':
+        augment_size_codes = augment_size_codes[4:]
     if len(sys.argv) > 1 and sys.argv[1] == 'grove':
         augment_size_codes = [0,2,4]
     if len(sys.argv) > 1 and sys.argv[1] == 'grove+':
@@ -64,10 +77,10 @@ def get_modelseedsuffix(setting):
         modelseedsuffix2setting.append(setting)
     return retval
 
-#                      0   1   2   3   4   5   6   7   8   9
-aug2iterations      = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6]
+#                      0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+aug2iterations      = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6,  4,  3,  2,  1,  1,  1]
 
-aug2last_iterations = [24, 21, 17, 15, 14, 11,  9,  7,  5,  2]    # for --round-priority
+aug2last_iterations = [24, 21, 17, 15, 14, 11,  9,  7,  5,  4,  3,  2,  2,  2,  2,  2]    # for --round-priority
 
 
 for augment_size_code in augment_size_codes:
@@ -79,8 +92,8 @@ for augment_size_code in augment_size_codes:
         #(5, '--learners 5'),
         #(9, '--learners 9'),
     ]:
-        seed = '%d%d' %(major_code, augment_size_code)
-        seed2 = '%d%d' %(major_code, augment_size_code+2)
+        seed = '%d%d' %(major_code+repeat_run, augment_size_code)
+        seed2 = '%d%d' %(major_code+repeat_run, augment_size_code+2)
         for ovs_code, ovs_options in [
             ('-', ''),
             ('o', '--oversample'),
@@ -121,7 +134,7 @@ for augment_size_code in augment_size_codes:
                             iterations = aug2iterations[augment_size_code]
                             last_iterations = aug2last_iterations[augment_size_code]
                             #if wrpl_code != 'x':
-                            #    iterations = 0
+                            #iterations = 0
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
                                 ('f', 'udpipe_future'),
@@ -139,8 +152,16 @@ for augment_size_code in augment_size_codes:
                                     model_keyword_options = ''
                                 else:
                                     model_keyword_options = '--model-keyword lcode %s' %lcode
-                                name = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed)
-                                name2 = '%s%s%s%s%s%s%s' %(short_lcode, parser_code, ovs_code, wrpl_code, disa_code, decay_code, seed2)
+                                name = '%s%s%s%s%s%s%d%X' %(
+                                    short_lcode, parser_code, ovs_code, wrpl_code,
+                                    disa_code, decay_code, major_code+repeat_run,
+                                    augment_size_code
+                                )
+                                name2 = '%s%s%s%s%s%s%d%X' %(
+                                    short_lcode, parser_code, ovs_code, wrpl_code,
+                                    disa_code, decay_code, major_code+repeat_run,
+                                    augment_size_code+2
+                                )
                                 for gpu_short, gpu_name in gpu_list:
                                     f = open('jobs/%s-%s.job' %(name, gpu_short), 'wb')
                                     f.write(template %locals())
