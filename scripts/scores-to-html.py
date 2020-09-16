@@ -238,10 +238,11 @@ class Distribution:
         if score < self.score975:
             return (1.00, 1.00, 1.00) # 75.0 - 97.5: white
         if score < self.max_score:
-            return (0.80, 0.60, 1.00) # 97.5 - 100: light violet-blue
-        if score < self.max_score+0.4:
-            return (0.65, 0.65, 1.00) # light blue
-        if score < self.max_score+0.8:
+            #return (0.80, 0.60, 1.00) # 97.5 - 100: light violet-blue
+            return (0.65, 0.65, 1.00) # 97.5 - 100: light blue
+        #if score < self.max_score+0.4:
+            #return (0.65, 0.65, 1.00) # light blue
+        if score < self.max_score+0.6:
             return (0.6, 1.0, 1.0)  # light cyan-blue
         if score < self.max_score+1.2:
             return (0.80, 1.0, 0.50)  # light yellow-green
@@ -251,6 +252,12 @@ class Distribution:
             return (1.0, 0.8, 0.5)  # orange-pink
         else:
             return (1.0, 0.5, 0.5)  # light red
+
+#    ( 99.0, 'background light violet-blue: in top 2.5% of baselines'),
+#    (100.0, 'blend'),
+#    (100.2, 'background light blue: 0.0 to 0.4 LAS points above top baseline'),
+#    (100.4, 'blend'),
+#    (100.6, 'background cyan-blue: 0.4 to 0.8 LAS points above top baseline'),
 
 legend = []
 legend.append('<table>')
@@ -268,13 +275,11 @@ for score, text in [
     ( 50.0, 'blend'),
     ( 73.8, 'background white: in upper half but below 97.5%'),
     ( 97.5, 'blend'),
-    ( 99.0, 'background light violet-blue: in top 2.5% of baselines'),
+    ( 99.0, 'background light blue: in top 2.5% of baselines'),
     (100.0, 'blend'),
-    (100.2, 'background light blue: 0.0 to 0.4 LAS points above top baseline'),
-    (100.4, 'blend'),
-    (100.6, 'background cyan-blue: 0.4 to 0.8 LAS points above top baseline'),
-    (100.8, 'blend'),
-    (101.0, 'background yellow-green: 0.8 to 1.2 LAS points above top baseline'),
+    (100.3, 'background cyan-blue: 0.0 to 0.6 LAS points above top baseline'),
+    (100.6, 'blend'),
+    (100.9, 'background yellow-green: 0.6 to 1.2 LAS points above top baseline'),
     (101.2, 'blend'),
     (101.5, 'background strong yellow: 1.2 to 1.8 LAS points above top baseline'),
     (101.8, 'blend'),
@@ -325,17 +330,17 @@ def print_n_round_for_language_and_parser(target_language, target_parser):
             row.append('')
             for p_sample in '-wx':
                 row.append(s2text[p_sample])
-            print('</th><th colspan="4">'.join(row))
+            print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-wx':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, self.target_parser, p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-wx':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         setting_key = (self.target_language, '1', '-', p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
                         n_rounds = setting2rounds[setting_key]
@@ -356,17 +361,17 @@ def print_n_round_for_language_by_parser(target_language):
             row.append('')
             for p_parser in 'fgh':
                 row.append(p2text[p_parser])
-            print('</th><th colspan="4">'.join(row))
+            print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_parser in 'fgh':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, p_parser, p_oversampling, '*', p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_parser in 'fgh':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_sample in '-wx':
@@ -391,17 +396,17 @@ def print_n_round_for_language_by_sample(target_language):
             row.append('')
             for p_sample in '-wx':
                 row.append(s2text[p_sample])
-            print('</th><th colspan="4">'.join(row))
+            print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-wx':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-wx':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_parser in 'fgh':
@@ -424,17 +429,17 @@ def print_n_round_overall_by_parser():
             row.append('')
             for p_parser in 'fgh':
                 row.append(p2text[p_parser])
-            print('</th><th colspan="4">'.join(row))
+            print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_parser in 'fgh':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %('*', p_parser, p_oversampling, '*', p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_parser in 'fgh':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_sample in '-wx':
@@ -456,17 +461,17 @@ def print_n_round_overall_by_sample():
             row.append('')
             for p_sample in '-wx':
                 row.append(s2text[p_sample])
-            print('</th><th colspan="4">'.join(row))
+            print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-wx':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %('*', '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-wx':
-                for p_decay in '-v':
+                for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_parser in 'fgh':
