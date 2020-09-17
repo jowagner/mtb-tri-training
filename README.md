@@ -56,7 +56,7 @@ ln -s /path/to/tri-training/mtb-tri-training/
 git clone git@github.com:tira-io/ADAPT-DCU.git
 ```
 
-TODO: make a separate release with first accepted paper
+TODO: update with https://github.com/jowagner/ud-combination
 
 ## UDPipe-future
 
