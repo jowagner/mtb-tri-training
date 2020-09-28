@@ -25,6 +25,14 @@ if len(sys.argv) > 1 and sys.argv[1] == '--repeat':
 else:
     repeat_run = 0
 
+if len(sys.argv) > 1 and sys.argv[1] == '--baseline-only':
+    job_dir = 'baseline-jobs'
+    max_iterations = 0
+    del sys.argv[1]
+else:
+    job_dir = 'jobs'
+    max_iterations = 9999
+
 if len(sys.argv) > 1 and sys.argv[1].startswith('ichec'):
     template = open('template-ichec-2x.job', 'rb').read()
     if sys.argv[1][-1] == 'c':
@@ -44,7 +52,7 @@ else:
     ]
     if len(sys.argv) > 1 and len(sys.argv[1]) == 1:
         augment_size_codes = []
-        augment_size_codes.append(int(sys.argv[1]))
+        augment_size_codes.append(int(sys.argv[1], 16))
     if len(sys.argv) > 1 and sys.argv[1] == 'big':
         augment_size_codes = augment_size_codes[4:]
     if len(sys.argv) > 1 and sys.argv[1] == 'grove':
@@ -60,8 +68,8 @@ else:
     if len(sys.argv) > 1 and sys.argv[1] == 'okia+':
         augment_size_codes = [1,]
 
-if not os.path.exists('jobs'):
-    os.mkdir('jobs')
+if not os.path.exists(job_dir):
+    os.mkdir(job_dir)
 
 setting2modelseedsuffix = {}
 modelseedsuffix2setting = []
@@ -133,8 +141,7 @@ for augment_size_code in augment_size_codes:
                             #iterations = min(24, int(0.5+0.002*unlabelled_size/augsize))
                             iterations = aug2iterations[augment_size_code]
                             last_iterations = aug2last_iterations[augment_size_code]
-                            #if wrpl_code != 'x':
-                            #iterations = 0
+                            iterations = min(max_iterations, iterations)
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
                                 ('f', 'udpipe_future'),
@@ -163,7 +170,7 @@ for augment_size_code in augment_size_codes:
                                     augment_size_code+2
                                 )
                                 for gpu_short, gpu_name in gpu_list:
-                                    f = open('jobs/%s-%s.job' %(name, gpu_short), 'wb')
+                                    f = open('%s/%s-%s.job' %(job_dir, name, gpu_short), 'wb')
                                     f.write(template %locals())
                                     f.close()
 
