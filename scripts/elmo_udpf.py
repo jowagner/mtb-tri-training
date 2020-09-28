@@ -1047,6 +1047,7 @@ class NPZTasks:
     def cleanup(self):
         for npz_file in self.get_npz_files():
             if os.path.exists(npz_file):
+                print('Cleaning up ' + utilities.std_string(npz_file))
                 os.unlink(npz_file)
         for statsfile in ('elmo.start', 'elmo.end'):
             statspath = '/'.join((self.workdir, statsfile))
