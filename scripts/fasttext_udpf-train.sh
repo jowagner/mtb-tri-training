@@ -120,6 +120,9 @@ touch parser-training.start
 MIN_EPOCH_BATCHES=$(expr ${MIN_EPOCH_SENTENCES} / ${BATCH_SIZE})
 echo "Batch size is $BATCH_SIZE" >> training.start
 echo "Minimum number of batches in each epoch: $MIN_EPOCH_BATCHES" >> training.start
+if [ -e ${PARSER_DIR}/.git ] ; then
+    echo "Parser commit:" $(git --git-dir=${PARSER_DIR}/.git describe --always) >> training.start
+fi
 
 python ${PARSER_DIR}/ud_parser.py \
     ${EXTRA_OPTIONS}              \

@@ -104,6 +104,19 @@ hostname > training.start
 MIN_EPOCH_BATCHES=$(expr ${MIN_EPOCH_SENTENCES} / ${BATCH_SIZE})
 echo "Batch size is $BATCH_SIZE" >> training.start
 echo "Minimum number of batches in each epoch: $MIN_EPOCH_BATCHES" >> training.start
+if [ -e ${PARSER_DIR}/.git ] ; then
+    echo "Parser commit:" $(git --git-dir=${PARSER_DIR}/.git describe --always) >> training.start
+fi
+
+echo "Wrapper command line:" >> training.start
+echo "$1" >> training.start
+echo "$2" >> training.start
+echo "$3" >> training.start
+echo "$4" >> training.start
+echo "$5" >> training.start
+echo "$6" >> training.start
+echo "$7" >> training.start
+echo "$8" >> training.start
 
 python ${PARSER_DIR}/ud_parser.py \
     ${EXTRA_OPTIONS}              \

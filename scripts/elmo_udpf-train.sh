@@ -51,6 +51,7 @@ TEST_NPZ=${12}
 if [ -n "$DEV_SET" ]; then
     if [ -n "$TEST_SET" ]; then
         REAL_DEV_SET=$(realpath ${DEV_SET})
+        N_MONITORS=2
     else
         # only 1 monitoring set specified
         # --> make this the test set as udpipe-future
@@ -58,8 +59,11 @@ if [ -n "$DEV_SET" ]; then
         TEST_SET="$DEV_SET"
         TEST_NPZ="$DEV_NPZ"
         unset DEV_SET
+        N_MONITORS=1
     fi
     REAL_TEST_SET=$(realpath ${TEST_SET})
+else
+    N_MONITORS=0
 fi
 
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
@@ -135,11 +139,29 @@ if [ -n "$DEV_SET" ]; then
     ln -s ${REAL_DEV_SET} ${FAKE_TBID}-ud-dev.conllu
 fi
 
-touch parser-training.start
-
 MIN_EPOCH_BATCHES=$(expr ${MIN_EPOCH_SENTENCES} / ${BATCH_SIZE})
 echo "Batch size is $BATCH_SIZE" >> training.start
 echo "Minimum number of batches in each epoch: $MIN_EPOCH_BATCHES" >> training.start
+if [ -e ${PARSER_DIR}/.git ] ; then
+    echo "Parser commit:" $(git --git-dir=${PARSER_DIR}/.git describe --always) >> training.start
+fi
+echo "Monitoring sets: $N_MONITORS" >> training.start
+
+echo "Wrapper command line:" >> training.start
+echo "$1" >> training.start
+echo "$2" >> training.start
+echo "$3" >> training.start
+echo "$4" >> training.start
+echo "$5" >> training.start
+echo "$6" >> training.start
+echo "$7" >> training.start
+echo "$8" >> training.start
+echo "$9" >> training.start
+echo "${10}" >> training.start
+echo "${11}" >> training.start
+echo "${12}" >> training.start
+
+touch parser-training.start
 
 python ${PARSER_DIR}/ud_parser.py \
     ${EXTRA_OPTIONS}              \
@@ -157,13 +179,13 @@ python ${PARSER_DIR}/ud_parser.py \
 #    --min_epoch_batches 3000      \    ## --> configure MIN_EPOCH_SENTENCES
 #    --epochs "4:1e-3,2:1e-4"      \
 
-rm ${ELMO_FILE_PREFIX}*.npz
 
 touch training.end
 
 cd /
 
 if [ -e "$MODELDIR/checkpoint-inference-last.index" ]; then
+    rm $MODELDIR/${ELMO_FILE_PREFIX}*.npz
     mv $MODELDIR $FINAL_MODELDIR
 else
     SUFFIX=$(head -c 80 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 12)
