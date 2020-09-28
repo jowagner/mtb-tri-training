@@ -81,6 +81,7 @@ def get_modelseedsuffix(setting):
         retval = setting2modelseedsuffix[setting]
     except KeyError:
         retval = len(modelseedsuffix2setting)
+        retval += 44  # skip values used in previous version
         setting2modelseedsuffix[setting] = retval
         modelseedsuffix2setting.append(setting)
     return retval
@@ -110,6 +111,7 @@ for augment_size_code in augment_size_codes:
                 ('-', ''),
                 ('w', '--without-replacement'),
                 ('x', '--without-replacement --seed-size "250%"'),
+                ('t', '--without-replacement --seed-size "300%"'),
             ]:
                 for disa_code, disa_options in [
                     #('a', '--all-knowledge-transfers'),  # not implemented yet
@@ -122,6 +124,11 @@ for augment_size_code in augment_size_codes:
                         ('v', '--last-k 1'),
                         ('y', '--last-k 5'),
                         ('z', '--last-decay 0.5'),
+                        ('a', '--all-labelled-data'),
+                        ('u', '--all-labelled-data --last-k 1 --check-error-rate'),
+                        ('f', '--all-labelled-data --last-k 5'),
+                        ('r', '--all-labelled-data --last-decay 0.5'),
+                        ('s', '--all-labelled-data --last-decay 0.71'),
                     ]:
                         #if decay_code != '-' and augment_size_code < 6:
                         #    continue
