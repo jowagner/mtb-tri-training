@@ -129,6 +129,7 @@ v2text = {
 }
 s2text = {
     '-': 'bootstrap samples of labelled data',
+    't': '300% of labelled data',
     'w': 'permutations of labelled data',
     'x': '250% of labelled data',
 }
@@ -328,18 +329,18 @@ def print_n_round_for_language_and_parser(target_language, target_parser):
             print('<tr><th colspan="%d">' %left_columns)
             row = []
             row.append('')
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 row.append(s2text[p_sample])
             print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, self.target_parser, p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         setting_key = (self.target_language, '1', '-', p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
@@ -374,7 +375,7 @@ def print_n_round_for_language_by_parser(target_language):
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
-                        for p_sample in '-wx':
+                        for p_sample in '-twx':
                             setting_key = (self.target_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                             n_rounds = setting2rounds[setting_key]
                             values.append(n_rounds)
@@ -394,18 +395,18 @@ def print_n_round_for_language_by_sample(target_language):
             print('<tr><th colspan="%d">' %left_columns)
             row = []
             row.append('')
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 row.append(s2text[p_sample])
             print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
@@ -442,7 +443,7 @@ def print_n_round_overall_by_parser():
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
-                        for p_sample in '-wx':
+                        for p_sample in '-twx':
                             for p_language in 'ehuv':
                                 setting_key = (p_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                                 n_rounds = setting2rounds[setting_key]
@@ -459,18 +460,18 @@ def print_n_round_overall_by_sample():
             print('<tr><th colspan="%d">' %left_columns)
             row = []
             row.append('')
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 row.append(s2text[p_sample])
             print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %('*', '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
-            for p_sample in '-wx':
+            for p_sample in '-twx':
                 for p_decay in '-vyz':
                     for p_oversampling in '-o':
                         values = []
