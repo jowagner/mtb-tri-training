@@ -182,7 +182,7 @@ Options:
                             is over 100% make n copies first to reach n x 100%
                             and then sample the remaining < 100% without
                             replacement.
-                            (Default: sample seed sets without replacement)
+                            (Default: sample seed sets with replacement)
 
     --seed-filter-keyword  KEY VALUE
                             Ask the dataset module for a custom sentence
@@ -327,9 +327,10 @@ Options:
                             knowledge is transferred.)
 
     --with-disagreement     Short for --min-learner-disagreement 1
-
+""")
+    not_yet_implemented = """
     --mask-teacher-disagreement  NUMBER
-                            When the 2 teachers disagree about a label if an
+                            When the 2 teachers disagree about a label of an
                             item, replace it with '_' (which finally is
                             replaced with a random label) with probability
                             NUMBER. Otherwise pick the prediction of one of
@@ -338,7 +339,7 @@ Options:
 
     --mask-learner-agreement  NUMBER
                             When the learner agrees with the teachers'
-                            joint prediction, reaplace it with '_' (which
+                            joint prediction, replace it with '_' (which
                             finally is replaced with a random label) with
                             probability NUMBER. Otherwise reinforce
                             existing knowledge.
@@ -348,6 +349,7 @@ Options:
     #       be short-hands for settings various other options (some of which
     #       are not yet documented here).
 
+
     --per-item              Apply apply tri-training to individual items,
                             either select an item or not.
                             (Default: only select full sentences)
@@ -355,7 +357,8 @@ Options:
     --per-item-and-target   Apply apply tri-training to individual target
                             features of items, e.g. in depdendency parsing
                             make independent decisions for heads and labels.
-
+"""
+    print("""
     --cumulative-ensemble   Also evaluate ensemble of models of all iterations
                             (Default: only evaluate ensemble for current
                             iteration and individual models)
@@ -403,7 +406,7 @@ Options:
 # from the unlabelled data and to only need one model module for all
 # embeddings variants.
 
-embedding_options = """
+not_yet_implemented_embedding_options = """
     --external-embedding-module  NAME
                             Provide an external embedding table for use with
                             model modules that support using one.
