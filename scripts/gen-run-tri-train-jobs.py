@@ -26,6 +26,7 @@ else:
     repeat_run = 0
 
 mini_option = ''
+max_iterations = 9999
 if len(sys.argv) > 1 and sys.argv[1].startswith('--baseline'):
     job_dir = 'baseline-jobs'
     max_iterations = 0
@@ -36,7 +37,6 @@ elif len(sys.argv) > 1 and sys.argv[1].startswith('--mini'):
     del sys.argv[1]
 else:
     job_dir = 'jobs'
-    max_iterations = 9999
 
 if len(sys.argv) > 1 and sys.argv[1].startswith('ichec'):
     template = open('template-ichec-2x.job', 'rb').read()
