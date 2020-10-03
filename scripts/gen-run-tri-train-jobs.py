@@ -25,9 +25,14 @@ if len(sys.argv) > 1 and sys.argv[1] == '--repeat':
 else:
     repeat_run = 0
 
-if len(sys.argv) > 1 and sys.argv[1] == '--baseline-only':
+mini_option = ''
+if len(sys.argv) > 1 and sys.argv[1].startswith('--baseline'):
     job_dir = 'baseline-jobs'
     max_iterations = 0
+    del sys.argv[1]
+elif len(sys.argv) > 1 and sys.argv[1].startswith('--mini'):
+    job_dir = 'mini-jobs'
+    mini_option = '--max-model-training 2'
     del sys.argv[1]
 else:
     job_dir = 'jobs'

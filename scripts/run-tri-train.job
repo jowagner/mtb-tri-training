@@ -62,6 +62,7 @@ cd ${SCRIPTDIR}
     --rename-dispensable    \
     --epoch-selection last  \
     --iterations %(iterations)2d  \
+    %(mini_option)s               \
     --workdir ${WORKDIR}     \
     2> ${WORKDIR}/stderr.txt  \
     >  ${WORKDIR}/stdout.txt
