@@ -268,6 +268,13 @@ Options:
     --iterations  NUMBER    Perform NUMBER iterations of tri-training.
                             (Default: 5)
 
+    --max-model-training  NUMBER
+                            Do not train new models after iteration NUMBER.
+                            Existing models may be re-used with --continue.
+                            Prediction, preparation of new training sets
+                            and evaluation are not affected.
+                            (Default: -1 = no limit)
+
     --learners  NUMBER      Use NUMBER learners in tri-training. Knowledge
                             transfer is always from 2 teachers to 1 learner.
                             (Default: 3)
@@ -467,6 +474,7 @@ def main():
     opt_diversify_attempts = 1
     opt_oversample = False
     opt_iterations = 5
+    opt_max_model_training = -1
     opt_learners = 3
     opt_last_k = 0
     opt_last_decay = 1.0
@@ -615,6 +623,9 @@ def main():
             opt_oversample = True
         elif option == '--iterations':
             opt_iterations = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--max-model-training':
+            opt_max_model_training = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--learners':
             opt_learners = int(sys.argv[1])
@@ -952,6 +963,8 @@ def main():
                 opt_tolerant = opt_tolerant,
                 opt_rename_dispensable = opt_rename_dispensable,
                 opt_round_priority = opt_round_priority,
+                opt_do_not_train = (opt_max_model_training >= 0 \
+                                 and training_round > opt_max_model_training),
             )
         # prepare processing of subsets
         if opt_tolerant \
@@ -1314,6 +1327,8 @@ def main():
             opt_tolerant = opt_tolerant,
             opt_rename_dispensable = opt_rename_dispensable,
             opt_round_priority = opt_round_priority,
+            opt_do_not_train = (opt_max_model_training >= 0 \
+                             and training_round > opt_max_model_training),
         )
 
         print_t('\nEvaluating new models:')
@@ -1338,6 +1353,9 @@ def main():
 
     print_t('\n== Final Model ==\n')
     # TODO
+    #  * select iteration according to --iteration-selection
+    #  * evaluate selected iteration on test sets
+
 
 def print_t(*args):
     args = list(args)
@@ -1605,6 +1623,7 @@ def train_and_evaluate_baselines(
     opt_model_kwargs = {},
     opt_tolerant = False, opt_rename_dispensable = False,
     opt_round_priority = 1.0,
+    opt_do_not_train = False,
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -1619,6 +1638,7 @@ def train_and_evaluate_baselines(
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
         opt_round_priority = opt_round_priority,
+        opt_do_not_train = opt_do_not_train,
     )
     evaluate(
         models,
@@ -1989,6 +2009,7 @@ def train_models(
     opt_model_kwargs = {},
     opt_tolerant = False, opt_rename_dispensable = False,
     opt_round_priority = 1.0,
+    opt_do_not_train = False,
 ):
     retval = []
     manual_training_needed = []
@@ -2059,6 +2080,9 @@ def train_models(
             # we will ask the user to train the models when details
             # for all leaners have been printed
             manual_training_needed.append(learner_rank)
+        if opt_do_not_train:
+            print('\n*** Model missing but not allowed to train new models in this iteration. ***\n')
+            sys.exit(0)
         else:
             # ask model module to train the model
             model_kwargs = opt_model_kwargs.copy()
