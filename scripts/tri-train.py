@@ -2080,7 +2080,7 @@ def train_models(
             # we will ask the user to train the models when details
             # for all leaners have been printed
             manual_training_needed.append(learner_rank)
-        if opt_do_not_train:
+        elif opt_do_not_train:
             print('\n*** Model missing but not allowed to train new models in this iteration. ***\n')
             sys.exit(0)
         else:
