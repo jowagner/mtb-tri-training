@@ -11,8 +11,8 @@
 import random
 import sys
 
-repetitions = 100000
-items       = 10000
+repetitions = int(sys.argv[1])
+items       = int(sys.argv[2])
 
 data = list(range(items))
 
