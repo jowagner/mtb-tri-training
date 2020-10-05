@@ -18,18 +18,25 @@ import conllu_dataset as dataset_module
 import itertools
 import os
 import sys
+import time
 
 '''
 usage:
-ls */prediction-00-?-*-dev-*.conllu */model-00-1-*/*.conllu | ./get-baseline-distribution.py
+ls */prediction-00-?-*-dev-*.conllu */model-00-1-*/*.conllu */model-00*/cmd | ./get-baseline-distribution.py
+or
+find | ./get-baseline-distribution.py
 (temporary files will be created in /dev/shm)
 '''
 
 tmp_dir = '/dev/shm'
+opt_test = False       # set to True to also create LAS distributions for test sets
+opt_debug = True
 
 key2filenames = {}
 
-exp2gold = {}
+gold = {}
+seeds = {}
+have_testsets = set()
 
 while True:
     line = sys.stdin.readline()
@@ -37,40 +44,159 @@ while True:
         break
     line = line.rstrip()
     fields = line.split('/')
-    exp_code = fields[-2]
-    if exp_code.startswith('model-00-1'):
+    filename = fields[-1]
+    folder = fields[-2]
+    if filename == 'stdout.txt' and folder.startswith('model-00-'):
         exp_code = fields[-3]
-        is_modelfile = True
-        if 'train' in fields[-1]:
+        learner = folder.split('-')[2]
+        seeds[(exp_code, learner)] = line
+        continue
+    if not filename.endswith('.conllu'):
+        continue
+    if folder.startswith('model-00-1') \
+    and not filename.endswith('-ud-train.conllu'):
+        # note that the test type in `filename` can be wrong
+        # due to an earlier bug in the training wrapper script
+        exp_code = fields[-3]
+        language = exp_code[0]
+        have_all_test_types = True
+        for test_type in ('dev', 'test'):
+            if test_type == 'test' and not opt_test:
+                continue
+            if not (language, test_type) in have_testsets:
+                have_all_test_types = False
+                break
+        if have_all_test_types:
             continue
         target = os.readlink(line)
-        test_type = target.replace('.', '-').split('-')[-2]
-        exp2gold[(exp_code, test_type)] = '/'.join(target.split('/')[-2:])
+        t_filename = target.split('/')[-1]
+        fields = t_filename.replace('.', '-').split('-')
+        test_tbid = fields[0]
+        if fields[1] != 'ud' \
+        or fields[3] != 'conllu':
+            sys.stderr.write('Unexpected file %r\n' %line)
+            continue
+        test_type = fields[2]
+        if test_type == 'test' and not opt_test:
+            continue
+        gold[(test_tbid, test_type)] = '/'.join(target.split('/')[-2:])
+        have_testsets.add((language, test_type))
         continue
+    elif folder.startswith('model-') \
+    and folder[6].isdigit() \
+    and folder[7].isdigit() \
+    and folder[8] == '-' \
+    and folder[9].isdigit():
+        continue
+    elif len(folder) != 8:
+        sys.stderr.write('Ignoring unexpected file %r\n' %line)
+        continue
+    exp_code = folder
     language = exp_code[0]
     parser   = exp_code[1]
     sample   = exp_code[3]
-    learners = int(exp_code[-2])
+    try:
+        learners = int(exp_code[-2])
+    except:
+        raise ValueError('Unsupported exp_code %r in %s' %(exp_code, line))
+    run = 1
+    if learners == 4:
+        learners = 3
+        run = 2
     fields = fields[-1].split('-')
+    if fields[0] != 'prediction':
+        continue
+    if len(fields) < 5:
+        sys.stderr.write('Not enough fields in filename %r\n' %line)
+        continue
+    if fields[1] != '00':
+        continue
     learner = fields[2]
     if learner == 'E':
         continue
-    seed = exp_code[-2:] + learner
     test_tbid = fields[3]
     test_type = fields[4]
+    if test_type != 'dev' and not opt_test:
+        continue
     key = (language, parser, sample, learners, test_tbid, test_type)
     if not key in key2filenames:
-        key2filenames[key] = []
-    key2filenames[key].append((seed, exp_code, line))
+        key2filenames[key] = {}
+    learner2filenames = key2filenames[key]
+    if not learner in learner2filenames:
+        learner2filenames[learner] = []
+    learner2filenames[learner].append((exp_code, line))
 
-for exp_code, test_type in exp2gold:
-    print('%s\t%s\t%s' %(exp_code, test_type, exp2gold[(exp_code, test_type)]))
+def get_seed(filename):
+    retval = 'unknown'
+    f = open(filename, 'rb')
+    while True:
+        line = f.readline()
+        if not line:
+            break
+        if line.startswith('seed:'):
+            retval = line.split()[1]
+            break
+    f.close()
+    return retval
 
-for key in key2filenames:
-    print('Combinations for', key)
+n_seeds = len(seeds)
+i = 0
+start = time.time()
+for key in list(seeds.keys())[:]:
+    i = i + 1
+    sys.stderr.write('Reading seed %d of %d (%.1f%% done)...\r' %(i, n_seeds, 100.0*(i-1)/float(n_seeds)))
+    filename = seeds[key]
+    seeds[key] = get_seed(filename)
+duration = time.time() - start
+sys.stderr.write('Read %s seeds in %.1f seconds     \n' %(n_seeds, duration))
+
+if opt_debug:
+    print('== Test files for each experiment ==')
+    for key in sorted(list(gold.keys())):
+        test_file = gold[key]
+        test_tbid, test_type = key
+        print('%s\t%s\t%s' %(test_tbid, test_type, test_file))
+    print('== Seeds ==')
+    for key in sorted(list(seeds.keys())):
+        exp_code, learner = key
+        seed = seeds[key]
+        print('%s\t%s\t%s' %(exp_code, learner, seed))
+
+for key in sorted(list(key2filenames.keys())):
+    print('== %r ==' %(key,))
     language, parser, sample, learners, test_tbid, test_type = key
-    seeds_and_filenames = key2filenames[key]
-    n = len(seeds_and_filenames)
+    learner2filenames = key2filenames[key]
+    assert len(learner2filenames) == learners
+    learner_partitions = []
+    for learner in sorted(list(learner2filenames.keys())):
+        print('=== Learner %s ===' %learner)
+        filenames = learner2filenames[learner]
+        filenames.sort()
+        n = len(filenames)
+        if opt_debug:
+            print('number of predictions: %d' %n)
+            for i in range(n):
+                print('[%d] = %r' %(i, filenames[i]))
+        # filenames[i] = (exp_code, path)
+        if n < 16:
+            sys.stderr.write('Warning: only %d predictions for learner %s and %r\n' %(
+                n, learner, key
+            ))
+        partitions = []
+        if n <= 16:
+            for prediction in filenames:
+                partition = []
+                partition.append(prediction)
+                partitions.append(partition)
+        else:
+            # TODO:
+            # get LAS for each prediction
+            # find best split: must have sufficient items on each side and
+            # minimise seed overlap (break ties by preferring balanced splits)
+            raise NotImplementedError
+        learner_partitions.append(partitions)
+    continue
+    # TODO: adjust below to use partitions
     total = 0
     for _ in itertools.combinations(range(n), learners):
         total += 1
