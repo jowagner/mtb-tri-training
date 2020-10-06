@@ -188,7 +188,7 @@ class ConlluDataset(basic_dataset.Dataset):
             f_out.write('\n')
         f_out.write('\n')
 
-def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False):
+def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False, verbose = True):
     if not outname:
         outname = prediction_path[:-7] + '.eval.txt'
     command = []
@@ -199,9 +199,10 @@ def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False)
     command.append(gold_path)
     command.append(prediction_path)
     if not reuse_eval_txt or not os.path.exists(outname):
-        print('Running', command)
-        sys.stderr.flush()
-        sys.stdout.flush()
+        if verbose:
+            print('Running', command)
+            sys.stderr.flush()
+            sys.stdout.flush()
         subprocess.call(command)
     score = (0.0, 'N/A')
     with open(outname, 'rb') as f:
@@ -363,7 +364,7 @@ def get_filename_extension():
     ''' recommended extension for output files '''
     return '.conllu'
 
-def combine(prediction_paths, output_path, combiner_dir = None, seed = '42'):
+def combine(prediction_paths, output_path, combiner_dir = None, seed = '42', verbose = True):
     ''' combine (ensemble) the given predictions
         into a single prediction
     '''
@@ -379,9 +380,10 @@ def combine(prediction_paths, output_path, combiner_dir = None, seed = '42'):
     command.append(seed)
     for prediction_path in prediction_paths:
         command.append(prediction_path)
-    print('Running', command)
-    sys.stderr.flush()
-    sys.stdout.flush()
+    if verbose:
+        print('Running', command)
+        sys.stderr.flush()
+        sys.stdout.flush()
     subprocess.call(command)
 
 class SentenceFilter:
