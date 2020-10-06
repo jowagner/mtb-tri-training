@@ -17,6 +17,7 @@ import conllu_dataset as dataset_module
 
 import itertools
 import os
+import random
 import sys
 import time
 
@@ -139,16 +140,19 @@ def get_seed(filename):
     f.close()
     return retval
 
-n_seeds = len(seeds)
-i = 0
-start = time.time()
-for key in list(seeds.keys())[:]:
-    i = i + 1
-    sys.stderr.write('Reading seed %d of %d (%.1f%% done)...\r' %(i, n_seeds, 100.0*(i-1)/float(n_seeds)))
-    filename = seeds[key]
-    seeds[key] = get_seed(filename)
-duration = time.time() - start
-sys.stderr.write('Read %s seeds in %.1f seconds     \n' %(n_seeds, duration))
+class LazyReadSeeds:
+    def __init__(self, d):
+        self.d = d
+    def __getitem__(self, key):
+        seed = self.d[key]
+        if seed.endswith('.txt'):
+            seed = get_seed(seed)
+            self.d[key] = seed
+        return seed
+    def keys(self):
+        return self.d.keys()
+
+seeds = LazyReadSeeds(seeds)
 
 if opt_debug:
     print('== Test files for each experiment ==')
@@ -156,46 +160,128 @@ if opt_debug:
         test_file = gold[key]
         test_tbid, test_type = key
         print('%s\t%s\t%s' %(test_tbid, test_type, test_file))
-    print('== Seeds ==')
-    for key in sorted(list(seeds.keys())):
-        exp_code, learner = key
-        seed = seeds[key]
-        print('%s\t%s\t%s' %(exp_code, learner, seed))
+
+def get_split_for_buckets(candidates, n):
+    # n must be power of two
+    assert bin(n).count('1') == 1
+    if n == 1:
+        retval = []
+        bucket = []
+        for _, _, prediction in candidates:
+            bucket.append(prediction)
+        retval.append(bucket)
+    else:
+        # find best split: must have sufficient items on each side and
+        # minimise seed overlap (break ties by preferring balanced splits)
+        half_n = int(n / 2)
+        candidate_splits = []
+        for split_point in range(1, len(candidates)):
+            size_1 = split_point
+            size_2 = len(candidates) - size_1
+            if min(size_1, size_2) < half_n:
+                # cannot split this way as one half would be too small
+                continue
+            balance = abs(size_1 - size_2)
+            # check seed overlap
+            left_seeds = set()
+            right_seeds = set()
+            for i in range(len(candidates)):
+                if i < size_1:
+                    left_seeds.add(candidates[i][1])
+                else:
+                    right_seeds.add(candidates[i][1])
+            intersection = left_seeds & right_seeds
+            seed_overlap = len(intersection)
+            candidate_splits.append((seed_overlap, balance, split_point, intersection, size_1, size_2))
+        candidate_splits.sort()
+        # get best split
+        seed_overlap, balance, split_point, intersection, size_1, size_2 = candidate_splits[0]
+        if seed_overlap or balance > 1:
+            sys.stderr.write('Cannot avoid seed overlap or imbalance:\n')
+            sys.stderr.write('\thalf_n = %d\n' %half_n)
+            sys.stderr.write('\tsize_1 = %d\n' %size_1)
+            sys.stderr.write('\tsize_2 = %d\n' %size_2)
+            sys.stderr.write('\toverlap = %d, intersection = %r\n' %(seed_overlap, intersection))
+            for i, candidate in enumerate(candidates):
+                 sys.stderr.write('\t[%d] = %r\n' %(i, candidate))
+        left_half  = get_split_for_buckets(candidates[:split_point], half_n)
+        right_half = get_split_for_buckets(candidates[split_point:], half_n)
+        retval = left_half + right_half
+    return retval
+
+def get_score(prediction_path, gold_path, tmp_dir = '/tmp'):
+    eval_path = prediction_path[:-7] + '.eval.txt'
+    cleanup_eval = False
+    if not os.path.exists(eval_path):
+        # cannot reuse existing eval.txt
+        eval_path = tmp_dir + '/0.eval.txt'   # TODO: make more robust for parallel runs
+        cleanup_eval = True
+        while os.path.exists(eval_path):
+            eval_path = '%s/%d.eval.txt' %(tmp_dir, random.randrange(99999))
+    if not gold_path.startswith('/') and 'UD_TREEBANK_DIR' in os.environ:
+        gold_path = os.environ['UD_TREEBANK_DIR'] + '/' + gold_path
+    score, score_s = dataset_module.evaluate(
+        prediction_path, gold_path,
+        outname = eval_path,
+        reuse_eval_txt = True
+    )
+    if not score:
+        raise ValueError('Zero LAS for %s in %s' %(prediction_path, eval_path))
+    if cleanup_eval:
+        os.unlink(eval_path)
+    return score
 
 for key in sorted(list(key2filenames.keys())):
-    print('== %r ==' %(key,))
+    print('\n\n== Distribution for %r ==\n' %(key,))
     language, parser, sample, learners, test_tbid, test_type = key
-    learner2filenames = key2filenames[key]
-    assert len(learner2filenames) == learners
-    learner_partitions = []
-    for learner in sorted(list(learner2filenames.keys())):
-        print('=== Learner %s ===' %learner)
-        filenames = learner2filenames[learner]
-        filenames.sort()
-        n = len(filenames)
+    learner2predictions = key2filenames[key]
+    assert len(learner2predictions) == learners
+    learner2buckets = {}
+    learner_keys = sorted(list(learner2predictions.keys()))
+    for learner in learner_keys:
+        print('\n=== Learner %s ===\n' %learner)
+        predictions = learner2predictions[learner]
+        predictions.sort()
+        n = len(predictions)
         if opt_debug:
             print('number of predictions: %d' %n)
             for i in range(n):
-                print('[%d] = %r' %(i, filenames[i]))
-        # filenames[i] = (exp_code, path)
+                print('[%d] = %r' %(i, predictions[i]))
+        # predictions[i] = (exp_code, path)
         if n < 16:
             sys.stderr.write('Warning: only %d predictions for learner %s and %r\n' %(
                 n, learner, key
             ))
-        partitions = []
+        buckets = []
         if n <= 16:
-            for prediction in filenames:
-                partition = []
-                partition.append(prediction)
-                partitions.append(partition)
+            # each bucket gets exactly one prediction
+            for prediction in predictions:
+                bucket = []
+                bucket.append(prediction)
+                buckets.append(bucket)
         else:
-            # TODO:
             # get LAS for each prediction
+            candidates = []
+            for prediction in predictions:
+                exp_code, path = prediction
+                score = get_score(path, gold[(test_tbid, test_type)], tmp_dir = tmp_dir)
+                seed  = seeds[(exp_code, learner)]
+                candidates.append((score, seed, prediction))
+            candidates.sort()
             # find best split: must have sufficient items on each side and
             # minimise seed overlap (break ties by preferring balanced splits)
-            raise NotImplementedError
-        learner_partitions.append(partitions)
-    continue
+            buckets = get_split_for_buckets(candidates, 16)
+        if opt_debug:
+            print('Buckets:')
+            j = 0
+            for i, bucket in enumerate(buckets):
+                print('%d:' %i)
+                for item in bucket:
+                    assert item == candidates[j][2]
+                    print('\t%.3f %9s %r' %(candidates[j]))
+                    j = j + 1
+        learner2buckets[learner] = buckets
+    break
     # TODO: adjust below to use partitions
     total = 0
     for _ in itertools.combinations(range(n), learners):
@@ -244,4 +330,11 @@ for key in sorted(list(key2filenames.keys())):
         f.write('\t'.join(score))
         f.write('\n')
     f.close()
+
+if opt_debug:
+    print('== Seeds ==')
+    for key in sorted(list(seeds.keys())):
+        exp_code, learner = key
+        seed = seeds[key]
+        print('%s\t%s\t%s' %(exp_code, learner, seed))
 
