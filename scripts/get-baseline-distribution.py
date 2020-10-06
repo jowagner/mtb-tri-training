@@ -30,6 +30,8 @@ find | ./get-baseline-distribution.py
 '''
 
 tmp_dir = '/dev/shm'
+opt_max_buckets = 4
+opt_combiner_repetitions = 20
 opt_test = False       # set to True to also create LAS distributions for test sets
 opt_debug = True
 
@@ -209,21 +211,30 @@ def get_split_for_buckets(candidates, n):
         retval = left_half + right_half
     return retval
 
+def get_tmp_name(tmp_dir, extension, prefix):
+    retval = None
+    while retval is None or os.path.exists(retval):
+        retval = '%s/%s-%d%s' %(
+            tmp_dir, prefix, random.randrange(999999), extension
+        )
+    return retval
+
 def get_score(prediction_path, gold_path, tmp_dir = '/tmp'):
     eval_path = prediction_path[:-7] + '.eval.txt'
     cleanup_eval = False
     if not os.path.exists(eval_path):
         # cannot reuse existing eval.txt
-        eval_path = tmp_dir + '/0.eval.txt'   # TODO: make more robust for parallel runs
+        eval_path = get_tmp_name(
+            tmp_dir, '.eval.txt', '%x' %abs(hash(prediction_path))
+        )
         cleanup_eval = True
-        while os.path.exists(eval_path):
-            eval_path = '%s/%d.eval.txt' %(tmp_dir, random.randrange(99999))
     if not gold_path.startswith('/') and 'UD_TREEBANK_DIR' in os.environ:
         gold_path = os.environ['UD_TREEBANK_DIR'] + '/' + gold_path
     score, score_s = dataset_module.evaluate(
         prediction_path, gold_path,
         outname = eval_path,
-        reuse_eval_txt = True
+        reuse_eval_txt = True,
+        verbose = False,
     )
     if not score:
         raise ValueError('Zero LAS for %s in %s' %(prediction_path, eval_path))
@@ -236,7 +247,7 @@ for key in sorted(list(key2filenames.keys())):
     language, parser, sample, learners, test_tbid, test_type = key
     learner2predictions = key2filenames[key]
     assert len(learner2predictions) == learners
-    learner2buckets = {}
+    learner_buckets = []
     learner_keys = sorted(list(learner2predictions.keys()))
     for learner in learner_keys:
         print('\n=== Learner %s ===\n' %learner)
@@ -248,12 +259,12 @@ for key in sorted(list(key2filenames.keys())):
             for i in range(n):
                 print('[%d] = %r' %(i, predictions[i]))
         # predictions[i] = (exp_code, path)
-        if n < 16:
+        if n < opt_max_buckets:
             sys.stderr.write('Warning: only %d predictions for learner %s and %r\n' %(
                 n, learner, key
             ))
         buckets = []
-        if n <= 16:
+        if n <= opt_max_buckets:
             # each bucket gets exactly one prediction
             for prediction in predictions:
                 bucket = []
@@ -270,7 +281,7 @@ for key in sorted(list(key2filenames.keys())):
             candidates.sort()
             # find best split: must have sufficient items on each side and
             # minimise seed overlap (break ties by preferring balanced splits)
-            buckets = get_split_for_buckets(candidates, 16)
+            buckets = get_split_for_buckets(candidates, opt_max_buckets)
         if opt_debug:
             print('Buckets:')
             j = 0
@@ -280,7 +291,45 @@ for key in sorted(list(key2filenames.keys())):
                     assert item == candidates[j][2]
                     print('\t%.3f %9s %r' %(candidates[j]))
                     j = j + 1
-        learner2buckets[learner] = buckets
+        learner_buckets.append(buckets)
+    # enumerate all combinations of buckets, one from each learner
+    print('=== Bucket combinations ===')
+    bucket_comb_index = 0
+    for bucket_combination in apply(itertools.product, learner_buckets):
+        start_time = time.time()
+        print('[%d]:' %bucket_comb_index)
+        # pick a prediction from each bucket
+        predictions = []
+        filenames = []
+        for bucket in bucket_combination:
+            choice = random.choice(bucket)
+            predictions.append(choice)
+            filenames.append(choice[1])
+            print('\t', choice)
+        scores = []
+        for j in range(opt_combiner_repetitions):
+            output_path = get_tmp_name(
+                tmp_dir, '.conllu',
+                '%s-%s-%s-%d-%s-%s-%d-%d' %(
+                    language, parser, sample, learners, test_tbid, test_type,
+                    bucket_comb_index, j,
+            ))
+            dataset_module.combine(
+                filenames, output_path,
+                seed = '%d' %j,
+                verbose = False
+            )
+            scores.append(get_score(
+                 output_path, gold[(test_tbid, test_type)],
+                 tmp_dir = tmp_dir
+            ))
+            os.unlink(output_path)
+        scores.sort()
+        average_score = sum(scores) / float(len(scores))
+        print('\tscores = %r' %(scores,))
+        print('\tduration = %.1fs' %(time.time()-start_time))
+        print('\taverage score = %.9f' %average_score)
+        bucket_comb_index = bucket_comb_index + 1
     break
     # TODO: adjust below to use partitions
     total = 0
@@ -330,6 +379,8 @@ for key in sorted(list(key2filenames.keys())):
         f.write('\t'.join(score))
         f.write('\n')
     f.close()
+
+sys.exit(0)
 
 if opt_debug:
     print('== Seeds ==')
