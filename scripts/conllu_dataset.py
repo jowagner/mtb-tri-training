@@ -188,7 +188,7 @@ class ConlluDataset(basic_dataset.Dataset):
             f_out.write('\n')
         f_out.write('\n')
 
-def evaluate(prediction_path, gold_path, outname = None):
+def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False):
     if not outname:
         outname = prediction_path[:-7] + '.eval.txt'
     command = []
@@ -198,10 +198,11 @@ def evaluate(prediction_path, gold_path, outname = None):
     command.append('--verbose')
     command.append(gold_path)
     command.append(prediction_path)
-    print('Running', command)
-    sys.stderr.flush()
-    sys.stdout.flush()
-    subprocess.call(command)
+    if not reuse_eval_txt or not os.path.exists(outname):
+        print('Running', command)
+        sys.stderr.flush()
+        sys.stdout.flush()
+        subprocess.call(command)
     score = (0.0, 'N/A')
     with open(outname, 'rb') as f:
         for line in f:
