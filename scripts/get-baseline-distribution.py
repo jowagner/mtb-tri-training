@@ -64,6 +64,8 @@ while True:
     line = sys.stdin.readline()
     if not line:
         break
+    if not '/' in line:
+        continue
     line = line.rstrip()
     fields = line.split('/')
     filename = fields[-1]
