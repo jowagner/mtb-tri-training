@@ -23,17 +23,25 @@ import time
 
 '''
 usage:
-ls */prediction-00-?-*-dev-*.conllu */model-00-1-*/*.conllu */model-00*/cmd | ./get-baseline-distribution.py
+ls */prediction-00-[123]*-dev-*u */model-00-1-*/xx*ud-dev*u */model-00*/stdout.txt | ./get-baseline-distribution.py
 or
 find | ./get-baseline-distribution.py
 (temporary files will be created in /dev/shm)
 '''
 
 tmp_dir = '/dev/shm'
-opt_max_buckets = 4
+opt_max_buckets = 16    # should be power of 2 (otherwise bucket sizes will differ hugely)
 opt_combiner_repetitions = 20
+opt_average = True
 opt_test = False       # set to True to also create LAS distributions for test sets
-opt_debug = True
+opt_debug_level = 5    # 0 = quiet to 5 = all detail
+
+opt_distribution = None
+if len(sys.argv) > 1:
+    if sys.argv[1] == '--distribution':
+        opt_distribution = int(sys.argv[2])
+    else:
+        raise ValueError('unknown option')
 
 key2filenames = {}
 
@@ -50,6 +58,8 @@ while True:
     filename = fields[-1]
     folder = fields[-2]
     if filename == 'stdout.txt' and folder.startswith('model-00-'):
+        if opt_debug_level > 4:
+            print('Using file %s as seed file' %line)
         exp_code = fields[-3]
         learner = folder.split('-')[2]
         seeds[(exp_code, learner)] = line
@@ -82,6 +92,8 @@ while True:
         test_type = fields[2]
         if test_type == 'test' and not opt_test:
             continue
+        if opt_debug_level > 4:
+            print('Using file %s as gold file' %line)
         gold[(test_tbid, test_type)] = '/'.join(target.split('/')[-2:])
         have_testsets.add((language, test_type))
         continue
@@ -121,6 +133,8 @@ while True:
     test_type = fields[4]
     if test_type != 'dev' and not opt_test:
         continue
+    if opt_debug_level > 4:
+        print('Using file %s as prediction file' %line)
     key = (language, parser, sample, learners, test_tbid, test_type)
     if not key in key2filenames:
         key2filenames[key] = {}
@@ -156,7 +170,7 @@ class LazyReadSeeds:
 
 seeds = LazyReadSeeds(seeds)
 
-if opt_debug:
+if opt_debug_level > 2:
     print('== Test files for each experiment ==')
     for key in sorted(list(gold.keys())):
         test_file = gold[key]
@@ -164,12 +178,10 @@ if opt_debug:
         print('%s\t%s\t%s' %(test_tbid, test_type, test_file))
 
 def get_split_for_buckets(candidates, n):
-    # n must be power of two
-    assert bin(n).count('1') == 1
-    if n == 1:
+    if n == 1 or len(candidates) <= 1:
         retval = []
         bucket = []
-        for _, _, prediction in candidates:
+        for prediction in candidates:
             bucket.append(prediction)
         retval.append(bucket)
     else:
@@ -207,7 +219,7 @@ def get_split_for_buckets(candidates, n):
             for i, candidate in enumerate(candidates):
                  sys.stderr.write('\t[%d] = %r\n' %(i, candidate))
         left_half  = get_split_for_buckets(candidates[:split_point], half_n)
-        right_half = get_split_for_buckets(candidates[split_point:], half_n)
+        right_half = get_split_for_buckets(candidates[split_point:], n-half_n)
         retval = left_half + right_half
     return retval
 
@@ -242,8 +254,13 @@ def get_score(prediction_path, gold_path, tmp_dir = '/tmp'):
         os.unlink(eval_path)
     return score
 
+distr_counter = 0
+n_distr = len(key2filenames)
 for key in sorted(list(key2filenames.keys())):
-    print('\n\n== Distribution for %r ==\n' %(key,))
+    distr_counter = distr_counter + 1
+    if opt_distribution and opt_distribution != distr_counter:
+        continue
+    print('\n\n== Distribution %d of %d: %r ==\n' %(distr_counter, n_distr, key,))
     language, parser, sample, learners, test_tbid, test_type = key
     learner2predictions = key2filenames[key]
     assert len(learner2predictions) == learners
@@ -254,7 +271,7 @@ for key in sorted(list(key2filenames.keys())):
         predictions = learner2predictions[learner]
         predictions.sort()
         n = len(predictions)
-        if opt_debug:
+        if opt_debug_level > 2:
             print('number of predictions: %d' %n)
             for i in range(n):
                 print('[%d] = %r' %(i, predictions[i]))
@@ -264,36 +281,31 @@ for key in sorted(list(key2filenames.keys())):
                 n, learner, key
             ))
         buckets = []
-        if n <= opt_max_buckets:
-            # each bucket gets exactly one prediction
-            for prediction in predictions:
-                bucket = []
-                bucket.append(prediction)
-                buckets.append(bucket)
-        else:
+        if True:
             # get LAS for each prediction
             candidates = []
             for prediction in predictions:
                 exp_code, path = prediction
                 score = get_score(path, gold[(test_tbid, test_type)], tmp_dir = tmp_dir)
                 seed  = seeds[(exp_code, learner)]
-                candidates.append((score, seed, prediction))
+                candidates.append((score, seed, exp_code, path))
             candidates.sort()
             # find best split: must have sufficient items on each side and
             # minimise seed overlap (break ties by preferring balanced splits)
             buckets = get_split_for_buckets(candidates, opt_max_buckets)
-        if opt_debug:
+        if opt_debug_level > 0:
             print('Buckets:')
             j = 0
             for i, bucket in enumerate(buckets):
                 print('%d:' %i)
                 for item in bucket:
-                    assert item == candidates[j][2]
-                    print('\t%.3f %9s %r' %(candidates[j]))
+                    assert item == candidates[j]
+                    print('\t%.3f %9s %s %s' %(candidates[j]))
                     j = j + 1
         learner_buckets.append(buckets)
     # enumerate all combinations of buckets, one from each learner
     print('=== Bucket combinations ===')
+    distr_scores = []
     bucket_comb_index = 0
     for bucket_combination in apply(itertools.product, learner_buckets):
         start_time = time.time()
@@ -304,7 +316,7 @@ for key in sorted(list(key2filenames.keys())):
         for bucket in bucket_combination:
             choice = random.choice(bucket)
             predictions.append(choice)
-            filenames.append(choice[1])
+            filenames.append(choice[3])
             print('\t', choice)
         scores = []
         for j in range(opt_combiner_repetitions):
@@ -328,62 +340,59 @@ for key in sorted(list(key2filenames.keys())):
         average_score = sum(scores) / float(len(scores))
         print('\tscores = %r' %(scores,))
         print('\tduration = %.1fs' %(time.time()-start_time))
-        print('\taverage score = %.9f' %average_score)
+        print('\taverage score = %.9f (%.2f)' %(average_score, average_score))
+        print('\tmax-min = %.9f (%.2f)' %(max(scores)-min(scores), max(scores)-min(scores)))
+        sq_errors = []
+        for score in scores:
+            error = average_score - score
+            sq_errors.append(error**2)
+        n = len(scores)
+        std_dev = (sum(sq_errors)/float(n))**0.5
+        print('\tpopulation std dev = %.9f (%.2f)' %(std_dev, std_dev))
+        std_dev = (sum(sq_errors)/(n-1.0))**0.5
+        print('\tsimple sample std dev = %.9f (%.2f)' %(std_dev, std_dev))
+        std_dev = (sum(sq_errors)/(n-1.5))**0.5
+        print('\tapproximate std dev = %.9f (%.2f)' %(std_dev, std_dev))
+        std_dev = (sum(sq_errors)/(n-1.5+1.0/(8.0*(n-1.0))))**0.5
+        print('\tmore accurate std dev = %.9f (%.2f)' %(std_dev, std_dev))
+        if opt_average:
+            scores = []
+            scores.append(average_score)
+        for s_index, score in enumerate(scores):
+            info = []
+            info.append('%03x' %bucket_comb_index)
+            if not opt_average:
+                info.append('%d' %s_index)
+            for learner_score, _, _, _ in predictions:
+                info.append('%.2f' %learner_score)
+            info.append('%.3f' %std_dev)
+            info.append('%.2f' %min(scores))
+            info.append('%.2f' %max(scores))
+            for _, seed, _, _ in predictions:
+                info.append(seed)
+            for _, _, _, path in predictions:
+                info.append(path)
+            distr_scores.append((score, '\t'.join(info)))
         bucket_comb_index = bucket_comb_index + 1
-    break
-    # TODO: adjust below to use partitions
-    total = 0
-    for _ in itertools.combinations(range(n), learners):
-        total += 1
-    scores = []
-    count = 0
-    for indices in itertools.combinations(range(n), learners):
-        count += 1
-        print('Combinations %d of %d for %r' %(count, total, key))
-        seeds = set()
-        filenames = []
-        s_indices = []
-        gold_path = None
-        seed_conflict = False
-        for index in indices:
-            seed, exp_code, filename = seeds_and_filenames[index]
-            if seed in seeds:
-                seed_conflict = True
-                break
-            seeds.add(seed)
-            filenames.append(filename)
-            s_indices.append('%d' %index)
-            candidate_path = exp2gold[(exp_code, test_type)]
-            if gold_path is None:
-                gold_path = candidate_path
-            elif gold_path != candidate_path:
-                raise ValueError('gold path inconsistency')
-        if seed_conflict:
-            continue
-        s_indices = '-'.join(s_indices)
-        d_key = (tmp_dir,) + key + (s_indices,)
-        output_path = '%s/distribution-%s%s%s-%d-%s-%s-%s.conllu' %d_key
-        dataset_module.combine(filenames, output_path)
-        score, score_s = dataset_module.evaluate(
-            output_path, os.environ['UD_TREEBANK_DIR'] + '/' + gold_path
-        )
-        scores.append((score, score_s, ) + tuple(filenames))
-        os.unlink(output_path)
-        os.unlink(output_path[:-7] + '.eval.txt')
-    scores.sort()
-    d_name = 'distribution-%s%s%s-%d-%s-%s.txt' %key
-    d_name = d_name.replace('--', 's-')
+        if opt_debug_level > 3:
+            distr_scores.sort()
+            print('\tdistribution so far:')
+            for score, info in distr_scores:
+                print('\t%.9f\t%s' %(score, info))
+        sys.stdout.flush()
+    distr_scores.sort()
+    if sample == '-':
+        sample = 's'
+    d_name = 'distribution-%s%s%s-%d-%s-%s.txt' %(
+        language, parser, sample, learners, test_tbid, test_type,
+    )
     f = open(d_name, 'wb')
-    for score in scores:
-        score = score[1:]
-        f.write('\t'.join(score))
-        f.write('\n')
+    for score, info in distr_scores:
+        f.write('%.9f\t%s\n' %(score, info))
     f.close()
 
-sys.exit(0)
-
-if opt_debug:
-    print('== Seeds ==')
+if opt_debug_level > 4:
+    print('\n\n== Seeds ==\n')
     for key in sorted(list(seeds.keys())):
         exp_code, learner = key
         seed = seeds[key]
