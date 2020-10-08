@@ -34,12 +34,23 @@ opt_max_buckets = 16    # should be power of 2 (otherwise bucket sizes will diff
 opt_combiner_repetitions = 20
 opt_average = True
 opt_test = False       # set to True to also create LAS distributions for test sets
-opt_debug_level = 5    # 0 = quiet to 5 = all detail
+opt_debug_level = 1    # 0 = quiet to 5 = all detail
 
 opt_distribution = None
 if len(sys.argv) > 1:
     if sys.argv[1] == '--distribution':
         opt_distribution = int(sys.argv[2])
+        del sys.argv[1]  # delete 2 args
+        del sys.argv[1]
+    else:
+        raise ValueError('unknown option')
+
+opt_seed = 100
+if len(sys.argv) > 1:
+    if sys.argv[1] == '--seed':
+        opt_seed = int(sys.argv[2])
+        del sys.argv[1]  # delete 2 args
+        del sys.argv[1]
     else:
         raise ValueError('unknown option')
 
@@ -307,6 +318,11 @@ for key in sorted(list(key2filenames.keys())):
     print('=== Bucket combinations ===')
     distr_scores = []
     bucket_comb_index = 0
+    n_bucket_combinations = 1
+    for buckets in learner_buckets:
+        n_bucket_combinations *= len(buckets)
+    if opt_debug_level > 0:
+        print('number of combinations:', n_bucket_combinations)
     for bucket_combination in apply(itertools.product, learner_buckets):
         start_time = time.time()
         print('[%d]:' %bucket_comb_index)
@@ -319,6 +335,11 @@ for key in sorted(list(key2filenames.keys())):
             filenames.append(choice[3])
             print('\t', choice)
         scores = []
+        next_comb_seed = opt_seed*n_distr
+        next_comb_seed += distr_counter-1
+        next_comb_seed *= n_bucket_combinations
+        next_comb_seed += bucket_comb_index
+        next_comb_seed *= opt_combiner_repetitions
         for j in range(opt_combiner_repetitions):
             output_path = get_tmp_name(
                 tmp_dir, '.conllu',
@@ -328,7 +349,7 @@ for key in sorted(list(key2filenames.keys())):
             ))
             dataset_module.combine(
                 filenames, output_path,
-                seed = '%d' %j,
+                seed = '%d' %next_comb_seed,
                 verbose = False
             )
             scores.append(get_score(
@@ -336,6 +357,7 @@ for key in sorted(list(key2filenames.keys())):
                  tmp_dir = tmp_dir
             ))
             os.unlink(output_path)
+            next_comb_seed = next_comb_seed + 1
         scores.sort()
         average_score = sum(scores) / float(len(scores))
         print('\tscores = %r' %(scores,))
