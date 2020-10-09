@@ -44,27 +44,27 @@ while len(sys.argv) > 1 and sys.argv[1].startswith('--'):
     option = sys.argv[1]
     del sys.argv[1]
     if option == '--distribution':
-        opt_distribution = int(sys.argv[2])
+        opt_distribution = int(sys.argv[1])
         del sys.argv[1]
     elif option == '--part':
-        opt_partial_distribution = int(sys.argv[2])
+        opt_partial_distribution = int(sys.argv[1])
         del sys.argv[1]
     elif option == '--parts':
-        opt_parts = int(sys.argv[2])
+        opt_parts = int(sys.argv[1])
         del sys.argv[1]
     elif option == '--seed':
-        opt_seed = int(sys.argv[2])
+        opt_seed = int(sys.argv[1])
         del sys.argv[1]
     elif option == '--tmp-dir':
-        tmp_dir = sys.argv[2]
+        tmp_dir = sys.argv[1]
         del sys.argv[1]
     elif option == '--buckets':
-        opt_max_buckets = int(sys.argv[2])
+        opt_max_buckets = int(sys.argv[1])
         del sys.argv[1]
     elif option == '--repetitions':
-        opt_combiner_repetitions = int(sys.argv[2])
+        opt_combiner_repetitions = int(sys.argv[1])
         del sys.argv[1]
-    elif option == '--individual-scores'
+    elif option == '--individual-scores':
         opt_average = False
     elif option == '--include-test':
         opt_test = True
@@ -250,7 +250,7 @@ def get_split_for_buckets(candidates, n):
         candidate_splits.sort()
         # get best split
         _, seed_overlap, balance, split_point, intersection, size_1, size_2 = candidate_splits[0]
-        if (seed_overlap or balance > 1) and debug_level > 1:
+        if (seed_overlap or balance > 1) and opt_debug_level > 1:
             print('Cannot avoid seed overlap or imbalance:')
             print('\thalf_n = %d' %half_n)
             print('\tsize_1 = %d' %size_1)
@@ -269,6 +269,7 @@ def get_tmp_name(tmp_dir, extension, prefix):
         retval = '%s/%s-%x%s' %(
             tmp_dir, prefix, random.getrandbits(28), extension
         )
+    #print('tmp_name %s' %retval)
     return retval
 
 def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
@@ -292,6 +293,7 @@ def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
         raise ValueError('Zero LAS for %s in %s' %(prediction_path, eval_path))
     if cleanup_eval:
         os.unlink(eval_path)
+        #print('unlinked %s' %eval_path)
     return score
 
 distr_counter = 0
@@ -386,6 +388,8 @@ for key in sorted(list(key2filenames.keys())):
                     distr_counter,
                     bucket_comb_index, j,
             ))
+            if opt_debug_level > 4:
+                print('\tcombining to %s' %output_path)
             dataset_module.combine(
                 filenames, output_path,
                 seed = '%d' %next_comb_seed,
@@ -398,6 +402,8 @@ for key in sorted(list(key2filenames.keys())):
                     distr_counter, bucket_comb_index, j
             )))
             os.unlink(output_path)
+            if opt_debug_level > 4:
+                print('\tunlinked %s' %output_path)
             next_comb_seed = next_comb_seed + 1
         scores.sort()
         average_score = sum(scores) / float(len(scores))
