@@ -34,7 +34,7 @@ opt_max_buckets = 16    # should be power of 2 (otherwise bucket sizes will diff
 opt_combiner_repetitions = 20
 opt_average = True
 opt_test = False       # set to True to also create LAS distributions for test sets
-opt_debug_level = 1    # 0 = quiet to 5 = all detail
+opt_debug_level = 2    # 0 = quiet to 5 = all detail
 
 opt_distribution = None
 if len(sys.argv) > 1:
@@ -219,18 +219,22 @@ def get_split_for_buckets(candidates, n):
                     right_seeds.add(candidates[i][1])
             intersection = left_seeds & right_seeds
             seed_overlap = len(intersection)
-            candidate_splits.append((seed_overlap, balance, split_point, intersection, size_1, size_2))
+            priority = 29 * seed_overlap + 11 * balance
+            candidate_splits.append((
+                priority, seed_overlap, balance,
+                split_point, intersection, size_1, size_2
+            ))
         candidate_splits.sort()
         # get best split
-        seed_overlap, balance, split_point, intersection, size_1, size_2 = candidate_splits[0]
-        if seed_overlap or balance > 1:
-            sys.stderr.write('Cannot avoid seed overlap or imbalance:\n')
-            sys.stderr.write('\thalf_n = %d\n' %half_n)
-            sys.stderr.write('\tsize_1 = %d\n' %size_1)
-            sys.stderr.write('\tsize_2 = %d\n' %size_2)
-            sys.stderr.write('\toverlap = %d, intersection = %r\n' %(seed_overlap, intersection))
+        _, seed_overlap, balance, split_point, intersection, size_1, size_2 = candidate_splits[0]
+        if (seed_overlap or balance > 1) and debug_level > 1:
+            print('Cannot avoid seed overlap or imbalance:')
+            print('\thalf_n = %d' %half_n)
+            print('\tsize_1 = %d' %size_1)
+            print('\tsize_2 = %d' %size_2)
+            print('\toverlap = %d, intersection = %r' %(seed_overlap, intersection))
             for i, candidate in enumerate(candidates):
-                 sys.stderr.write('\t[%d] = %r\n' %(i, candidate))
+                 print('\t[%d] = %r' %(i, candidate))
         left_half  = get_split_for_buckets(candidates[:split_point], half_n)
         right_half = get_split_for_buckets(candidates[split_point:], n-half_n)
         retval = left_half + right_half
@@ -239,18 +243,18 @@ def get_split_for_buckets(candidates, n):
 def get_tmp_name(tmp_dir, extension, prefix):
     retval = None
     while retval is None or os.path.exists(retval):
-        retval = '%s/%s-%d%s' %(
-            tmp_dir, prefix, random.randrange(999999), extension
+        retval = '%s/%s-%x%s' %(
+            tmp_dir, prefix, random.getrandbits(28), extension
         )
     return retval
 
-def get_score(prediction_path, gold_path, tmp_dir = '/tmp'):
+def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
     eval_path = prediction_path[:-7] + '.eval.txt'
     cleanup_eval = False
     if not os.path.exists(eval_path):
         # cannot reuse existing eval.txt
         eval_path = get_tmp_name(
-            tmp_dir, '.eval.txt', '%x' %abs(hash(prediction_path))
+            tmp_dir, '.eval.txt', '%s-%x' %(tmp_prefix, abs(hash(prediction_path)))
         )
         cleanup_eval = True
     if not gold_path.startswith('/') and 'UD_TREEBANK_DIR' in os.environ:
@@ -299,7 +303,12 @@ for key in sorted(list(key2filenames.keys())):
             candidates = []
             for prediction in predictions:
                 exp_code, path = prediction
-                score = get_score(path, gold[(test_tbid, test_type)], tmp_dir = tmp_dir)
+                score = get_score(
+                    path, gold[(test_tbid, test_type)],
+                    tmp_dir = tmp_dir,
+                    tmp_prefix = '%d-%s' %(
+                       distr_counter, learner,
+                ))
                 seed  = seeds[(exp_code, learner)]
                 candidates.append((score, seed, exp_code, path))
             candidates.sort()
@@ -345,8 +354,9 @@ for key in sorted(list(key2filenames.keys())):
         for j in range(opt_combiner_repetitions):
             output_path = get_tmp_name(
                 tmp_dir, '.conllu',
-                '%s-%s-%s-%d-%s-%s-%d-%d' %(
+                '%s-%s-%s-%d-%s-%s-%d-%d-%d' %(
                     language, parser, sample, learners, test_tbid, test_type,
+                    distr_counter,
                     bucket_comb_index, j,
             ))
             dataset_module.combine(
@@ -356,8 +366,10 @@ for key in sorted(list(key2filenames.keys())):
             )
             scores.append(get_score(
                  output_path, gold[(test_tbid, test_type)],
-                 tmp_dir = tmp_dir
-            ))
+                 tmp_dir = tmp_dir,
+                 tmp_prefix = '%d-%d-%d' %(
+                    distr_counter, bucket_comb_index, j
+            )))
             os.unlink(output_path)
             next_comb_seed = next_comb_seed + 1
         scores.sort()
