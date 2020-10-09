@@ -1,0 +1,28 @@
+#!/bin/bash
+  
+#SBATCH -p long       # which partition to run on
+#SBATCH -J distr   # name for the job
+#SBATCH --mem=45000  # 134000 for 9 task up to aug_idx=8
+#SBATCH --cpus-per-task=24
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+
+cd ${HOME}/tri-training/mtb-tri-training/scripts
+
+for RANK in {1..11} ; do
+
+    $HOME/ClusterTools/taskfarm/xmlrpc-py/xmlrpc_worker.py  \
+        --secret-from-file secret.txt \
+        --host grove \
+        --port 8145 \
+        --limit 120 \
+        --stop-file stop-distr.txt \
+        --max-tasks  5 \
+        --worker-id  ${SLURM_JOB_ID}:$RANK  &
+
+    sleep 20
+
+done
+
+wait
