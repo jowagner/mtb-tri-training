@@ -9,6 +9,13 @@
 
 cd ${HOME}/tri-training/mtb-tri-training/scripts
 
+rm -f /dev/shm/*.conllu
+rm -f /dev/shm/*.eval.txt
+rm -f /dev/shm/${USER}-*
+rm -f /tmp/*.conllu
+rm -f /tmp/*.eval.txt
+rm -f /tmp/${USER}-*
+
 for RANK in {1..16} ; do
 
     $HOME/ClusterTools/taskfarm/xmlrpc-py/xmlrpc_worker.py  \
@@ -28,3 +35,7 @@ wait
 
 rm -f /dev/shm/*.conllu
 rm -f /dev/shm/*.eval.txt
+rm -f /dev/shm/${USER}-*
+rm -f /tmp/*.conllu
+rm -f /tmp/*.eval.txt
+rm -f /tmp/${USER}-*
