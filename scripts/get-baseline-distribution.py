@@ -31,26 +31,49 @@ find | ./get-baseline-distribution.py
 
 tmp_dir = '/dev/shm'
 opt_max_buckets = 16    # should be power of 2 (otherwise bucket sizes will differ hugely)
-opt_combiner_repetitions = 20
+opt_combiner_repetitions = 41
 opt_average = True
 opt_test = False       # set to True to also create LAS distributions for test sets
 opt_debug_level = 2    # 0 = quiet to 5 = all detail
-
 opt_distribution = None
-if len(sys.argv) > 1:
-    if sys.argv[1] == '--distribution':
-        opt_distribution = int(sys.argv[2])
-        del sys.argv[1]  # delete 2 args
-        del sys.argv[1]
-    else:
-        raise ValueError('unknown option')
-
+opt_partial_distribution = None    # set to 1 to opt_parts (inclusive) to select a part
+opt_parts = 9
 opt_seed = 100
-if len(sys.argv) > 1:
-    if sys.argv[1] == '--seed':
-        opt_seed = int(sys.argv[2])
-        del sys.argv[1]  # delete 2 args
+
+while len(sys.argv) > 1 and sys.argv[1].startswith('--'):
+    option = sys.argv[1]
+    del sys.argv[1]
+    if option == '--distribution':
+        opt_distribution = int(sys.argv[2])
         del sys.argv[1]
+    elif option == '--part':
+        opt_partial_distribution = int(sys.argv[2])
+        del sys.argv[1]
+    elif option == '--parts':
+        opt_parts = int(sys.argv[2])
+        del sys.argv[1]
+    elif option == '--seed':
+        opt_seed = int(sys.argv[2])
+        del sys.argv[1]
+    elif option == '--tmp-dir':
+        tmp_dir = sys.argv[2]
+        del sys.argv[1]
+    elif option == '--buckets':
+        opt_max_buckets = int(sys.argv[2])
+        del sys.argv[1]
+    elif option == '--repetitions':
+        opt_combiner_repetitions = int(sys.argv[2])
+        del sys.argv[1]
+    elif option == '--individual-scores'
+        opt_average = False
+    elif option == '--include-test':
+        opt_test = True
+    elif option == '--quiet':
+        opt_debug_level = 0
+    elif option == '--verbose':
+        opt_debug_level = 4
+    elif option == '--debug':
+        opt_debug_level = 5
     else:
         raise ValueError('unknown option')
 
@@ -335,6 +358,10 @@ for key in sorted(list(key2filenames.keys())):
     if opt_debug_level > 0:
         print('number of combinations:', n_bucket_combinations)
     for bucket_combination in apply(itertools.product, learner_buckets):
+        if opt_partial_distribution \
+        and (opt_partial_distribution + bucket_comb_index) % opt_parts != 0:
+            bucket_comb_index = bucket_comb_index + 1
+            continue
         start_time = time.time()
         print('[%d]:' %bucket_comb_index)
         # pick a prediction from each bucket
@@ -419,8 +446,13 @@ for key in sorted(list(key2filenames.keys())):
     distr_scores.sort()
     if sample == '-':
         sample = 's'
-    d_name = 'distribution-%s%s%s-%d-%s-%s.txt' %(
+    if opt_partial_distribution:
+        part = '-%d' %opt_partial_distribution
+    else:
+        part = ''
+    d_name = 'distribution-%s%s%s-%d-%s-%s%s.txt' %(
         language, parser, sample, learners, test_tbid, test_type,
+        part,
     )
     f = open(d_name, 'wb')
     for score, info in distr_scores:
