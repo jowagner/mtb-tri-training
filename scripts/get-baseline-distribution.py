@@ -31,7 +31,7 @@ find | ./get-baseline-distribution.py
 
 tmp_dir = '/dev/shm'
 opt_max_buckets = 16    # should be power of 2 (otherwise bucket sizes will differ hugely)
-opt_combiner_repetitions = 41
+opt_combiner_repetitions = 21
 opt_average = True
 opt_test = False       # set to True to also create LAS distributions for test sets
 opt_debug_level = 2    # 0 = quiet to 5 = all detail
@@ -264,12 +264,14 @@ def get_split_for_buckets(candidates, n):
     return retval
 
 def get_tmp_name(tmp_dir, extension, prefix):
+    #if not os.path.exists(tmp_dir):
+    #    raise ValueError('tmp_dir %r disappeared unexpectedly in get_tmp_name()' %tmp_dir)
     retval = None
     while retval is None or os.path.exists(retval):
         retval = '%s/%s-%x%s' %(
             tmp_dir, prefix, random.getrandbits(28), extension
         )
-    #print('tmp_name %s' %retval)
+    #print('\t\ttmp_name %s' %retval)
     return retval
 
 def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
@@ -283,6 +285,8 @@ def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
         cleanup_eval = True
     if not gold_path.startswith('/') and 'UD_TREEBANK_DIR' in os.environ:
         gold_path = os.environ['UD_TREEBANK_DIR'] + '/' + gold_path
+    #if not os.path.exists(tmp_dir):
+    #    raise ValueError('tmp_dir %r disappeared unexpectedly in get_score()' %tmp_dir)
     score, score_s = dataset_module.evaluate(
         prediction_path, gold_path,
         outname = eval_path,
@@ -293,7 +297,7 @@ def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
         raise ValueError('Zero LAS for %s in %s' %(prediction_path, eval_path))
     if cleanup_eval:
         os.unlink(eval_path)
-        #print('unlinked %s' %eval_path)
+        #print('\t\tunlinked %s' %eval_path)
     return score
 
 distr_counter = 0
@@ -388,8 +392,7 @@ for key in sorted(list(key2filenames.keys())):
                     distr_counter,
                     bucket_comb_index, j,
             ))
-            if opt_debug_level > 4:
-                print('\tcombining to %s' %output_path)
+            #print('\t\tcombining to %s' %output_path)
             dataset_module.combine(
                 filenames, output_path,
                 seed = '%d' %next_comb_seed,
@@ -402,8 +405,7 @@ for key in sorted(list(key2filenames.keys())):
                     distr_counter, bucket_comb_index, j
             )))
             os.unlink(output_path)
-            if opt_debug_level > 4:
-                print('\tunlinked %s' %output_path)
+            #print('\t\tunlinked %s' %output_path)
             next_comb_seed = next_comb_seed + 1
         scores.sort()
         average_score = sum(scores) / float(len(scores))
