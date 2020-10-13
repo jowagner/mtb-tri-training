@@ -412,7 +412,9 @@ for key in sorted(list(key2filenames.keys())):
         print('\tscores = %r' %(scores,))
         print('\tduration = %.1fs' %(time.time()-start_time))
         print('\taverage score = %.9f (%.2f)' %(average_score, average_score))
-        print('\tmax-min = %.9f (%.2f)' %(max(scores)-min(scores), max(scores)-min(scores)))
+        max_score = max(scores)
+        min_score = min(scores)
+        print('\tmax-min = %.9f (%.2f)' %(max_score-min_score, max_score-min_score))
         sq_errors = []
         for score in scores:
             error = average_score - score
@@ -437,8 +439,8 @@ for key in sorted(list(key2filenames.keys())):
             for learner_score, _, _, _ in predictions:
                 info.append('%.2f' %learner_score)
             info.append('%.3f' %std_dev)
-            info.append('%.2f' %min(scores))
-            info.append('%.2f' %max(scores))
+            info.append('%.2f' %min_score))
+            info.append('%.2f' %max_score))
             for _, seed, _, _ in predictions:
                 info.append(seed)
             for _, _, _, path in predictions:
