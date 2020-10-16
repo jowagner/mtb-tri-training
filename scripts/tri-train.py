@@ -277,6 +277,8 @@ Options:
 
     --learners  NUMBER      Use NUMBER learners in tri-training. Knowledge
                             transfer is always from 2 teachers to 1 learner.
+                            All choices of 2 teachers and 1 learner will
+                            be considered.
                             (Default: 3)
 
     --last-k  NUMBER        Only use the automatically labelled data of the
@@ -293,6 +295,15 @@ Options:
                             Create NUMBER decayed sets and pick the
                             one that is closest to the desired set size
                             (default: 5)
+
+    --average  NUMBER       Average ensemble evaluation score over NUMBER
+                            runs of the combiner. Useful if the combiner
+                            introduces noise, e.g. due to a stochastic
+                            combination algorithm. The ensemble prediction
+                            with median score will be kept as the "E"
+                            prediction. If NUMBER is even one of the two
+                            middle predictions will be picked at random.
+                            (Default: 1)
 
     --epoch-selection  MODE
     --iteration-selection  MODE
@@ -376,7 +387,6 @@ Options:
                             (Default: 0.0 = no limit)
 
     --stopfile  FILE        Do not train another model if FILE exists.
-
 
     --verbose               More detailed log output
 
@@ -490,6 +500,7 @@ def main():
     opt_max_teacher_disagreement_fraction = 0.0
     opt_min_teacher_agreements   = 0
     opt_min_learner_disagreement = 0     # 1 = tri-training with disagreement
+    opt_average = 1
 
     while len(sys.argv) >= 2 and sys.argv[1][:1] == '-':
         option = sys.argv[1]
@@ -657,6 +668,9 @@ def main():
             opt_min_learner_disagreement = 1
         elif option == '--min-learner-disagreement':
             opt_min_learner_disagreement = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--average':
+            opt_average = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--continue':
             opt_continue = True
@@ -886,6 +900,7 @@ def main():
             opt_tolerant = opt_tolerant,
             opt_rename_dispensable = opt_rename_dispensable,
             opt_round_priority = opt_round_priority,
+            opt_average = opt_average,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -921,6 +936,7 @@ def main():
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
         opt_round_priority = opt_round_priority,
+        opt_average = opt_average,
     )
 
     drop_all_targets = basic_dataset.SentenceDropout(
@@ -965,6 +981,7 @@ def main():
                 opt_round_priority = opt_round_priority,
                 opt_do_not_train = (opt_max_model_training >= 0 \
                                  and training_round > opt_max_model_training),
+                opt_average = opt_average,
             )
         # prepare processing of subsets
         if opt_tolerant \
@@ -1349,6 +1366,7 @@ def main():
             opt_rename_dispensable = opt_rename_dispensable,
             opt_verbose = opt_verbose,
             opt_round_priority = opt_round_priority,
+            opt_average = opt_average,
         )
 
     print_t('\n== Final Model ==\n')
@@ -1514,6 +1532,31 @@ def make_predictions(
         sys.exit(0)
     return predictions
 
+def get_median_score_and_cleanup(score_and_run, output_paths):
+    # find median
+    score_and_run.sort()
+    while len(score_and_run) > 2:
+        # remove lowest and highest scoring result
+        # to move towards the middle
+        for obsolete_index in (-1, 0):
+            _, run_index = score_and_run[obsolete_index]
+            del score_and_run[obsolete_index]
+            # clean up output files
+            output_path, eval_path = output_paths[run_index]
+            os.unlink(output_path)
+            os.unlink(eval_path)
+    if len(score_and_run) == 2:
+        median_score = (score_and_run[0][0]+score_and_run[1][0])/2.0
+        _, run_index = score_and_run[0]
+        del score_and_run[obsolete_index]
+        # clean up output files of first of the two median elements
+        output_path, eval_path = output_paths[run_index]
+        os.unlink(output_path)
+        os.unlink(eval_path)
+    else:
+        median_score = score_and_run[0][0]
+    return median_score
+
 def evaluate(
     models, dev_sets, test_sets, set_names,
     dataset_module,
@@ -1529,6 +1572,7 @@ def evaluate(
     deadline = None, stopfile = None,
     opt_tolerant = False, opt_rename_dispensable = False,
     opt_round_priority = 1.0,
+    opt_average = 1,
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -1581,16 +1625,27 @@ def evaluate(
             ensemble_fingerprint = utilities.hex2base62(hashlib.sha512(
                 ':'.join(pred_fingerprints)
             ).hexdigest())
-            output_path = '%s/%sprediction-%02d-E-%s-%s%s' %(
-                opt_workdir, prefix,
-                training_round, name, ensemble_fingerprint[:20],
-                filename_extension
+            output_paths = []
+            score_and_run = []
+            for run_index in range(opt_average):
+                output_path = '%s/%sprediction-%02d-E-%d-%s-%s%s' %(
+                    opt_workdir, prefix,
+                    training_round,
+                    run_index,
+                    name, ensemble_fingerprint[:20],
+                    filename_extension
+                )
+                dataset_module.combine(pred_paths, output_path)
+                score, score_s, eval_path = dataset_module.evaluate(
+                    output_path, gold_path
+                )
+                output_paths.append((output_path, eval_path))
+                score_and_run.append((score, run_index))
+            median_score = get_median_score_and_cleanup(
+                score_and_run,
+                output_paths,
             )
-            dataset_module.combine(pred_paths, output_path)
-            score, score_s = dataset_module.evaluate(
-                output_path, gold_path
-            )
-            print('Score:', score_s)
+            print('Score: %.9f' %median_score)
             if opt_cumulative_ensemble and not is_first:
                 print('Evaluating ensemble of all non-ensemble past predictions')
                 check_deadline(deadline, stopfile)
@@ -1599,16 +1654,27 @@ def evaluate(
                 ensemble_fingerprint = utilities.hex2base62(hashlib.sha512(
                     ':'.join(pred_fingerprints)
                 ).hexdigest())
-                output_path = '%s/%sprediction-%02d-A-%s-%s%s' %(
-                    opt_workdir, prefix,
-                    training_round, name, ensemble_fingerprint[:20],
-                    filename_extension
+                output_paths = []
+                score_and_run = []
+                for run_index in range(opt_average):
+                    output_path = '%s/%sprediction-%02d-A-%d-%s-%s%s' %(
+                        opt_workdir, prefix,
+                        training_round,
+                        run_index,
+                        name, ensemble_fingerprint[:20],
+                        filename_extension
+                    )
+                    dataset_module.combine(pred_paths, output_path)
+                    score, score_s = dataset_module.evaluate(
+                        output_path, gold_path
+                    )
+                    output_paths.append((output_path, eval_path))
+                    score_and_run.append((score, run_index))
+                median_score = get_median_score_and_cleanup(
+                    score_and_run,
+                    output_paths,
                 )
-                dataset_module.combine(pred_paths, output_path)
-                score, score_s = dataset_module.evaluate(
-                    output_path, gold_path
-                )
-                print('Score:', score_s)
+                print('Score: %.9f' %median_score)
 
 def train_and_evaluate_baselines(
     training_data, opt_learners, training_round, dataset_module,
@@ -1624,6 +1690,7 @@ def train_and_evaluate_baselines(
     opt_tolerant = False, opt_rename_dispensable = False,
     opt_round_priority = 1.0,
     opt_do_not_train = False,
+    opt_average = 1,
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -1657,6 +1724,7 @@ def train_and_evaluate_baselines(
         deadline = opt_deadline, stopfile = opt_stopfile,
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
+        opt_average = opt_average,
     )
 
 def get_prediction_fingerprint(model_fingerprint, unlabelled_subset, verbose = False):
