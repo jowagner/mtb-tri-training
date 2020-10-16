@@ -35,6 +35,10 @@ elif len(sys.argv) > 1 and sys.argv[1].startswith('--mini'):
     job_dir = 'mini-jobs'
     mini_option = '--max-model-training 2'
     del sys.argv[1]
+elif len(sys.argv) > 1 and sys.argv[1].startswith('--eval'):
+    job_dir = 'eval-jobs'
+    mini_option = '--max-model-training 0'
+    del sys.argv[1]
 else:
     job_dir = 'jobs'
 
