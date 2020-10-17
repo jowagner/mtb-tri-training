@@ -364,14 +364,12 @@ def get_filename_extension():
     ''' recommended extension for output files '''
     return '.conllu'
 
-def combine(prediction_paths, output_path, combiner_dir = None, seed = '42', verbose = True):
+def combine(prediction_paths, output_path, seed = '42', verbose = True):
     ''' combine (ensemble) the given predictions
         into a single prediction
     '''
-    if not combiner_dir:
-        combiner_dir = os.environ['CONLLU_COMBINER_DIR']
     command = []
-    command.append('%s/parser.py' %combiner_dir)
+    command.append(os.environ['CONLLU_COMBINER'])
     command.append('--outfile')
     command.append(output_path)
     command.append('--overwrite')

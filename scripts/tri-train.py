@@ -1635,7 +1635,9 @@ def evaluate(
                     name, ensemble_fingerprint[:20],
                     filename_extension
                 )
-                dataset_module.combine(pred_paths, output_path)
+                dataset_module.combine(pred_paths, output_path,
+                    seed = run_index,
+                )
                 score, score_s, eval_path = dataset_module.evaluate(
                     output_path, gold_path
                 )
@@ -1664,7 +1666,9 @@ def evaluate(
                         name, ensemble_fingerprint[:20],
                         filename_extension
                     )
-                    dataset_module.combine(pred_paths, output_path)
+                    dataset_module.combine(pred_paths, output_path,
+                        seed = run_index,
+                    )
                     score, score_s = dataset_module.evaluate(
                         output_path, gold_path
                     )
