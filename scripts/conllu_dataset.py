@@ -204,7 +204,9 @@ def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False,
             sys.stderr.flush()
             sys.stdout.flush()
         subprocess.call(command)
-    score = (0.0, 'N/A')
+    if not os.path.exists(outname):
+        return (0.0, 'N/A', None)
+    retval = (0.0, 'N/A', outname)
     with open(outname, 'rb') as f:
         for line in f:
             fields = line.split()
@@ -214,9 +216,9 @@ def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False,
             # LAS        |  79.756753596 |  79.756753596 |  79.756753596 |  79.756753596
             if fields[0] == 'LAS':
                 score = fields[6]
-                score = (float(score), score)
+                retval = (float(score), score, outname)
                 break
-    return score
+    return retval
 
 def get_tbname(tbid, treebank_dir, tbmapfile = None):
     if not tbmapfile:
