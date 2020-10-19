@@ -1532,30 +1532,72 @@ def make_predictions(
         sys.exit(0)
     return predictions
 
-def get_median_score_and_cleanup(score_and_run, output_paths):
-    # find median
-    score_and_run.sort()
-    while len(score_and_run) > 2:
-        # remove lowest and highest scoring result
-        # to move towards the middle
-        for obsolete_index in (-1, 0):
-            _, run_index = score_and_run[obsolete_index]
-            del score_and_run[obsolete_index]
-            # clean up output files
+def get_average_score_and_cleanup(
+    score_and_run, output_paths,
+    keep_median_files = False,
+    print_range = False,
+    print_stddev = False,
+    print_median = False,
+    print_average = False,
+):
+    scores = map(lambda x: x[0], score_and_run)
+    average_score = sum(scores) / float(len(scores))
+    if print_average:
+        print('Average score: %.9f (%.2f)' %(average_score, average_score))
+    if print_range:
+        max_score = max(scores)
+        min_score = min(scores)
+        print('Lowest score: %.9f (%.2f)' %(min_score, min_score))
+        print('Highest score: %.9f (%.2f)' %(max_score, max_score))
+        print('Score range: %.9f' %(max_score-min_score))
+    if print_stddev:
+        sq_errors = []
+        for score in scores:
+            error = average_score - score
+            sq_errors.append(error**2)
+        n = len(scores)
+        std_dev = (sum(sq_errors)/float(n))**0.5
+        print('Population std dev = %.9f (%.2f)' %(std_dev, std_dev))
+        std_dev = (sum(sq_errors)/(n-1.0))**0.5
+        print('Simple sample std dev = %.9f (%.2f)' %(std_dev, std_dev))
+        std_dev = (sum(sq_errors)/(n-1.5))**0.5
+        print('Approximate std dev = %.9f (%.2f)' %(std_dev, std_dev))
+        std_dev = (sum(sq_errors)/(n-1.5+1.0/(8.0*(n-1.0))))**0.5
+        print('More accurate std dev = %.9f (%.2f)' %(std_dev, std_dev))
+    if keep_median_files or print_median:
+        # find median
+        score_and_run.sort()
+        while len(score_and_run) > 2:
+            # remove lowest and highest scoring result
+            # to move towards the middle
+            for obsolete_index in (-1, 0):
+                _, run_index = score_and_run[obsolete_index]
+                del score_and_run[obsolete_index]
+                # clean up output files
+                output_path, eval_path = output_paths[run_index]
+                os.unlink(output_path)
+                if eval_path:
+                    os.unlink(eval_path)
+        if len(score_and_run) == 2:
+            median_score = (score_and_run[0][0]+score_and_run[1][0])/2.0
+            _, run_index = score_and_run[0]
+            del score_and_run[0]
+            # clean up output files of first of the two median elements
             output_path, eval_path = output_paths[run_index]
             os.unlink(output_path)
-            os.unlink(eval_path)
-    if len(score_and_run) == 2:
-        median_score = (score_and_run[0][0]+score_and_run[1][0])/2.0
-        _, run_index = score_and_run[0]
-        del score_and_run[obsolete_index]
-        # clean up output files of first of the two median elements
-        output_path, eval_path = output_paths[run_index]
-        os.unlink(output_path)
-        os.unlink(eval_path)
-    else:
-        median_score = score_and_run[0][0]
-    return median_score
+            if eval_path:
+                os.unlink(eval_path)
+        else:
+            median_score = score_and_run[0][0]
+        if print_median:
+            print('Median score: %.9f (%.2f)' %(median_score, median_score))
+    if not keep_median_files:
+        for _, run_index in score_and_run:
+            output_path, eval_path = output_paths[run_index]
+            os.unlink(output_path)
+            if eval_path:
+                os.unlink(eval_path)
+    return average_score
 
 def evaluate(
     models, dev_sets, test_sets, set_names,
@@ -1612,7 +1654,7 @@ def evaluate(
                 learner_rank = learner_index + 1
                 print('Evaluating learner %d on %s:' %(learner_rank, name))
                 prediction_fingerprint, prediction_path = predictions[learner_index]
-                score, score_s = dataset_module.evaluate(
+                score, score_s, _ = dataset_module.evaluate(
                     prediction_path, gold_path
                 )
                 print('Score:', score_s)
@@ -1636,18 +1678,23 @@ def evaluate(
                     filename_extension
                 )
                 dataset_module.combine(pred_paths, output_path,
-                    seed = run_index,
+                    seed = '%d' %(100+run_index),
                 )
                 score, score_s, eval_path = dataset_module.evaluate(
                     output_path, gold_path
                 )
                 output_paths.append((output_path, eval_path))
                 score_and_run.append((score, run_index))
-            median_score = get_median_score_and_cleanup(
+            average_score = get_average_score_and_cleanup(
                 score_and_run,
                 output_paths,
+                keep_median_files = True,
+                print_range = True,
+                print_stddev = True,
+                print_median = True,
+                print_average = True,
             )
-            print('Score: %.9f' %median_score)
+            print('Score: %.9f' %average_score)
             if opt_cumulative_ensemble and not is_first:
                 print('Evaluating ensemble of all non-ensemble past predictions')
                 check_deadline(deadline, stopfile)
@@ -1667,18 +1714,23 @@ def evaluate(
                         filename_extension
                     )
                     dataset_module.combine(pred_paths, output_path,
-                        seed = run_index,
+                        seed = '%d' %(100+run_index),
                     )
-                    score, score_s = dataset_module.evaluate(
+                    score, score_s, eval_path = dataset_module.evaluate(
                         output_path, gold_path
                     )
                     output_paths.append((output_path, eval_path))
                     score_and_run.append((score, run_index))
-                median_score = get_median_score_and_cleanup(
+                average_score = get_average_score_and_cleanup(
                     score_and_run,
                     output_paths,
+                    keep_median_files = True,
+                    print_range = True,
+                    print_stddev = True,
+                    print_median = True,
+                    print_average = True,
                 )
-                print('Score: %.9f' %median_score)
+                print('Score: %.9f' %average_score)
 
 def train_and_evaluate_baselines(
     training_data, opt_learners, training_round, dataset_module,
