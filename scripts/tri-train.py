@@ -460,7 +460,7 @@ def main():
     opt_deadline = 0.0
     opt_stopfile = None
     opt_final_test = False
-    opt_re_test_ensembles = False
+    opt_re_test_ensembles = True
     opt_workdir = '.'
     opt_debug = False
     opt_init_seed  = None
@@ -971,7 +971,7 @@ def main():
         opt_rename_dispensable = opt_rename_dispensable,
         opt_round_priority = opt_round_priority,
         opt_average = opt_average,
-        opt_re_test_ensembles = opt_re_test_ensemles,
+        opt_re_test_ensembles = opt_re_test_ensembles,
     )
 
     drop_all_targets = basic_dataset.SentenceDropout(
@@ -2223,7 +2223,7 @@ def train_models(
             model_init_seed, training_set, epoch_selection_set,
             verbose = opt_verbose
         )
-        if opt_re_test_ensemble:
+        if opt_re_test_ensembles:
             model_fingerprint = 'unknown'
         if opt_verbose:
             print('Model fingerprint (shortened):', model_fingerprint[:40])
@@ -2281,7 +2281,7 @@ def train_models(
         elif opt_do_not_train:
             print('\n*** Model missing but not allowed to train new models in this iteration. ***\n')
             sys.exit(0)
-        elif opt_re_test_ensemble:
+        elif opt_re_test_ensembles:
             print('Missing model but continuing to re-test ensembles.')
         else:
             # ask model module to train the model
