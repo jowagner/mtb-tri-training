@@ -35,6 +35,18 @@ Options:
                             data set.
                             (Default: only report development set results)
 
+    --re-test-ensembles     Repeat the ensemble predictions and evaluate
+                            them. Do not sample unlabelled data, do not
+                            train models and stop without error when a
+                            prediction is needed but the required model
+                            is missing.
+                            Implies --tolerant and --continue as the data
+                            fingerprints for exact matches cannot be known
+                            without sampling the unlabelled data.
+                            For speedy update after changing the combiner
+                            settings, e.g. with --average.
+                            (Default: normal tri-training)
+
     --workdir  DIR          Path to working directory
                             (default: . = current directory)
 
@@ -448,6 +460,7 @@ def main():
     opt_deadline = 0.0
     opt_stopfile = None
     opt_final_test = False
+    opt_re_test_ensembles = False
     opt_workdir = '.'
     opt_debug = False
     opt_init_seed  = None
@@ -519,6 +532,10 @@ def main():
             del sys.argv[1]
         elif option == '--final-test':
             opt_final_test = True
+        elif option == '--re-test-ensembles':
+            opt_re_test_ensembles = True
+            opt_continue = True
+            opt_tolerant = True
         elif option == '--workdir':
             opt_workdir = sys.argv[1]
             del sys.argv[1]
@@ -777,6 +794,9 @@ def main():
     unl_dev_sets = []
     unl_test_sets = []
     for dataset_id in opt_unlabelled_ids:
+        if opt_re_test_ensembles:
+            print_t('Skipping %s as --re-test-ensembles was specified' %dataset_id)
+            continue
         tr, dev, test = dataset_module.load(
             dataset_id, load_test = opt_final_test,
             dataset_basedir = opt_dataset_basedir,
@@ -794,19 +814,31 @@ def main():
             monitoring_datasets.append(dataset)
 
     unlabelled_data_size = unlabelled_data.get_number_of_items()
-    if unlabelled_data_size == 0 and opt_iterations > 0:
+    if unlabelled_data_size == 0 and opt_iterations > 0 \
+    and not opt_re_test_ensembles:
         raise ValueError('Missing unlabelled data for tri-training iterations')
     opt_seed_size    = adjust_size(opt_seed_size,    training_data_size)
     opt_subset_size  = adjust_size(opt_subset_size,  unlabelled_data_size)
     opt_augment_size = adjust_size(opt_augment_size, unlabelled_data_size)
 
     print('opt_seed_size', opt_seed_size)
-    print('unlabelled training data with %d items in %d sentences' %(
-        unlabelled_data.get_number_of_items(),
-        len(unlabelled_data)
-    ))
-    print('opt_subset_size', opt_subset_size)
-    print('opt_augment_size', opt_augment_size)
+    if opt_re_test_ensembles:
+        print('size of unlabelled data unknown as --re-test-ensembles was specified')
+    else:
+        print('unlabelled training data with %d items in %d sentences' %(
+            unlabelled_data.get_number_of_items(),
+            len(unlabelled_data)
+        ))
+
+    if opt_re_test_ensembles and opt_subset_size == 0:
+        print('opt_subset_size is unknown as it is relative to unlabelled size')
+    else:
+        print('opt_subset_size', opt_subset_size)
+
+    if opt_re_test_ensembles and opt_augment_size == 0:
+        print('opt_augment_size is unknown as it is relative to unlabelled size')
+    else:
+        print('opt_augment_size', opt_augment_size)
 
     print_t('\n== Selection of Seed Data ==\n')
 
@@ -901,6 +933,7 @@ def main():
             opt_rename_dispensable = opt_rename_dispensable,
             opt_round_priority = opt_round_priority,
             opt_average = opt_average,
+            opt_re_test_ensembles = opt_re_test_ensembles,
         )
 
     print('\n== Training of Seed Models ==\n')
@@ -917,6 +950,7 @@ def main():
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
         opt_round_priority = opt_round_priority,
+        opt_re_test_ensembles = opt_re_test_ensembles,
     )
 
     # evaluate models using all dev sets (and test sets if --final-test)
@@ -937,6 +971,7 @@ def main():
         opt_rename_dispensable = opt_rename_dispensable,
         opt_round_priority = opt_round_priority,
         opt_average = opt_average,
+        opt_re_test_ensembles = opt_re_test_ensemles,
     )
 
     drop_all_targets = basic_dataset.SentenceDropout(
@@ -982,6 +1017,7 @@ def main():
                 opt_do_not_train = (opt_max_model_training >= 0 \
                                  and training_round > opt_max_model_training),
                 opt_average = opt_average,
+                opt_re_test_ensembles = opt_re_test_ensembles,
             )
         # prepare processing of subsets
         if opt_tolerant \
@@ -1022,7 +1058,10 @@ def main():
             subset_index = '%s/subset-%02d-part-%03d.indices' %(
                 opt_workdir, training_round, subset_part
             )
-            if opt_tolerant \
+            if opt_re_test_ensembles:
+                print('Skipping creation of subset of unlabelled data as --re-test-ensembles was specified')
+                unlabelled_subset = dataset_module.new_empty_set()
+            elif opt_tolerant \
             and os.path.exists(subset_index) \
             and os.path.exists(subset_path)  \
             and not opt_force_resample_subsets:
@@ -1063,11 +1102,14 @@ def main():
                         previously_picked[d_index] = 1
                     f.write('%d\n' %d_index)
                 f.close()
-            print_t('Size of part %d of subset: %d items in %d sentences' %(
-                subset_part,
-                unlabelled_subset.get_number_of_items(),
-                len(unlabelled_subset)
-            ))
+            if opt_re_test_ensembles:
+                print_t('Size of part %d of subset: unknown as --re-test-ensembles was specified' %subset_part)
+            else:
+                print_t('Size of part %d of subset: %d items in %d sentences' %(
+                    subset_part,
+                    unlabelled_subset.get_number_of_items(),
+                    len(unlabelled_subset)
+                ))
 
             print_t('\nMaking predictions for subset part %d:' %subset_part)
 
@@ -1082,6 +1124,7 @@ def main():
                 opt_tolerant = opt_tolerant,
                 opt_rename_dispensable = opt_rename_dispensable,
                 opt_round_priority = opt_round_priority,
+                opt_re_test_ensembles = opt_re_test_ensembles,
             )
             if opt_quit_after_prediction:
                 print('\n*** Manual intervention requested. ***\n')
@@ -1123,6 +1166,12 @@ def main():
                             opt_workdir, training_round, subset_part, learner_rank
                     ))
                     new_candidate_sets[learner_index].append(dataset)
+            elif opt_re_test_ensembles:
+                print('\nSkipping candidate sets as --re-test-ensembles was specified')
+                for learner_index in range(opt_learners):
+                    new_candidate_sets[learner_index].append(
+                        dataset_module.new_empty_set()
+                    )
             else:
                 # prepare knowledge transfer
                 prediction_sets = []
@@ -1176,6 +1225,8 @@ def main():
 
                 # save data for re-use
                 for learner_index in range(opt_learners):
+                    if opt_re_test_ensembles:
+                        continue
                     learner_rank = learner_index + 1
                     dataset = new_candidate_sets[learner_index][-1]
                     # write new labelled data to file
@@ -1229,6 +1280,10 @@ def main():
         for learner_index in range(opt_learners):
             learner_rank = learner_index + 1
             print('\nLearner %d:' %(learner_index+1))
+            if opt_re_test_ensembles:
+                print('Skipping creation of training data as --re-test-ensembles was specified')
+                new_training_sets.append(dataset_module.new_empty_set())
+                continue
             if opt_init_seed:
                 init_prng_from_text('New dataset %02d %03d %d %s' %(
                     training_round, subset_part, learner_rank, opt_init_seed,
@@ -1346,6 +1401,7 @@ def main():
             opt_round_priority = opt_round_priority,
             opt_do_not_train = (opt_max_model_training >= 0 \
                              and training_round > opt_max_model_training),
+            opt_re_test_ensembles = opt_re_test_ensembles,
         )
 
         print_t('\nEvaluating new models:')
@@ -1367,6 +1423,7 @@ def main():
             opt_verbose = opt_verbose,
             opt_round_priority = opt_round_priority,
             opt_average = opt_average,
+            opt_re_test_ensembles = opt_re_test_ensembles,
         )
 
     print_t('\n== Final Model ==\n')
@@ -1418,6 +1475,7 @@ def make_predictions(
     opt_tolerant = False, opt_rename_dispensable = False,
     fingerprint_length = 20,
     opt_round_priority = 1.0,
+    opt_re_test_ensembles = False,
 ):
     ''' makes predictions for the given dataet for all learners
     '''
@@ -1435,6 +1493,8 @@ def make_predictions(
         prediction_fingerprint = get_prediction_fingerprint(
              model_fingerprint, dataset
         )
+        if opt_re_test_ensembles:
+            prediction_fingerprint = 'unknown'
         if opt_verbose:
             print('Prediction input and model fingerprint (shortened):', prediction_fingerprint[:40])
         prediction_path = '%s/%sprediction-%02d-%d-%s%s%s' %(
@@ -1516,8 +1576,13 @@ def make_predictions(
             # we will ask the user to predict the models when details
             # for all leaners have been printed
             manual_prediction_needed.append(learner_rank)
+        elif opt_re_test_ensembles and dataset.get_number_of_items() == 0:
+            print('Skipping prediction for data set not available with --re-test-ensembles')
+        elif opt_re_test_ensembles and not os.path.exists(model_path):
+            print('\n*** Missing model to make prediction needed for re-evaluation of ensembles. ***\n')
+            sys.exit(1)
         else:
-            # ask model module to predict the model
+            # ask model module to make prediction with the model
             model_module.predict(
                 model_path, dataset.filename, prediction_path,
                 priority = min(99, int(opt_round_priority * training_round)),
@@ -1542,12 +1607,13 @@ def get_average_score_and_cleanup(
 ):
     scores = map(lambda x: x[0], score_and_run)
     average_score = sum(scores) / float(len(scores))
+    if print_range:
+        min_score = min(scores)
+        print('Lowest score: %.9f (%.2f)' %(min_score, min_score))
     if print_average:
         print('Average score: %.9f (%.2f)' %(average_score, average_score))
     if print_range:
         max_score = max(scores)
-        min_score = min(scores)
-        print('Lowest score: %.9f (%.2f)' %(min_score, min_score))
         print('Highest score: %.9f (%.2f)' %(max_score, max_score))
         print('Score range: %.9f' %(max_score-min_score))
     if print_stddev:
@@ -1615,6 +1681,7 @@ def evaluate(
     opt_tolerant = False, opt_rename_dispensable = False,
     opt_round_priority = 1.0,
     opt_average = 1,
+    opt_re_test_ensembles = False,
 ):
     for set_list, suffix, names in [
         (dev_sets,  '-dev',  set_names),
@@ -1639,6 +1706,7 @@ def evaluate(
                 opt_tolerant = opt_tolerant,
                 opt_rename_dispensable = opt_rename_dispensable,
                 opt_round_priority = opt_round_priority,
+                opt_re_test_ensembles = opt_re_test_ensembles,
             )
             gold_path = dataset.filename
             if gold_path not in all_prediction_paths:
@@ -1747,6 +1815,7 @@ def train_and_evaluate_baselines(
     opt_round_priority = 1.0,
     opt_do_not_train = False,
     opt_average = 1,
+    opt_re_test_ensembles = False,
 ):
     models = train_models(
         opt_learners, opt_learners * [training_data],
@@ -1762,6 +1831,7 @@ def train_and_evaluate_baselines(
         opt_rename_dispensable = opt_rename_dispensable,
         opt_round_priority = opt_round_priority,
         opt_do_not_train = opt_do_not_train,
+        opt_re_test_ensembles = opt_re_test_ensembles,
     )
     evaluate(
         models,
@@ -1781,6 +1851,7 @@ def train_and_evaluate_baselines(
         opt_tolerant = opt_tolerant,
         opt_rename_dispensable = opt_rename_dispensable,
         opt_average = opt_average,
+        opt_re_test_ensembles = opt_re_test_ensembles,
     )
 
 def get_prediction_fingerprint(model_fingerprint, unlabelled_subset, verbose = False):
@@ -2134,6 +2205,7 @@ def train_models(
     opt_tolerant = False, opt_rename_dispensable = False,
     opt_round_priority = 1.0,
     opt_do_not_train = False,
+    opt_re_test_ensembles = False,
 ):
     retval = []
     manual_training_needed = []
@@ -2151,6 +2223,8 @@ def train_models(
             model_init_seed, training_set, epoch_selection_set,
             verbose = opt_verbose
         )
+        if opt_re_test_ensemble:
+            model_fingerprint = 'unknown'
         if opt_verbose:
             print('Model fingerprint (shortened):', model_fingerprint[:40])
         model_path = '%s/%smodel-%02d-%d-%s' %(
@@ -2207,6 +2281,8 @@ def train_models(
         elif opt_do_not_train:
             print('\n*** Model missing but not allowed to train new models in this iteration. ***\n')
             sys.exit(0)
+        elif opt_re_test_ensemble:
+            print('Missing model but continuing to re-test ensembles.')
         else:
             # ask model module to train the model
             model_kwargs = opt_model_kwargs.copy()
