@@ -313,8 +313,9 @@ Options:
                             introduces noise, e.g. due to a stochastic
                             combination algorithm. The ensemble prediction
                             with median score will be kept as the "E"
-                            prediction. If NUMBER is even one of the two
-                            middle predictions will be picked at random.
+                            prediction. If NUMBER is even the
+                            middle predictions with the higher score will
+                            be kept.
                             (Default: 1)
 
     --epoch-selection  MODE
