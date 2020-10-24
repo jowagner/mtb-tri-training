@@ -32,7 +32,7 @@ case "${SETTING}" in
     export PYTHON3_ICHEC_CONDA=python3
     export UDPIPE_FUTURE_ICHEC_CONDA=udpf
     export UDPIPE_FUTURE_LIB_PATH="/ichec/packages/cuda/10.0/lib64":"$HOME/cudnn-for-10.0/lib64"
-    export CONLLU_COMBINER=${HOME}/tri-training/ud-combination/scripts/combiner.py
+    export CONLLU_COMBINER=${HOME}/tri-training/ud-combination/scripts/combine.py
     export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ICHEC_CONDA=efml
@@ -59,7 +59,7 @@ case "${SETTING}" in
     export UDPIPE_FUTURE_DELETE_INPUT_NPZ=set-means-yes
     export CONDA_HOME=${HOME}/anaconda3
     export UDPIPE_FUTURE_CONDA=udpf
-    export CONLLU_COMBINER=${HOME}/tri-training/ud-combination/scripts/combiner.py
+    export CONLLU_COMBINER=${HOME}/tri-training/ud-combination/scripts/combine.py
     export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
