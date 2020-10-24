@@ -988,7 +988,7 @@ def main():
     selected_data = []
     for training_index in range(opt_iterations):
         training_round = training_index + 1
-        print_t('\n== Tri-training Iteration %d of %d ==' %(
+        print_t('\n\n== Tri-training Iteration %d of %d ==\n' %(
             training_round, opt_iterations
         ))
 
@@ -2278,11 +2278,11 @@ def train_models(
             # we will ask the user to train the models when details
             # for all leaners have been printed
             manual_training_needed.append(learner_rank)
+        elif opt_re_test_ensembles:
+            print('Missing model but continuing to re-test ensembles.')
         elif opt_do_not_train:
             print('\n*** Model missing but not allowed to train new models in this iteration. ***\n')
             sys.exit(0)
-        elif opt_re_test_ensembles:
-            print('Missing model but continuing to re-test ensembles.')
         else:
             # ask model module to train the model
             model_kwargs = opt_model_kwargs.copy()
