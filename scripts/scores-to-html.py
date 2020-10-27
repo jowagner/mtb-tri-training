@@ -83,6 +83,8 @@ while True:
     # find best and worst baseline scores
     language = row[language_column]
     parser   = row[parser_column]
+    if parser == 't':
+        parser = 'f'
     method   = row[method_column]
     sample   = method[1]
     key = (language, parser, sample)
@@ -115,6 +117,7 @@ distribution  = None
 l2text = {
     'e': 'English',
     'h': 'Hungarian',
+    't': 'English-LinEs',
     'u': 'Uyghur',
     'v': 'Vietnamese',
 }
@@ -157,6 +160,8 @@ class Distribution:
             return
         if sample == '-':
             sample = 's'
+        if language == 't':
+            parser = 't'
         code = language + parser + sample
         for entry in os.listdir(os.environ['TT_DISTRIBUTIONS_DIR']):
             if not entry.startswith('distribution-') \
