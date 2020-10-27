@@ -103,11 +103,23 @@ while True:
             key2tokens[key].append((0,0))
         else:
             if learner == 'Ensemble':
-                n_tokens = sum(learner_unlabelled_tokens)
-                n_sentences = sum(learner_unlabelled_sentences)
+                if len(learner_unlabelled_tokens) == num_learners:
+                    n_tokens = sum(learner_unlabelled_tokens)
+                else:
+                    n_tokens = -1
+                if len(learner_unlabelled_sentences) == num_learners:
+                    n_sentences = sum(learner_unlabelled_sentences)
+                else:
+                    n_sentences = -1
             else:
-                n_tokens = learner_unlabelled_tokens[score_index]
-                n_sentences = learner_unlabelled_sentences[score_index]
+                if len(learner_unlabelled_tokens) > score_index:
+                    n_tokens = learner_unlabelled_tokens[score_index]
+                else:
+                    n_tokens = -1
+                if len(learner_unlabelled_sentences) > score_index:
+                    n_sentences = learner_unlabelled_sentences[score_index]
+                else:
+                    n_sentences = -1
             key2tokens[key].append((n_tokens, n_sentences))
         if learner == 'Ensemble':
             date = max(learner_model_time)
