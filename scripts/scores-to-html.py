@@ -17,6 +17,8 @@ from collections import defaultdict
 import os
 import sys
 
+from distribution import Distribution
+
 print('<html><body>')
 
 header = sys.stdin.readline().split()
@@ -142,122 +144,6 @@ d2text = {
     'y': 'last 5',
     'z': 'decaying',
 }
-
-class Distribution:
-
-    def __init__(self, language, parser, sample, smooth = True):
-        self.smooth = smooth
-        filename = None
-        if language is None:
-            self.scores = True
-            self.min_score =   0.0
-            self.score025  =   2.5
-            self.score250  =  25.0
-            self.median    =  50.0
-            self.score750  =  75.0
-            self.score975  =  97.5
-            self.max_score = 100.0
-            return
-        if sample == '-':
-            sample = 's'
-        if language == 't':
-            parser = 't'
-        code = language + parser + sample
-        for entry in os.listdir(os.environ['TT_DISTRIBUTIONS_DIR']):
-            if not entry.startswith('distribution-') \
-            or not entry.endswith('-dev.txt'):
-                continue
-            fields = entry.split('-')
-            if len(fields) != 5 \
-            or fields[1] != code \
-            or fields[2] != '3':
-                continue
-            filename = entry
-            break
-        self.scores = []
-        scores = self.scores
-        if not filename:
-            sys.stderr.write('Warning: no baseline distribution for %s.\n' %code)
-        else:
-            f = open('%s/%s' %(os.environ['TT_DISTRIBUTIONS_DIR'], filename), 'rb')
-            while True:
-                line = f.readline()
-                if not line:
-                    break
-                scores.append(float(line.split()[0]))
-            f.close()
-        if self.scores:
-            scores.sort()
-            self.min_score = scores[0]
-            self.max_score = scores[-1]
-            num_scores = len(scores)
-            if (num_scores % 2):
-                # odd number of scores
-                self.median = scores[(num_scores-1)/2]
-            else:
-                # even number of scores
-                self.median = (scores[num_scores/2-1] + scores[num_scores/2])/2.0
-            backup = scores
-            prune = int(0.025*len(scores))
-            if prune:
-                scores = self.scores[prune:-prune]
-            self.score025 = scores[0]
-            self.score975 = scores[-1]
-            scores = backup
-            prune = int(0.25*len(scores))
-            if prune:
-                scores = self.scores[prune:-prune]
-            self.score250 = scores[0]
-            self.score750 = scores[-1]
-
-    def colour(self, score):
-        if not self.scores:
-            return 'ffffff'
-        if self.smooth:
-            indices = range(101)
-        else:
-            indices = [50,]
-        colours = []
-        for i in indices:
-            for f in (0.000023, 0.000011):
-                offset = f * (i - 50)
-                colours.append(self.p_colour(score+offset))
-        components = []
-        for c_index in (0,1,2):
-            value = 0.0
-            for colour in colours:
-                value += colour[c_index]
-            components.append('%02x' %int(255.999 * value / float(len(colours))))
-        return ''.join(components)
-
-    def p_colour(self, score):
-        if score < self.min_score:
-            return (0.00, 0.00, 0.00) # below 0.0: black
-        if score < self.score025:
-            return (0.60, 0.30, 0.15) #  0.0 -  2.5: brown
-        if score < self.score250:
-            return (0.67, 0.52, 0.45) #  2.5 - 25.0: brown-grey
-        if score < self.median:
-            return (0.75, 0.75, 0.75) # 25.0 - 50.0: grey
-        if score < self.score750:
-            return (1.00, 1.00, 1.00) # 50.0 - 75.0: white
-        if score < self.score975:
-            return (1.00, 1.00, 1.00) # 75.0 - 97.5: white
-        if score < self.max_score:
-            #return (0.80, 0.60, 1.00) # 97.5 - 100: light violet-blue
-            return (0.65, 0.65, 1.00) # 97.5 - 100: light blue
-        #if score < self.max_score+0.4:
-            #return (0.65, 0.65, 1.00) # light blue
-        if score < self.max_score+0.6:
-            return (0.6, 1.0, 1.0)  # light cyan-blue
-        if score < self.max_score+1.2:
-            return (0.80, 1.0, 0.50)  # light yellow-green
-        if score < self.max_score+1.8:
-            return (1.0, 1.0, 0.0)  # strong yellow
-        if score < self.max_score+2.4:
-            return (1.0, 0.8, 0.5)  # orange-pink
-        else:
-            return (1.0, 0.5, 0.5)  # light red
 
 #    ( 99.0, 'background light violet-blue: in top 2.5% of baselines'),
 #    (100.0, 'blend'),
