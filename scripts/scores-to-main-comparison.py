@@ -137,7 +137,7 @@ def write_freq_distr(table, bin2freq, bin_width, column_index = 0):
             if gap > max_gap:
                 # number of steps
                 steps = int(0.5+gap/bin_width)
-                for step in range(steps):
+                for step in range(1,steps):
                     update_table(table, last_key+step*bin_width, column_index, 0.0)
         freq = bin2freq[key]
         update_table(table, key, column_index, freq/total)
@@ -260,7 +260,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
         # if each tri-training result was just a random baseline ensemble
         bin2freq = defaultdict(lambda: 0)
         for pick in picks:
-            for _ in range(16384):
+            for _ in range(25000):
                 scores = random.sample(distr.scores, pick)
                 score = max(scores)
                 bin_key = bin_width * round(score / bin_width)
