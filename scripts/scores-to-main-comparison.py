@@ -138,7 +138,9 @@ def write_freq_distr(table, bin2freq, bin_width, column_index = 0):
                 # number of steps
                 steps = int(0.5+gap/bin_width)
                 for step in range(1,steps):
-                    update_table(table, last_key+step*bin_width, column_index, 0.0)
+                    score = last_key+step*bin_width
+                    s_key = bin_width * round(score / bin_width)
+                    update_table(table, s_key, column_index, 0.0)
         freq = bin2freq[key]
         update_table(table, key, column_index, freq/total)
         last_key = key
