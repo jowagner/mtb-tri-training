@@ -364,7 +364,7 @@ def get_target_columns():
 
 def get_filename_extension():
     ''' recommended extension for output files '''
-    return '.conllu'
+    return '.conllu.bz2'
 
 def combine(prediction_paths, output_path, seed = '42', verbose = True):
     ''' combine (ensemble) the given predictions

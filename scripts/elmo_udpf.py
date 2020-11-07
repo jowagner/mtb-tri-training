@@ -15,6 +15,7 @@ from __future__ import print_function
 
 import array
 import base64
+import bz2
 import hashlib
 import math
 import os
@@ -116,13 +117,19 @@ class ElmoNpzTask(common_udpipe_future.Task):
         id_column    = 0
         token_column = 1
         sentences = []
-        try:
-            # Python 3
-            _file = open(conllu_file, mode='r', encoding='utf-8')
-        except TypeError:
-            # Python 2
-            print('Warning: elmo-npz worker running with Python 2')
-            _file = open(conllu_file, mode='rb')
+        if conllu_file.endswith('.bz2'):
+            _file = bz2.BZ2File(file, 'r')  # caveat: binary / no character encoding
+            needs_decoding = True
+        else:
+            try:
+                # Python 3
+                _file = open(conllu_file, mode='r', encoding='utf-8')
+                needs_decoding = False
+            except TypeError:
+                # Python 2
+                print('Warning: elmo-npz worker running with Python 2')
+                _file = open(conllu_file, mode='rb')
+                needs_decoding = False  # not sure this is right
         tokens = []
         while True:
             line = _file.readline()
@@ -130,6 +137,8 @@ class ElmoNpzTask(common_udpipe_future.Task):
                 if tokens:
                     raise ValueError('No end-of-sentence marker at end of file %r' %path)
                 break
+            if needs_decoding:
+                line = line.decode('UTF-8')
             if line.isspace():
                 # apply same processing as in elmoformanylangs/__main__.py
                 sent = '\t'.join(tokens)

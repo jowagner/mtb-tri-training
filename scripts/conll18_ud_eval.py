@@ -98,6 +98,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import bz2
 import io
 import sys
 import unicodedata
@@ -515,8 +516,23 @@ def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
     }
 
 
+class Bz2Utf8Reader:
+    def __init__(self, path):
+        self.bz2 = bz2.BZ2File(path, mode = 'r')
+    def close(self):
+        self.bz2.close()
+    def readline(self):
+        line = self.bz2.readline()
+        return line.decode('UTF-8')
+
 def load_conllu_file(path):
-    _file = open(path, mode="r", **({"encoding": "utf-8"} if sys.version_info >= (3, 0) else {}))
+    if path.endswith('.bz2'):
+        if sys.version_info >= (3, 0):
+            _file = Bz2Utf8Reader(path)
+        else:
+            _file = bz2.BZ2File(path, mode = 'r')
+    else:
+        _file = open(path, mode="r", **({"encoding": "utf-8"} if sys.version_info >= (3, 0) else {}))
     return load_conllu(_file)
 
 def evaluate_wrapper(args):

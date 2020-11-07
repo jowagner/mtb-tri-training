@@ -614,7 +614,12 @@ class Sample(Dataset):
 
 
 def load_or_map_from_filename(data, filename, mode = 'load', **kwargs):
-    f_in = open(filename, 'r')
+    if filename.endswith('.bz2'):
+        f_in = bz2.BZ2File(filename, 'r')
+        if mode == 'map':
+            sys.stderr.write('Warning: opening .bz2 file in map mode: %s\n' %filename)
+    else:
+        f_in = open(filename, 'r')
     data.load_or_map_file(f_in, None, mode, **kwargs)
     if mode == 'load':
         f_in.close()
