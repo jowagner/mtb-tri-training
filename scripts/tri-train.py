@@ -57,6 +57,10 @@ Options:
                             the module specified with --dataset-module
                             interprets these IDs to load the data
 
+    --no-test-unlabelled    Ignore any dev or test sets available for the
+                            unlabelled data.
+                            (Default: monitor performance also on these sets)
+
     --load-labelled-data-keyword  KEY  VALUE
     --load-unlabelled-data-keyword  KEY  VALUE
                             Pass additional key-value pair as keyword
@@ -471,6 +475,7 @@ def main():
     opt_baselines = False
     opt_labelled_ids = []
     opt_unlabelled_ids = []
+    opt_test_unlabelled = True
     opt_load_labelled_data_kwargs = {}
     opt_load_unlabelled_data_kwargs = {}
     opt_simulate_size = None
@@ -551,6 +556,8 @@ def main():
             opt_quit_after_prediction = True
         elif option == '--baselines':
             opt_baselines = True
+        elif option == '--no-test-unlabelled':
+            opt_test_unlabelled = False
         elif option in ('--model-init', '--model-init-type'):
             opt_model_init_type = sys.argv[1]
             del sys.argv[1]
@@ -805,6 +812,8 @@ def main():
         )
         #print('Dataset %r: %r' %(dataset_id, tr))
         unlabelled_data_sets.append(tr)
+        if not opt_test_unlabelled:
+            continue
         unl_dev_sets.append(dev)
         unl_test_sets.append(test)
     unlabelled_data = basic_dataset.Concat(unlabelled_data_sets)
