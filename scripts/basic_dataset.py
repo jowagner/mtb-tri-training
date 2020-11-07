@@ -10,6 +10,7 @@
 
 from __future__ import print_function
 
+import bz2
 import collections
 import hashlib
 import random
