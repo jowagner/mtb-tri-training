@@ -33,6 +33,7 @@ else:
 
 mini_option = ''
 max_iterations = 9999
+skip_missing = False
 if len(sys.argv) > 1 and sys.argv[1].startswith('--baseline'):
     job_dir = 'baseline-jobs'
     max_iterations = 0
@@ -43,6 +44,7 @@ elif len(sys.argv) > 1 and sys.argv[1].startswith('--mini'):
     del sys.argv[1]
 elif len(sys.argv) > 1 and sys.argv[1].startswith('--eval'):
     job_dir = 'eval-jobs'
+    skip_missing = True
     mini_option = '--max-model-training 0'
     del sys.argv[1]
 else:
@@ -198,6 +200,10 @@ for augment_size_code in augment_size_codes:
                                     augment_size_code+2
                                 )
                                 for gpu_short, gpu_name in gpu_list:
+                                    if skip_missing:
+                                        workdir = '/'.join([os.environ['PRJ_DIR'], 'workdirs', name])
+                                        if not os.path.exists(workdir):
+                                            continue
                                     f = open('%s/%s-%s.job' %(job_dir, name, gpu_short), 'wb')
                                     f.write(template %locals())
                                     f.close()
