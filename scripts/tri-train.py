@@ -1975,7 +1975,10 @@ def get_subset(
     return retval
 
 def write_dataset(dataset, filename):
-    f_out = open(filename, 'w')
+    if filename.endswith('.bz2'):
+        f_out = bz2.BZ2File(filename, 'w')
+    else:
+        f_out = open(filename, 'w')
     dataset.save_to_file(f_out)
     dataset.filename = filename
     f_out.close()
