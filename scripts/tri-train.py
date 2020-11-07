@@ -874,7 +874,7 @@ def main():
         sys.stdout.flush()
         write_dataset(
             seed_set,
-            '%s/seed-set-%d.conllu' %(opt_workdir, learner_rank)
+            '%s/seed-set-%d%s' %(opt_workdir, learner_rank, filename_extension)
         )
         # before we can use the seed set, we may have to slice off 10%
         if opt_epoch_selection == '9010' or opt_iteration_selection == '9010':
@@ -882,12 +882,12 @@ def main():
                 seed_set, int(0.5+0.90*opt_seed_size), random, opt_seed_attempts,
                 with_replacement = False,
                 write_file = \
-                '%s/seed-subset-90-%d.conllu' %(opt_workdir, learner_rank)
+                '%s/seed-subset-90-%d%s' %(opt_workdir, learner_rank, filename_extension)
             )
             seed_set_10 = get_remaining(
                 seed_set_90, random,
                 write_file = \
-                '%s/seed-subset-10-%d.conllu' %(opt_workdir, learner_rank)
+                '%s/seed-subset-10-%d%s' %(opt_workdir, learner_rank, filename_extension)
             )
             seed_sets.append(seed_set_90)
         else:
@@ -903,7 +903,7 @@ def main():
                 selection_type, dev_sets, seed_set, seed_set_10,
                 opt_max_selection_size, opt_selection_attempts, random,
                 write_file = \
-                '%s/for-%s-selection-%d.conllu' %(opt_workdir, name, learner_rank)
+                '%s/for-%s-selection-%d%s' %(opt_workdir, name, learner_rank, filename_extension)
             ))
 
     all_prediction_paths = {}
@@ -1033,12 +1033,13 @@ def main():
         if opt_tolerant \
         and not opt_force_resample_subsets:
             # check for old subset file format
-            subset_path = '%s/subset-%02d.conllu' %(opt_workdir, training_round)
+            subset_path = '%s/subset-%02d%s' %(opt_workdir, training_round, filename_extension)
             subset_index = '%s/subset-%02d.indices' %(opt_workdir, training_round)
             if os.path.exists(subset_index) \
             and os.path.exists(subset_path):
-                os.rename(subset_path,  '%s/subset-%02d-part-001.conllu' %(
-                    opt_workdir, training_round
+                os.rename(subset_path,  '%s/subset-%02d-part-001%s' %(
+                    opt_workdir, training_round,
+                    filename_extension
                 ))
                 os.rename(subset_index, '%s/subset-%02d-part-001.indices' %(
                     opt_workdir, training_round
@@ -1062,8 +1063,9 @@ def main():
                 target_size = opt_subset_size
             else:
                 target_size = min(opt_subset_size, unlabelled_data.get_number_of_items())
-            subset_path = '%s/subset-%02d-part-%03d.conllu' %(
-                opt_workdir, training_round, subset_part
+            subset_path = '%s/subset-%02d-part-%03d%s' %(
+                opt_workdir, training_round, subset_part,
+                filename_extension
             )
             subset_index = '%s/subset-%02d-part-%03d.indices' %(
                 opt_workdir, training_round, subset_part
@@ -1156,8 +1158,9 @@ def main():
                 have_all_kt_sets = True
                 for learner_index in range(opt_learners):
                     learner_rank = learner_index + 1
-                    tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
-                        opt_workdir, training_round, subset_part, learner_rank
+                    tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d%s' %(
+                        opt_workdir, training_round, subset_part, learner_rank,
+                        filename_extension
                     )
                     if not os.path.exists(tr_data_filename):
                         have_all_kt_sets = False
@@ -1172,8 +1175,9 @@ def main():
                     learner_rank = learner_index + 1
                     dataset = basic_dataset.load_or_map_from_filename(
                         dataset_module.new_empty_set(),
-                        '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
-                            opt_workdir, training_round, subset_part, learner_rank
+                        '%s/new-candidate-set-%02d-%03d-%d%s' %(
+                            opt_workdir, training_round, subset_part, learner_rank,
+                            filename_extension
                     ))
                     new_candidate_sets[learner_index].append(dataset)
             elif opt_re_test_ensembles:
@@ -1241,8 +1245,9 @@ def main():
                     dataset = new_candidate_sets[learner_index][-1]
                     # write new labelled data to file
                     # (this data may be bigger than the configured augment size)
-                    tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d.conllu' %(
-                        opt_workdir, training_round, subset_part, learner_rank
+                    tr_data_filename = '%s/new-candidate-set-%02d-%03d-%d%s' %(
+                        opt_workdir, training_round, subset_part, learner_rank,
+                        filename_extension
                     )
                     f_out = open(tr_data_filename, 'w')
                     dataset.save_to_file(f_out)
@@ -1308,8 +1313,9 @@ def main():
                     prefer_smaller = True,
                 )
             # keep conllu copy of the data after pruning to augment size
-            write_dataset(new_dataset, '%s/new-selected-set-%02d-%d.conllu' %(
-                opt_workdir, training_round, learner_rank
+            write_dataset(new_dataset, '%s/new-selected-set-%02d-%d%s' %(
+                opt_workdir, training_round, learner_rank,
+                filename_extension
             ))
             selected_data[training_index].append(new_dataset)
             # compile training set for this iteration and learner
@@ -1335,9 +1341,10 @@ def main():
                         new_dataset, target_size, random,
                         opt_last_decay_attempts, with_replacement = False,
                         write_file = \
-                        '%s/new-decayed-set-%02d-%d-%02d.conllu' %(
+                        '%s/new-decayed-set-%02d-%d-%02d%s' %(
                             opt_workdir, training_round, learner_rank,
-                            t_index+1
+                            t_index+1,
+                            filename_extension
                         )
                     )
                 new_dataset_num_items = new_dataset.get_number_of_items()
@@ -1391,8 +1398,9 @@ def main():
             ))
             write_dataset(
                 new_training_set,
-                '%s/new-training-set-%02d-%d.conllu' %(
-                    opt_workdir, training_round, learner_rank
+                '%s/new-training-set-%02d-%d%s' %(
+                    opt_workdir, training_round, learner_rank,
+                    filename_extension
                 )
             )
             new_training_sets.append(new_training_set)
