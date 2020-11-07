@@ -229,8 +229,10 @@ def get_split_for_buckets(candidates, n):
             size_1 = split_point
             size_2 = len(candidates) - size_1
             if min(size_1, size_2) < half_n:
-                # cannot split this way as one half would be too small
-                continue
+                # avoid splitting this way as one half would be too small
+                priority = 5000
+            else:
+                priority = 0
             balance = abs(size_1 - size_2)
             # check seed overlap
             left_seeds = set()
@@ -242,7 +244,7 @@ def get_split_for_buckets(candidates, n):
                     right_seeds.add(candidates[i][1])
             intersection = left_seeds & right_seeds
             seed_overlap = len(intersection)
-            priority = 29 * seed_overlap + 11 * balance
+            priority += 29 * seed_overlap + 11 * balance
             candidate_splits.append((
                 priority, seed_overlap, balance,
                 split_point, intersection, size_1, size_2
@@ -287,7 +289,7 @@ def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
         gold_path = os.environ['UD_TREEBANK_DIR'] + '/' + gold_path
     #if not os.path.exists(tmp_dir):
     #    raise ValueError('tmp_dir %r disappeared unexpectedly in get_score()' %tmp_dir)
-    score, score_s = dataset_module.evaluate(
+    score, score_s, eval_path = dataset_module.evaluate(
         prediction_path, gold_path,
         outname = eval_path,
         reuse_eval_txt = True,
@@ -295,7 +297,7 @@ def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
     )
     if not score:
         raise ValueError('Zero LAS for %s in %s' %(prediction_path, eval_path))
-    if cleanup_eval:
+    if cleanup_eval and eval_path:
         os.unlink(eval_path)
         #print('\t\tunlinked %s' %eval_path)
     return score
@@ -439,8 +441,8 @@ for key in sorted(list(key2filenames.keys())):
             for learner_score, _, _, _ in predictions:
                 info.append('%.2f' %learner_score)
             info.append('%.3f' %std_dev)
-            info.append('%.2f' %min_score))
-            info.append('%.2f' %max_score))
+            info.append('%.2f' %min_score)
+            info.append('%.2f' %max_score)
             for _, seed, _, _ in predictions:
                 info.append(seed)
             for _, _, _, path in predictions:
