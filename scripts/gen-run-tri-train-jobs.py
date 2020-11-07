@@ -18,6 +18,12 @@ from __future__ import print_function
 import os
 import sys
 
+if len(sys.argv) > 1 and sys.argv[1].startswith('--high-prio'):
+    opt_high_priority = True
+    del sys.argv[1]
+else:
+    opt_high_priority = False
+
 if len(sys.argv) > 1 and sys.argv[1] == '--repeat':
     # repeat run with different main seed
     repeat_run = 1
@@ -37,7 +43,7 @@ elif len(sys.argv) > 1 and sys.argv[1].startswith('--mini'):
     del sys.argv[1]
 elif len(sys.argv) > 1 and sys.argv[1].startswith('--eval'):
     job_dir = 'eval-jobs'
-    mini_option = '--max-model-training 0 --re-test-ensembles'
+    mini_option = '--max-model-training 0'
     del sys.argv[1]
 else:
     job_dir = 'jobs'
@@ -90,7 +96,7 @@ def get_modelseedsuffix(setting):
         retval = setting2modelseedsuffix[setting]
     except KeyError:
         retval = len(modelseedsuffix2setting)
-        retval += 44  # skip values used in previous version
+        retval += 200  # skip values used in previous version
         setting2modelseedsuffix[setting] = retval
         modelseedsuffix2setting.append(setting)
     return retval
@@ -99,6 +105,9 @@ def get_modelseedsuffix(setting):
 aug2iterations      = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6,  4,  3,  2,  1,  1,  1]
 
 aug2last_iterations = [24, 21, 17, 15, 14, 11,  9,  7,  5,  4,  3,  2,  2,  2,  2,  2]    # for --round-priority
+
+if opt_high_priority:
+    aug2last_iterations = map(lambda x: 10*x, aug2last_iterations)
 
 
 for augment_size_code in augment_size_codes:
@@ -133,6 +142,7 @@ for augment_size_code in augment_size_codes:
                         ('v', '--last-k 1'),
                         ('y', '--last-k 5'),
                         ('z', '--last-decay 0.5'),
+                        ('o', '--last-decay 0.71'),
                         ('a', '--all-labelled-data'),
                         ('u', '--all-labelled-data --last-k 1 --check-error-rate'),
                         ('f', '--all-labelled-data --last-k 5'),
@@ -148,6 +158,7 @@ for augment_size_code in augment_size_codes:
                             #'c', 'cs', 'cs_pdt',    160444000, '--simulate-size 20k --simulate-seed 42'),
                             #'d', 'de', 'de_gsd',    160444000, '--simulate-size 20k --simulate-seed 42'),
                             ('e', 'en', 'en_ewt',    153878772, '--simulate-size 20k --simulate-seed 42'),
+                            #('t', 'en', 'en_lines',   204607, '--no-test-unlabelled'),  # manually change template to use en_ewt as unlabelled data
                             #'f', 'fr', 'fr_gsd',    160444000, ''),
                             #'g', 'ga', 'ga_9010idt', 20462403, ''),
                             ('h', 'hu', 'hu_szeged', 168359253, ''),
@@ -161,6 +172,7 @@ for augment_size_code in augment_size_codes:
                             for parser_code, model_module in [
                                 #('a', 'allennlp'),
                                 ('f', 'udpipe_future'),
+                                #('t', 'udpipe_future'),
                                 ('g', 'fasttext_udpf'),
                                 ('h', 'elmo_udpf'),
                                 #('i', 'mbert_udpf'),
@@ -171,7 +183,7 @@ for augment_size_code in augment_size_codes:
                                 #('n', 'fasttext_mx'),
                                 #('o', 'elmo_mx'),
                             ]:
-                                if parser_code in 'afum':
+                                if parser_code in 'aftum':
                                     model_keyword_options = ''
                                 else:
                                     model_keyword_options = '--model-keyword lcode %s' %lcode
