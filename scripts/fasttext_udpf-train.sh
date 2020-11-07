@@ -94,7 +94,12 @@ FAKE_TBID=xx_xxx
 # The model is not complete without the conllu file as
 # the checkpoint does not contain the vocabularies.
 
-cp ${TRAIN_CONLLU} $MODELDIR/${FAKE_TBID}-ud-train.conllu
+if [ ${TRAIN_CONLLU: -4} == ".bz2" ]; then
+    bzcat ${TRAIN_CONLLU} > $MODELDIR/${FAKE_TBID}-ud-train.conllu
+else
+    cp ${TRAIN_CONLLU} $MODELDIR/${FAKE_TBID}-ud-train.conllu
+fi
+
 cd $MODELDIR
 
 if [ -e "${NPZ}" ]; then

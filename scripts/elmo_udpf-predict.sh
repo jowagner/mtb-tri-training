@@ -79,18 +79,36 @@ for ENTRY in   \
     ln -s ${REAL_MODELDIR}/${ENTRY}
 done
 
+if [ ${REAL_INPUT: -4} == ".bz2" ]; then
+    bzcat ${REAL_INPUT} > input.conllu
+    INPUT=input.conllu
+else
+    INPUT=${REAL_INPUT}
+fi
+
+OUTPUT=output.conllu
+
 python ${PARSER_DIR}/ud_parser.py  \
     ${EXTRA_OPTIONS}                \
     --predict                        \
-    --predict_input "${REAL_INPUT}"    \
-    --predict_output "${REAL_OUTPUT}"   \
+    --predict_input "${INPUT}"    \
+    --predict_output "${OUTPUT}"   \
     --elmo ${ELMO_FILE_PREFIX}-test.npz  \
     --embeddings fasttext.npz             \
     --logdir ./                            \
     --checkpoint checkpoint-inference-last  \
     ${FAKE_TBID}                            \
     2> "${REAL_OUTPUT}"-stderr.txt                           \
-    > /dev/null
+    > stdout.txt
+
+if [ -e "${OUTPUT}" ]; then
+    if [ ${REAL_OUTPUT: -4} == ".bz2" ]; then
+        bzip2 < ${OUTPUT} > ${REAL_OUTPUT}.part
+    else
+        mv ${OUTPUT} ${REAL_OUTPUT}.part
+    fi
+    mv ${REAL_OUTPUT}.part ${REAL_OUTPUT}
+fi
 
 cd /
 rm -rf ${WORKDIR}

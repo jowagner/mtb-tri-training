@@ -82,15 +82,22 @@ python ${PARSER_DIR}/ud_parser.py \
     --logdir ./                           \
     --checkpoint checkpoint-inference-last \
     ${FAKE_TBID}                  \
-    2> stderr.txt     \
+    2> "${REAL_OUTPUT}"-stderr.txt      \
     > stdout.txt
 
-if [ ${REAL_OUTPUT: -4} == ".bz2" ]; then
-    bzip2 < ${OUTPUT} > ${REAL_OUTPUT}.part
-else
-    mv ${OUTPUT} ${REAL_OUTPUT}.part
+if [ -e "${OUTPUT}" ]; then
+    if [ ${REAL_OUTPUT: -4} == ".bz2" ]; then
+        bzip2 < ${OUTPUT} > ${REAL_OUTPUT}.part
+    else
+        mv ${OUTPUT} ${REAL_OUTPUT}.part
+    fi
+    mv ${REAL_OUTPUT}.part ${REAL_OUTPUT}
 fi
-mv ${REAL_OUTPUT}.part ${REAL_OUTPUT}
 
+cd /
 rm -rf ${REAL_WORKDIR}
+
+if [ -e "${REAL_OUTPUT}" ]; then
+    rm "${REAL_OUTPUT}"-stderr.txt
+fi
 
