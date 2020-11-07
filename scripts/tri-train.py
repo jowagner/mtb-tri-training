@@ -1250,9 +1250,7 @@ def main():
                         opt_workdir, training_round, subset_part, learner_rank,
                         filename_extension
                     )
-                    f_out = open(tr_data_filename, 'w')
-                    dataset.save_to_file(f_out)
-                    f_out.close()
+                    write_dataset(dataset, tr_data_filename)
 
             # now we have predictions for the current subset for all learners,
             # either from existing files or newly predicted
