@@ -461,7 +461,7 @@ def main():
     opt_deadline = 0.0
     opt_stopfile = None
     opt_final_test = False
-    opt_re_test_ensembles = True
+    opt_re_test_ensembles = False
     opt_workdir = '.'
     opt_debug = False
     opt_init_seed  = None
