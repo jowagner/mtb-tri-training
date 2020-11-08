@@ -117,8 +117,8 @@ class ElmoNpzTask(common_udpipe_future.Task):
         id_column    = 0
         token_column = 1
         sentences = []
-        if conllu_file.endswith('.bz2'):
-            _file = bz2.BZ2File(file, 'r')  # caveat: binary / no character encoding
+        if conllu_file.endswith(b'.bz2'):
+            _file = bz2.BZ2File(conllu_file, 'r')  # caveat: binary / no character encoding
             needs_decoding = True
         else:
             try:
