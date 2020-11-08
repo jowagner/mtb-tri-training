@@ -48,8 +48,27 @@ DEV_NPZ=${10}
 TEST_SET=${11}
 TEST_NPZ=${12}
 
+if [ -e "$TRAIN_NPZ" ]; then
+    echo "training npz ready" > /dev/null
+else
+    echo "Waiting for training npz"
+    sleep 60
+fi
+
 if [ -n "$DEV_SET" ]; then
+    if [ -e "$DEV_NPZ" ]; then
+        echo "1st monitoring npz ready" > /dev/null
+    else
+        echo "Waiting for 1st monitoring npz"
+        sleep 60
+    fi
     if [ -n "$TEST_SET" ]; then
+        if [ -e "$TEST_NPZ" ]; then
+            echo "2nd monitoring npz ready" > /dev/null
+        else
+            echo "Waiting for 2nd monitoring npz"
+            sleep 60
+        fi
         REAL_DEV_SET=$(realpath ${DEV_SET})
         N_MONITORS=2
     else
@@ -65,6 +84,7 @@ if [ -n "$DEV_SET" ]; then
 else
     N_MONITORS=0
 fi
+
 
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 

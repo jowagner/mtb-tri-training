@@ -27,6 +27,13 @@ LANG_CODE=$5
 
 EXTRA_OPTIONS="$6"
 
+if [ -e "$IN_NPZ" ]; then
+    echo "input npz ready" > /dev/null
+else
+    echo "Waiting for input npz"
+    sleep 60
+fi
+
 test -z ${PRJ_DIR} && PRJ_DIR=${HOME}/mtb-tri-training
 
 WORKDIR=$(realpath "${OUTPUT}")-workdir
