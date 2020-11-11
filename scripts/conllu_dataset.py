@@ -190,7 +190,15 @@ class ConlluDataset(basic_dataset.Dataset):
 
 def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False, verbose = True):
     if not outname:
-        outname = prediction_path[:-7] + '.eval.txt'
+        if prediction_path.endswith('.conllu.bz2'):
+            outname = prediction_path[:-11]
+        elif prediction_path.endswith('.conllu'):
+            outname = prediction_path[:-7]
+        elif prediction_path.endswith('.conllu.gz'):
+            outname = prediction_path[:-10]
+        else:
+            outname = prediction_path
+        outname = outname + '.eval.txt'
     command = []
     command.append('%s/scripts/wrapper-conll18-eval.sh' %os.environ['PRJ_DIR'])
     command.append('--output')
@@ -364,7 +372,7 @@ def get_target_columns():
 
 def get_filename_extension():
     ''' recommended extension for output files '''
-    return '.conllu'
+    return '.conllu.bz2'
 
 def combine(prediction_paths, output_path, seed = '42', verbose = True):
     ''' combine (ensemble) the given predictions

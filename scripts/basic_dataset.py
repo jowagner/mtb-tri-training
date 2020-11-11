@@ -10,6 +10,7 @@
 
 from __future__ import print_function
 
+import bz2
 import collections
 import hashlib
 import random
@@ -614,7 +615,14 @@ class Sample(Dataset):
 
 
 def load_or_map_from_filename(data, filename, mode = 'load', **kwargs):
-    f_in = open(filename, 'r')
+    if filename.endswith('.bz2'):
+        f_in = bz2.BZ2File(filename, 'r')
+        if mode == 'map':
+            print('Warning: opening .bz2 file in map mode: %s\n' %filename,
+                file=sys.stderr,
+            )
+    else:
+        f_in = open(filename, 'r')
     data.load_or_map_file(f_in, None, mode, **kwargs)
     if mode == 'load':
         f_in.close()

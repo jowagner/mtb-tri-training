@@ -15,6 +15,7 @@
 
 from __future__ import print_function
 
+import bz2
 import importlib
 import hashlib
 import os
@@ -1249,9 +1250,7 @@ def main():
                         opt_workdir, training_round, subset_part, learner_rank,
                         filename_extension
                     )
-                    f_out = open(tr_data_filename, 'w')
-                    dataset.save_to_file(f_out)
-                    f_out.close()
+                    write_dataset(dataset, tr_data_filename)
 
             # now we have predictions for the current subset for all learners,
             # either from existing files or newly predicted
@@ -1975,7 +1974,10 @@ def get_subset(
     return retval
 
 def write_dataset(dataset, filename):
-    f_out = open(filename, 'w')
+    if filename.endswith('.bz2'):
+        f_out = bz2.BZ2File(filename, 'w')
+    else:
+        f_out = open(filename, 'w')
     dataset.save_to_file(f_out)
     dataset.filename = filename
     f_out.close()
