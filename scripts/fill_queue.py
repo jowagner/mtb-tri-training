@@ -24,21 +24,23 @@ from collections import defaultdict
 
 def main():
     opt_jobs = [
-        # job_name_prefix, script_name, max_waiting, max_running, always submit more if running
-        ('udpfr', 'worker-udpf-grove-rtx.job',      0, 12, False),
-        ('udpft', 'worker-udpf-grove-tesla.job',    0,  4, False),
-        ('udpfv', 'worker-udpf-grove-titanv.job',   0,  1, False),
-        ('udpfq', 'worker-udpf-grove-quadro.job',   0,  3, False),
-        ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  8, True),
+        # job_name_prefix, script_name, max_waiting, max_running
+        ('udpfr', 'worker-udpf-grove-rtx.job',      0, 12),
+        ('udpft', 'worker-udpf-grove-tesla.job',    0,  4),
+        ('udpfv', 'worker-udpf-grove-titanv.job',   0,  1),
+        ('udpfq', 'worker-udpf-grove-quadro.job',   0,  3),
+        ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  8),
     ]
     opt_max_submit_per_occasion = 2
     opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))
+    opt_task_dir   = os.environ['TT_TASK_DIR']
     opt_stopfile = 'stop-fill-queue'
     opt_stop_check_interval = 12.0
     opt_submit_interval = 3600.0
     opt_username = getpass.getuser()
     start_time = time.time()
     earliest_next_submit = start_time
+    has_tasks = {}
     while True:
         exit_reason = None
         if opt_stopfile and os.path.exists(opt_stopfile):
@@ -75,22 +77,33 @@ def main():
         print('My jobs at', time.ctime(now))
         for key in sorted(list(queue.keys())):
             print('\t%r with frequency %d' %(key, queue[key]))
+        # check what may be needed
+        for inbox in ('udpf', 'elmo-hdf5'):
+            inbox_path = '/'.join((opt_task_dir, inbox, 'inbox')
+            has_tasks[inbox] = False
+            for inbox_f in os.listdir(inbox_path):
+                if inbox_f.endswith('.task'):
+                    has_tasks[inbox] = True
+                    break
         # check what to submit
         std_jobs = []
         prio_jobs = []
         for job_item in opt_jobs:
             job_name = job_item[0]
-            prio_if_running = job_item[-1]
-            if prio_if_running and queue[(job_name, 'R')] > 0:
+            if job_name.startswith('e5wo') and has_tasks['elmo-hdf5']:
                 prio_jobs.append(job_item)
                 print('Prioritising', job_name)
             else:
                 std_jobs.append(job_item)
-        random.shuffle(prio_jobs)   # give each type of job a chance
+        random.shuffle(prio_jobs)
         random.shuffle(std_jobs)
         opt_jobs = prio_jobs + std_jobs
         n_submitted = 0
-        for job_name, script_name, max_waiting, max_running, _ in opt_jobs:
+        for job_name, script_name, max_waiting, max_running, _, _ in opt_jobs:
+            if job_name.startswith('e5wo') and not has_tasks['elmo-hdf5']:
+                continue
+            if job_name.startswith('udpf') and not has_tasks['udpf']:
+                continue
             if queue[(job_name, 'PD')] > max_waiting:
                 continue
             if queue[(job_name, 'R')] > max_running:
