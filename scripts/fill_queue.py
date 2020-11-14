@@ -31,12 +31,12 @@ def main():
         ('udpfq', 'worker-udpf-grove-quadro.job',   0,  3),
         ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  8),
     ]
-    opt_max_submit_per_occasion = 2
+    opt_max_submit_per_occasion = 1
     opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))
     opt_task_dir   = os.environ['TT_TASK_DIR']
     opt_stopfile = 'stop-fill-queue'
     opt_stop_check_interval = 12.0
-    opt_submit_interval = 3600.0
+    opt_submit_interval = 1800.0
     opt_username = getpass.getuser()
     start_time = time.time()
     earliest_next_submit = start_time
