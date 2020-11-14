@@ -79,7 +79,7 @@ def main():
             print('\t%r with frequency %d' %(key, queue[key]))
         # check what may be needed
         for inbox in ('udpf', 'elmo-hdf5'):
-            inbox_path = '/'.join((opt_task_dir, inbox, 'inbox')
+            inbox_path = '/'.join((opt_task_dir, inbox, 'inbox'))
             has_tasks[inbox] = False
             for inbox_f in os.listdir(inbox_path):
                 if inbox_f.endswith('.task'):
@@ -99,7 +99,7 @@ def main():
         random.shuffle(std_jobs)
         opt_jobs = prio_jobs + std_jobs
         n_submitted = 0
-        for job_name, script_name, max_waiting, max_running, _, _ in opt_jobs:
+        for job_name, script_name, max_waiting, max_running in opt_jobs:
             if job_name.startswith('e5wo') and not has_tasks['elmo-hdf5']:
                 continue
             if job_name.startswith('udpf') and not has_tasks['udpf']:
