@@ -17,6 +17,13 @@ target_parsers = 'fh'
 target_decays  = 'vz-'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
+decay2d = {
+    '-': 1.0,
+    'o': 0.71,
+    'z': 0.5,
+    'v': 0.0,
+}
+
 if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
 
@@ -176,6 +183,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
         sys.stderr.write('\nParser %s:\n' %parser)
         x_base = 1.0
         characteristic = []
+        columns = set()
         for decay in sorted(list(decay_types)):
             graph_key = (language, parser, decay)
             if not graph_key in graphs:
@@ -220,7 +228,9 @@ for lang_index, language in enumerate(sorted(list(languages))):
             if decay in target_decays:
                 assert len(best_scores) > 0
                 average_score = sum(best_scores) / float(len(best_scores))
-                characteristic.append(average_score)
+                d = decay2d[decay]
+                characteristic.append((d, average_score))
+                columns.add((d, decay))
             x_base = x_base + max_rounds + 2
         out.close()
         assert len(characteristic) >= 2
@@ -228,14 +238,14 @@ for lang_index, language in enumerate(sorted(list(languages))):
         if is_first_parser:
             summary_row.append('\\multirow{2}{*}{%s}' %language)
         else:
-            summary_row.append('')
+            summary_row.append('                  ')
         summary_row.append(parser)
-        best_score = max(characteristic)
-        for score in characteristic:
+        best_score = max(map(lambda x: x[1], characteristic))
+        for d, score in sorted(characteristic):
             if score == best_score:
                 summary_row.append('\\textbf{%.1f}' %score)
             else:
-                summary_row.append('%.1f' %score)
+                summary_row.append('        %.1f ' %score)
         if len(target_decays) == 2:
             summary_row.append('%.1f' %(characteristic[1]-characteristic[0]))
         summary.append(' & '.join(summary_row))
@@ -244,8 +254,8 @@ for lang_index, language in enumerate(sorted(list(languages))):
 header = []
 header.append('\\textbf{Language}')
 header.append('\\textbf{Parser}')
-for decay in sorted(list(set(target_decays) & decay_types)):
-    header.append('\\textbf{%s}' %decay)
+for d, decay in sorted(list(columns)):
+    header.append('\\textbf{$d=%.1f}' %d)
 if len(target_decays) == 2:
     header.append('\\textbf{$\Delta$}')
 out = open('summary.tex', 'wb')
