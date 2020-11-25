@@ -14,13 +14,13 @@ import sys
 from distribution import Distribution
 
 target_parsers = 'fh'
-target_samples = 'wx'
+target_samples = '-wx'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
 if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
 
-assert len(target_samples) == 2
+assert len(target_samples) >= 2
 
 header = sys.stdin.readline().split()
 
@@ -133,16 +133,17 @@ for lang_index, language in enumerate(sorted(list(languages))):
                     if len(setting) > run_index:
                         neg_n_rounds, run, exp_code, row = setting[run_index]
                         rounds.append(-neg_n_rounds)
-            if len(rounds) == 4:
+            if len(rounds) == len(target_parsers) * len(target_samples):
                 assert len(min_rounds) == run_index 
                 min_rounds.append(min(rounds))
         #setting = ( # (-int(n_rounds), run, experiment_code, row)
         sys.stderr.write('\t%s?%s%s%s\t%r\n' %(tuple(setting_key) + (min_rounds,)))
         sk2min_rounds[setting_key] = min_rounds
+    is_first_parser = True
     for parser in target_parsers:
         # get list of columns for header
         exp_codes = []
-        for sample in '-wxt':
+        for sample in sorted(list(sample_types)):
             graph_key = (language, parser, sample)
             if not graph_key in graphs:
                 assert sample not in target_samples
@@ -173,7 +174,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
         sys.stderr.write('\nParser %s:\n' %parser)
         x_base = 1.0
         characteristic = []
-        for sample in '-wxt':
+        for sample in sorted(list(sample_types)):
             distr = Distribution(language, parser, sample)
             if distr.scores:
                 for (x, value, column) in [
@@ -232,31 +233,41 @@ for lang_index, language in enumerate(sorted(list(languages))):
                         sys.stderr.write('\t%s?%s%s%s\t%s\t%d\t%.9f\t(%d scores)\n' %(tuple(setting_key) + (sample, run_index, best_score, scores_tested)))
             if best_scores:
                 average_score = sum(best_scores) / float(len(best_scores))
-                sys.stderr.write('\taverage best score for %s: %.9f (%d scores)\n' %(sample, average_score, len(best_scores)))
+                sys.stderr.write('\taverage best score for %s: %.9f (%d scores)\n\n' %(sample, average_score, len(best_scores)))
             if sample in target_samples:
                 assert len(best_scores) > 0
                 average_score = sum(best_scores) / float(len(best_scores))
                 characteristic.append(average_score)
             x_base = x_base + max_rounds + 2
         out.close()
-        assert len(characteristic) == 2
+        assert len(characteristic) >= 2
         summary_row = []
-        summary_row.append(language)
+        if is_first_parser:
+            summary_row.append('\\multirow{2}{*}{%s}' %language)
+        else:
+            summary_row.append('')
         summary_row.append(parser)
-        summary_row.append('%.2f' %(characteristic[0]))
-        summary_row.append('%.2f' %(characteristic[1]))
-        summary_row.append('%.2f' %(characteristic[1]-characteristic[0]))
-        summary.append('\t'.join(summary_row))
+        best_score = max(characteristic)
+        for score in characteristic:
+            if score == best_score:
+                summary_row.append('\\textbf{%.1f}' %score)
+            else:
+                summary_row.append('%.1f' %score)
+        if len(target_samples) == 2:
+            summary_row.append('%.1f' %(characteristic[1]-characteristic[0]))
+        summary.append(' & '.join(summary_row))
+        is_first_parser = False
 
 header = []
-header.append('Language')
-header.append('Parser')
-for sample in target_samples:
-    header.append('LAS-with-%s-sampling' %sample)
-header.append('Improvement')
-out = open('summary.tsv', 'wb')
-out.write('\t'.join(header))
-out.write('\n')
+header.append('\\textbf{Language}')
+header.append('\\textbf{Parser}')
+for sample in sorted(list(set(target_samples) & sample_types)):
+    header.append('\\textbf{%s}' %sample)
+if len(target_samples) == 2:
+    header.append('\\textbf{$\Delta$}')
+out = open('summary.tex', 'wb')
+out.write(' & '.join(header))
+out.write('\\\\\n\\hline\n')
 for row in summary:
-    out.write(row+'\n')
+    out.write(row+' \\\\\n')
 out.close()
