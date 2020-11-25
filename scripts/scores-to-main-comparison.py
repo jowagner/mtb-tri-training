@@ -20,7 +20,7 @@ target_min_rounds = 4   # do not include a run if it has fewer rounds
 
 target_samples = 'x'
 
-bin_width = 0.1
+bin_width = 0.2
 
 if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
@@ -262,7 +262,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
         # if each tri-training result was just a random baseline ensemble
         bin2freq = defaultdict(lambda: 0)
         for pick in picks:
-            for _ in range(25000):
+            for _ in range(250000):
                 scores = random.sample(distr.scores, pick)
                 score = max(scores)
                 bin_key = bin_width * round(score / bin_width)
@@ -275,14 +275,14 @@ for lang_index, language in enumerate(sorted(list(languages))):
         if is_first_parser:
             summary_row.append('\\multirow{2}{*}{%s}' %language)
         else:
-            summary_row.append('')
+            summary_row.append('                  ')
         summary_row.append(parser)
         best_score = max(characteristic)
         for score in characteristic:
             if score == best_score:
                 summary_row.append('\\textbf{%.1f}' %score)
             else:
-                summary_row.append('%.1f' %score)
+                summary_row.append('        %.1f ' %score)
         summary.append(' & '.join(summary_row))
         is_first_parser = False
 
