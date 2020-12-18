@@ -17,6 +17,8 @@ target_parsers = 'fh'
 target_samples = '-wx'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
+pooling = 'average-of-best-5'
+
 if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
 
@@ -231,13 +233,22 @@ for lang_index, language in enumerate(sorted(list(languages))):
                             scores_tested = scores_tested + 1
                         best_scores.append(best_score)
                         sys.stderr.write('\t%s?%s%s%s\t%s\t%d\t%.9f\t(%d scores)\n' %(tuple(setting_key) + (sample, run_index, best_score, scores_tested)))
+            score = None
             if best_scores:
-                average_score = sum(best_scores) / float(len(best_scores))
-                sys.stderr.write('\taverage best score for %s: %.9f (%d scores)\n\n' %(sample, average_score, len(best_scores)))
+                if pooling == 'maximum':
+                    score = max(best_scores)
+                elif pooling == 'average':
+                    score = sum(best_scores) / float(len(best_scores))
+                elif pooling == 'average-of-best-5':
+                    best_scores.sort()
+                    best_5_scores = best_scores[-5:]
+                    score = sum(best_5_scores) / float(len(best_5_scores))
+                else:
+                    raise ValueError('unknown pooling %s' %pooling)
+                sys.stderr.write('\t%s best score for %s: %.9f (%d scores)\n\n' %(pooling.title(), sample, score, len(best_scores)))
             if sample in target_samples:
                 assert len(best_scores) > 0
-                average_score = sum(best_scores) / float(len(best_scores))
-                characteristic.append(average_score)
+                characteristic.append(score)
             x_base = x_base + max_rounds + 2
         out.close()
         assert len(characteristic) >= 2
