@@ -226,6 +226,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
             best_scores = []
             for setting_key in sorted(list(eligible_setting_keys)):
                 setting = graph[setting_key]
+                sample  = setting_key[0]
                 min_rounds = sk2min_rounds[setting_key]
                 for run_index, rounds in enumerate(min_rounds):
                     if rounds > max_rounds:
@@ -245,7 +246,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
                             scores_tested = scores_tested + 1
                         best_scores.append(best_score)
                         sys.stderr.write('\t__%s%s%s%s_%s\t*\t%d\t%.9f\t(best of %d scores)\n' %(tuple(setting_key) + (run_index, best_score, scores_tested)))
-                        picks.append(scores_tested)
+                        picks.append((scores_tested, sample))
             if best_scores:
                 average_score = sum(best_scores) / float(len(best_scores))
                 sys.stderr.write('\taverage best score: %.9f (average of %d scores)\n' %(average_score, len(best_scores)))
@@ -261,7 +262,8 @@ for lang_index, language in enumerate(sorted(list(languages))):
         # simulate what distribution of scores we would have gotten
         # if each tri-training result was just a random baseline ensemble
         bin2freq = defaultdict(lambda: 0)
-        for pick in picks:
+        for pick, sample in picks:
+            distr = Distribution(language, parser, sample)
             for _ in range(250000):
                 scores = random.sample(distr.scores, pick)
                 score = max(scores)
