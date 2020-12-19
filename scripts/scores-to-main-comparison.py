@@ -262,13 +262,27 @@ for lang_index, language in enumerate(sorted(list(languages))):
         # simulate what distribution of scores we would have gotten
         # if each tri-training result was just a random baseline ensemble
         bin2freq = defaultdict(lambda: 0)
-        for pick, sample in picks:
-            distr = Distribution(language, parser, sample)
-            for _ in range(250000):
+        lps2distr = {}
+        for _, sample in picks:
+            if (language, parser, sample) not in lps2distr:
+                distr = Distribution(language, parser, sample)
+                lps2distr[(language, parser, sample)] = distr
+        out_a = open('distr-baseline-tt-sim-%s-%s-all.txt' %(language, parser), 'w')
+        out_b = open('distr-baseline-tt-sim-%s-%s-best-of-12.txt' %(language, parser), 'w')
+        for _ in range(250000):
+            best_score = None
+            for pick, sample in picks:
+                distr = lps2distr[(language, parser, sample)]
                 scores = random.sample(distr.scores, pick)
                 score = max(scores)
+                out_a.write('%.9f\n' %score)
+                if best_score is None or score > best_score:
+                    best_score = score
                 bin_key = bin_width * round(score / bin_width)
                 bin2freq[bin_key] += 1
+            out_b.write('%.9f\n' %best_score)
+        out_a.close()
+        out_b.close()
         write_freq_distr(table, bin2freq, bin_width, column_index = 1)
         write_table(out, table)
         out.close()
