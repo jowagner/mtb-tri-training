@@ -21,6 +21,8 @@ import time
 import basic_dataset
 import conllu_dataset
 
+filename_extension = conllu_dataset.get_filename_extension()
+
 def get_treebanks_and_minrounds(workdirs):
     # TODO: Scan workdirs to support all languages
     #       for which there is output:
@@ -113,16 +115,18 @@ def get_keys(labels, sent_ids):
         keys.add('ID:%s' %sent_id)
     return keys
 
-def get_predictions(workdirs, treebank, minrounds, test_type):
+def get_predictions_minrounds_and_last(workdirs, treebank, minrounds, test_type):
+    global filename_extension
     minrounds = '%d' %minrounds
     short_lcode, lcode, language, tbid, tbname, long_tbname = treebank
     key2predictions = {}   # keys = {f, g, h} x {0, minrounds, last}
     augexp2lastround = {
         '0': 24,
-        '2': 17,
-        '4': 14,
-        '6': 9,
-        '8': 5,
+        '2': 20,
+        '4': 16,
+        '6': 12,
+        '8': 8,
+        'A': 4,
     }
     for workdir in workdirs:
         for entry in os.listdir(workdir):
@@ -140,9 +144,9 @@ def get_predictions(workdirs, treebank, minrounds, test_type):
             for filename in os.listdir('%s/%s' %(workdir, entry)):
                 if not filename.startswith('prediction'):
                     continue
-                if not filename.endswith('.conllu'):
+                if not filename.endswith(filename_extension):
                     continue
-                fields = filename[:-7].split('-')
+                fields = filename[:-len(filename_extension)].split('-')
                 if fields[2] != 'E'        \
                 or fields[4] != test_type  \
                 or fields[3] != tbid       \
@@ -166,16 +170,62 @@ def get_predictions(workdirs, treebank, minrounds, test_type):
                 if filename is None:
                     raise ValueError('Missing prediction of round %s for parser %s with method %s, augexp %s and filenames %r' %(tt_round, parser, method, augexp, predictions))
                 path = '%s/%s/%s' %(workdir, entry, filename)
-                dataset = conllu_dataset.ConlluDataset()
-                dataset.filename = path
-                f = open(path, 'rb')
-                dataset.load_file(f)
-                f.close()
+                dataset = basic_dataset.load_or_map_from_filename(
+                    conllu_dataset.new_empty_set(),
+                    path,
+                )
                 if not key in key2predictions:
                     key2predictions[key] = {}
                 key2 = '%s\t%s' %(method, augexp)
                 if key2 in key2predictions[key]:
                     raise ValueError('duplicate prediction %r with key %r, 2nd key %r and treebank %r' %(filename, key, key2, treebank))
+                key2predictions[key][key2] = dataset
+    return key2predictions
+
+def get_predictions_main_comparison(workdirs, treebank, test_type):
+    short_lcode, lcode, language, tbid, tbname, long_tbname = treebank
+    key2predictions = {}   # keys = {f, h} x {b, tt}
+    for workdir in workdirs:
+        for entry in os.listdir(workdir):
+            match = False
+            if entry.startswith('baseline-tt-sim') \
+            and entry.endswith(filename_extension):
+                # 0        1  2   3  4    5 6 7      8   9
+                # baseline-tt-sim-en-udpf-E-0-en_ewt-dev-Al48bPGUC2ajR7wL9q0Q.conllu.bz2
+                fields = entry.split('-')
+                if len(fields) != 10 \
+                or fields[5] != 'E' \
+                or fields[7] != tbid \
+                or fields[8] != test_type:
+                    continue
+                match = True
+                parser = fields[4]
+                tt_round = 'baseline'
+            if entry.startswith('tt-') \
+            and entry.endswith(filename_extension):
+                # 0  1  2    3 4 5      6    7
+                # tt-vi-udpf-E-6-vi_vtb-test-S24BZ3wApIfLJ7pccipY.conllu.bz2
+                fields = entry.split('-')
+                if len(fields) != 8 \
+                or fields[3] != 'E' \
+                or fields[5] != tbid \
+                or fields[6] != test_type:
+                    continue
+                match = True
+                parser = fields[2]
+                tt_round = 'tritraining'
+            if match:
+                key = '%s\t%s' %(parser, tt_round)
+                path = '%s/%s' %(workdir, entry)
+                dataset = basic_dataset.load_or_map_from_filename(
+                    conllu_dataset.new_empty_set(),
+                    path,
+                )
+                if not key in key2predictions:
+                    key2predictions[key] = {}
+                key2 = 'best12'
+                if key2 in key2predictions[key]:
+                    raise ValueError('duplicate prediction %r with key %r, 2nd key %r and treebank %r' %(path, key, key2, treebank))
                 key2predictions[key][key2] = dataset
     return key2predictions
 
@@ -566,6 +616,7 @@ class FileUpdater():
             return self.f.write(data)
 
 def main():
+    opt_mode = 'main-comparison'
     workdirs = sys.argv[1:]
     test_type = 'dev'
     treebanks, minrounds = get_treebanks_and_minrounds(workdirs)
@@ -575,7 +626,16 @@ def main():
         with FileUpdater('%s/ea-evalkeys-%s.txt' %(treebank[2], treebank[1])) as f:
             for key in sorted(keys):
                 f.write('%s\n' %key)
-        predictions = get_predictions(workdirs, treebank, minrounds, test_type)
+        if opt_mode == 'minrounds-and-last-round':
+            predictions = get_predictions_minrounds_and_last(
+                workdirs, treebank, minrounds, test_type
+            )
+        elif opt_mode == 'main-comparison':
+            predictions = get_predictions_main_comparison(
+                workdirs, treebank, test_type
+            )
+        else:
+            raise ValueError('unknown mode %s' %opt_mode)
         with FileUpdater('%s/ea-predictions-%s.txt' %(treebank[2], treebank[1])) as f:
             for key in sorted(predictions.keys()):
                 for key2 in sorted(predictions[key].keys()):
