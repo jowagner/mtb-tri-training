@@ -215,6 +215,10 @@ def get_predictions_main_comparison(workdirs, treebank, test_type):
                 parser = fields[2]
                 tt_round = 'tritraining'
             if match:
+                if parser == 'elmo':
+                    parser = 'z_elmo'
+                elif parser == 'udpf':
+                    parser = 'a_udpf'
                 key = '%s\t%s' %(parser, tt_round)
                 path = '%s/%s' %(workdir, entry)
                 dataset = basic_dataset.load_or_map_from_filename(
@@ -490,7 +494,8 @@ def write_tsv(
             row = []
             row.append(other_keypart)
             row.append(eval_key)
-            row.append('%.1f' %(totals[0]/10.0))
+            #row.append('%.1f' %(totals[0]/10.0))
+            row.append('%.0f' %(totals[0]))
             if totals[0] % 10:
                 not10x = True
             for target in target_keyparts:
