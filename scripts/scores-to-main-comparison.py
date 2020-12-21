@@ -224,6 +224,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
             graph = graphs[graph_key]
             max_rounds = 0
             best_scores = []
+            details = []
             for setting_key in sorted(list(eligible_setting_keys)):
                 setting = graph[setting_key]
                 sample  = setting_key[0]
@@ -245,6 +246,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
                                 best_score = score
                             scores_tested = scores_tested + 1
                         best_scores.append(best_score)
+                        details.append((setting_key, run_index, rounds, max_rounds, run, exp_code, row))
                         sys.stderr.write('\t__%s%s%s%s_%s\t*\t%d\t%.9f\t(best of %d scores)\n' %(tuple(setting_key) + (run_index, best_score, scores_tested)))
                         picks.append((scores_tested, sample))
             if best_scores:
@@ -253,6 +255,15 @@ for lang_index, language in enumerate(sorted(list(languages))):
                 for score in best_scores:
                     bin_key = bin_width * round(score / bin_width)
                     bin2freq[bin_key] += 1
+                out_b = open('tt-%s-%s-best-of-%d.txt' %(
+                    language, parser, len(best_scores)
+                ), 'w')
+                max_score = max(best_scores)
+                out_b.write('%.9f\n' %max_score)
+                for info_idx, info in enumerate(details):
+                    if best_scores[info_idx] >= max_score:
+                        out_b.write('[%d]\t%r\n' %(info_idx, info))
+                out_b.close()
             if True:
                 assert len(best_scores) > 0
                 average_score = sum(best_scores) / float(len(best_scores))
