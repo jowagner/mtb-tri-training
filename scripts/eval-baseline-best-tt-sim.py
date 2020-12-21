@@ -130,7 +130,7 @@ def main():
         row = line.rstrip().split('\t')
         language = row[lang_column]
         if language == 'Average':
-            continue
+            break
         for test_type in opt_test_types:
             for parser in opt_models:
                 print('\n== %s %s %s ==\n' %(language, test_type, parser))
