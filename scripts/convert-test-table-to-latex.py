@@ -79,33 +79,35 @@ def main():
         print_usage()
         sys.exit(0)
 
+    print('%% automatically generated with %s\n' %(os.path.split(sys.argv[0])[-1]))
+
     columns = []
     latex_header_1 = []
     latex_header_2 = []
     latex_header_3 = []
-    columns.add('Language')
-    latex_header_1.add('')
-    latex_header_2.add('')
-    latex_header_3.add('\\textbf{Lang.}')
+    columns.append('Language')
+    latex_header_1.append('')
+    latex_header_2.append('')
+    latex_header_3.append('\\textbf{Lang.}')
 
     if opt_dev_placement == 'left' or len(opt_test_types) == 1:
         for test_type in opt_test_types:
             if len(opt_test_types) > 1:
-                latex_header_1.add('\\multicolumn{%d}{c|}{\\textbf{%s}}' %(
+                latex_header_1.append('\\multicolumn{%d}{c|}{\\textbf{%s}}' %(
                     2 * len(opt_models),
                     test_type.title(),
                 ))
             for parser in opt_models:
                 if len(opt_models) > 1:
-                    latex_header_2.add('\\multicolumn{2}{c|}{\\textbf{%s}}' %parser)
-                columns.add('b-%s-%s-LAS' %(parser, test_type))
-                latex_header_3.add('\\textbf{B}')
-                columns.add('tt-%s-%s-LAS' %(parser, test_type))
-                latex_header_3.add('\\textbf{TT}')
+                    latex_header_2.append('\\multicolumn{2}{c|}{\\textbf{%s}}' %parser)
+                columns.append('b-%s-%s-LAS' %(parser, test_type))
+                latex_header_3.append('\\textbf{B}')
+                columns.append('tt-%s-%s-LAS' %(parser, test_type))
+                latex_header_3.append('\\textbf{TT}')
 
     elif opt_dev_placement == 'next':
         for parser in opt_models:
-            latex_header_1.add('\\multicolumn{%d}{c|}{\\textbf{%s}}' %(
+            latex_header_1.append('\\multicolumn{%d}{c|}{\\textbf{%s}}' %(
                 2 * len(test_types),
                 parser,
             ))
@@ -113,13 +115,13 @@ def main():
                 ('b', 'B')
                 ('t', 'TT')
             ]:
-                latex_header_2.add('\\multicolumn{%d}{c|}{\\textbf{%s}}' %(
+                latex_header_2.append('\\multicolumn{%d}{c|}{\\textbf{%s}}' %(
                     len(opt_test_types),
                     tt_text
                 ))
                 for test_type in opt_test_types:
                     columns.add('%s-%s-%s-LAS' %(tt_key, parser, test_type))
-                    latex_header_3.add('\\textbf{%s}' %(test_type.title()))
+                    latex_header_3.append('\\textbf{%s}' %(test_type.title()))
     else:
         raise ValueError('unsupported placement %s' %opt_dev_placement)
 
@@ -150,6 +152,13 @@ def main():
             else:
                 latex_row.append(opt_number_format %float(cell))
         print((' & '.join(latex_row))+' \\\\')
+
+    print("""\\hline
+\\end{tabular}
+\\caption{Test set LAS for selected models (best of 12)}
+\\label{tab:test-results}
+\\end{table*}
+""")
 
 if __name__ == "__main__":
     main()
