@@ -113,7 +113,7 @@ case "${SETTING}" in
     export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_NPZ_CACHE_SIZE=120GiB
+    export EFML_NPZ_CACHE_SIZE=200GiB
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=1728000
@@ -134,7 +134,7 @@ case "${SETTING}" in
     export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_NPZ_CACHE_SIZE=120GiB
+    export EFML_NPZ_CACHE_SIZE=200GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
