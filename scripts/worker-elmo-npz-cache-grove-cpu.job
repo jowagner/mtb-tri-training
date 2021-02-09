@@ -2,10 +2,11 @@
   
 #SBATCH -p long        # which partition to run on
 #SBATCH -J ez-cache    # name for the job
-#SBATCH --mem=375000
+#SBATCH --mem=195000   # 172032
 #SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
 #SBATCH -N 1-1
+#SBATCH --constraint=faststorage
 
 source ${HOME}/tri-training/mtb-tri-training/config/locations.sh
 
@@ -40,9 +41,9 @@ if [ -n "$UDPIPE_FUTURE_ENV" ]; then
 fi
 
 python3 ./elmo_udpf.py   \
-    --deadline 239.0       \
+    --deadline 204.0       \
     --stopfile $STOPFILE   \
-    --max-idle 4.0         \
+    --max-idle 48.0        \
     elmo-npz               \
     2> ${HOME}/tri-training/elmo-npz-cache-${SLURM_JOB_ID}.err \
     >  ${HOME}/tri-training/elmo-npz-cache-${SLURM_JOB_ID}.out
