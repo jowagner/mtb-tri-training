@@ -15,6 +15,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 import os
+import string
 import sys
 
 from distribution import Distribution
@@ -52,12 +53,20 @@ def unpack_score(score):
 
 def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
     content = []
+    tinyfont = '-webkit-text-size-adjust: none; font-size: 0.6em'
     if date == '????-??-??':
        content.append('no model')
-    #elif date >= '2020-06-21':
+    #elif date >= '2021-01-04':
     #   content.append('newest')
-    #elif date >= '2020-06-11':
-    #   content.append('new')
+    elif date >= '2021-02-07':
+       content.append('<span style="%s">new</span>' %tinyfont)
+    elif date >= '2005-01-01':
+       y,m,d = date.split('-')
+       content.append('<span style="%s">\'%s Q%d</span>' %(
+           tinyfont,
+           y[2:],
+           ((int(m)-1)/3)+1,
+       ))
     content.append('%.1f' %score)
     content = '<br>'.join(content)
     return '&#10;'.join([
