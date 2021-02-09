@@ -89,6 +89,7 @@ class Distribution:
         colours = []
         for i in indices:
             for f in (0.000023, 0.000011):
+            #for f in (0.006010, 0.001090):   # for smooth blends (not matching legend)
                 offset = f * (i - 50)
                 colours.append(self.p_colour(score+offset))
         components = []
