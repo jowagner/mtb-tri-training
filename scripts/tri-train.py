@@ -201,6 +201,16 @@ Options:
                             replacement.
                             (Default: sample seed sets with replacement)
 
+    --all-labelled-data     Apply the above sampling only to the training data
+                            of the initial models of the learners and use the
+                            full labelled data in all model updates at the end
+                            of each tri-training iteration. If the seed size
+                            is 200% or more the labelled data is upsampled to
+                            n copies, n = floor(seed_size/labelled_data_size).
+                            Any filters specified with --seed-filter-keyword
+                            are also applied. (The latter is currently not
+                            supported.)
+
     --seed-filter-keyword  KEY VALUE
                             Ask the dataset module for a custom sentence
                             filter using this key-value pair as keyword
@@ -491,6 +501,7 @@ def main():
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
     opt_seed_with_replacement = True
+    opt_all_labelled_data = False
     opt_seed_filter_kwargs = {}
     opt_subset_size = '600k'
     opt_subset_attempts = 5
@@ -620,6 +631,8 @@ def main():
             del sys.argv[1]
         elif option in ('--seed-without-replacement', '--without-replacement'):
             opt_seed_with_replacement = False
+        elif option in ('--all-labelled-data', '--use-all-labelled-data'):
+            opt_all_labelled_data = True
         elif option == '--seed-filter-keyword':
             key = sys.argv[1]
             value = sys.argv[2]
@@ -854,11 +867,19 @@ def main():
     print_t('\n== Selection of Seed Data ==\n')
 
     if opt_init_seed:
+        if opt_all_labelled_data:
+            full_set_prng = init_prng_from_text(
+                'full set shuffling %s' %opt_init_seed,
+                create_new_prng = True,
+            )
         init_prng_from_text('seed selection %s' %(
             opt_init_seed,
         ))
+    elif opt_all_labelled_data:
+        full_set_prng = random
 
     seed_sets = []
+    full_sets = []
     epoch_selection_sets = []
     iteration_selection_sets = []
     for learner_index in range(opt_learners):
@@ -906,6 +927,36 @@ def main():
                 write_file = \
                 '%s/for-%s-selection-%d%s' %(opt_workdir, name, learner_rank, filename_extension)
             ))
+        if opt_all_labelled_data:
+            # prepare labelled data this learner can use at the end of
+            # each tri-training iteration
+            full_set = training_data
+            # (1) how many copies?
+            copies = min(1, int(opt_seed_size//training_data_size))
+            # (2) apply seed_filter
+            if seed_filter:
+                raise NotImplementedError
+            # (3) exclude held-out data
+            if seed_set_10:
+                raise NotImplementedError
+            # (4) concatenate copies
+            if copies > 1:
+                full_set = basic_dataset.Concat(
+                    copies * [full_set],
+                )
+            # (5) shuffle data
+            full_set = full_set.clone()
+            full_set.shuffle(full_set_prng)
+            # log info
+            print('Learner %d has full data with %d items in %d sentences' %(
+                learner_rank, full_set.get_number_of_items(), len(full_set),
+            ))
+            sys.stdout.flush()
+            write_dataset(
+                full_set,
+                '%s/full-labelled-set-%d%s' %(opt_workdir, learner_rank, filename_extension)
+            )
+            full_sets.append(full_set)
 
     all_prediction_paths = {}
     all_prediction_fingerprints = {}
@@ -1364,8 +1415,13 @@ def main():
             print('Subtotal: %s items in %d sentences.' %(
                 last_k_datasets.get_number_of_items(), len(last_k_datasets)
             ))
-            # add seed set
-            seed_dataset = seed_sets[learner_index]
+            # add manually labelled data
+            if opt_all_labelled_data:
+                seed_dataset = full_sets[learner_index]
+            else:
+                # use the same labelled data as for the
+                # initial learners
+                seed_dataset = seed_sets[learner_index]
             if opt_oversample:
                 # oversample seed data to match size of last k data
                 target_size = last_k_datasets.get_number_of_items()
@@ -2169,13 +2225,17 @@ def adjust_size(size, data_size):
     else:
         return int(size)
 
-def init_prng_from_text(seed_as_text):
+def init_prng_from_text(seed_as_text, create_new_prng = False):
     # make sure string is binary (relevant for Python 3)
     seed_as_text = utilities.bstring(seed_as_text)
     # For why using sha512, see Joachim's answer on
     # https://stackoverflow.com/questions/41699857/initialize-pseudo-random-generator-with-a-string
     seed_as_number = int(hashlib.sha512(seed_as_text).hexdigest(), 16)
     print('Seeding PRNG with', seed_as_number)
+    if create_new_prng:
+        retval = random.Random()
+        retval.seed(seed_as_number)
+        return retval
     random.seed(seed_as_number)
 
 def get_model_seed(mode, main_seed, learner_rank, training_round):
