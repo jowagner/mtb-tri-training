@@ -237,7 +237,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
             else:
                 summary_row.append('%.1f' %score)
         if len(target_oversmpls) == 2:
-            summary_row.append('%.1f' %(characteristic[1]-characteristic[0]))
+            summary_row.append('%.3f' %(characteristic[1]-characteristic[0]))
         summary.append(' & '.join(summary_row))
         is_first_parser = False
 
