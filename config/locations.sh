@@ -152,7 +152,9 @@ root*)
 *)
     # default config
     echo "Warning: cluster "${SETTING}" not recognised; using default config"
-    export UD_TREEBANK_DIR=${HOME}/ud-treebanks-v2.3
+    export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
+    export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
+    export TT_TASK_DIR=${HOME}/tri-training/tasks
     ;;
 esac
 
