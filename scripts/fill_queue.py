@@ -37,6 +37,7 @@ def main():
     opt_stopfile = 'stop-fill-queue'
     opt_stop_check_interval = 12.0
     opt_submit_interval = 1800.0
+    opt_probe_interval  = 300.0
     opt_username = getpass.getuser()
     start_time = time.time()
     earliest_next_submit = start_time
@@ -121,6 +122,9 @@ def main():
             n_submitted += 1
             if n_submitted >= opt_max_submit_per_occasion:
                 break
+        now = time.time()
+        while earliest_next_submit <= now:
+            earliest_next_submit += opt_probe_interval
         sys.stdout.flush()
 
 if __name__ == "__main__":
