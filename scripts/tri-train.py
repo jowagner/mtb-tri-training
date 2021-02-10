@@ -540,6 +540,8 @@ def main():
         if option in ('--help', '-h'):
             opt_help = True
             break
+        elif option == '--check-error-rate':
+            sys.stderr.write('Warning: Ignoring currently unsupported option --check-error-rate\n')
         elif option == '--deadline':
             opt_deadline = 3600.0 * float(sys.argv[1])
             if opt_deadline:
@@ -932,7 +934,7 @@ def main():
             # each tri-training iteration
             full_set = training_data
             # (1) how many copies?
-            copies = min(1, int(opt_seed_size//training_data_size))
+            copies = max(1, int(opt_seed_size//training_data_size))
             # (2) apply seed_filter
             if seed_filter:
                 raise NotImplementedError
