@@ -1418,10 +1418,12 @@ def main():
             # add manually labelled data
             if opt_all_labelled_data:
                 seed_dataset = full_sets[learner_index]
+                dataset_description = 'full labelled'
             else:
                 # use the same labelled data as for the
                 # initial learners
                 seed_dataset = seed_sets[learner_index]
+                dataset_description = 'seed'
             if opt_oversample:
                 # oversample seed data to match size of last k data
                 target_size = last_k_datasets.get_number_of_items()
@@ -1431,8 +1433,9 @@ def main():
                         seed_dataset, target_size, random,
                         with_replacement = False,
                     )
-            print('Taking %s items in %s sentences from the seed data.' %(
-                seed_dataset.get_number_of_items(), len(seed_dataset)
+            print('Taking %s items in %s sentences from the %s data.' %(
+                seed_dataset.get_number_of_items(), len(seed_dataset),
+                dataset_description,
             ))
             new_training_set = basic_dataset.Concat(
                 [seed_dataset, last_k_datasets],
