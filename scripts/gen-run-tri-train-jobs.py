@@ -146,7 +146,7 @@ for augment_size_code in augment_size_codes:
                         ('z', '--last-decay 0.5'),
                         ('o', '--last-decay 0.71'),
                         ('a', '--all-labelled-data'),
-                        ('u', '--all-labelled-data --last-k 1 --check-error-rate'),
+                        ('u', '--all-labelled-data --last-k 1'), # --check-error-rate'),
                         ('f', '--all-labelled-data --last-k 5'),
                         ('r', '--all-labelled-data --last-decay 0.5'),
                         ('s', '--all-labelled-data --last-decay 0.71'),
