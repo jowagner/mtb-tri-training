@@ -152,6 +152,9 @@ d2text = {
     'v': 'vanilla',
     'y': 'last 5',
     'z': 'decaying',
+    'a': 'use all, using all labelled data',
+    'u': 'vanilla, using all labelled data',
+    'r': 'decaying, using all labelled data',
 }
 
 #    ( 99.0, 'background light violet-blue: in top 2.5% of baselines'),
@@ -235,13 +238,13 @@ def print_n_round_for_language_and_parser(target_language, target_parser):
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-twx':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, self.target_parser, p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-twx':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         setting_key = (self.target_language, '1', '-', p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
                         n_rounds = setting2rounds[setting_key]
@@ -266,13 +269,13 @@ def print_n_round_for_language_by_parser(target_language):
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_parser in 'fgh':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, p_parser, p_oversampling, '*', p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_parser in 'fgh':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_sample in '-twx':
@@ -301,13 +304,13 @@ def print_n_round_for_language_by_sample(target_language):
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-twx':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-twx':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_parser in 'fgh':
@@ -334,13 +337,13 @@ def print_n_round_overall_by_parser():
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_parser in 'fgh':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %('*', p_parser, p_oversampling, '*', p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_parser in 'fgh':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_sample in '-twx':
@@ -366,13 +369,13 @@ def print_n_round_overall_by_sample():
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-twx':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %('*', '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-twx':
-                for p_decay in '-vyz':
+                for p_decay in '-aruvyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_parser in 'fgh':
