@@ -126,8 +126,10 @@ class Distribution:
             return (1.0, 1.0, 0.0)  # strong yellow
         if score < self.max_score+2.4:
             return (1.0, 0.8, 0.5)  # orange-pink
-        else:
+        if score < self.max_score+3.0:
             return (1.0, 0.5, 0.5)  # light red
+        else:
+            return (1.0, 0.5, 1.0)  # light magenta-purple
 
 def main():
     language = sys.argv[1]

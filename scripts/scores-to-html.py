@@ -58,7 +58,7 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
        content.append('no model')
     #elif date >= '2021-01-04':
     #   content.append('newest')
-    elif date >= '2021-02-07':
+    elif date >= '2021-03-30':
        content.append('<span style="%s">new</span>' %tinyfont)
     elif date >= '2005-01-01':
        y,m,d = date.split('-')
@@ -189,7 +189,9 @@ for score, text in [
     (101.8, 'blend'),
     (102.1, 'background orange-pink: 1.8 to 2.4 LAS points above top baseline'),
     (102.4, 'blend'),
-    (999.9, 'background pink-red: 2.4 or more LAS points above top baseline'),
+    (102.7, 'background pink-red: 2.4 to 3.0 LAS points above top baseline'),
+    (103.0, 'blend'),
+    (999.9, 'background magenta-purple: 3.0 or more LAS points above top baseline'),
 ]:
     legend.append('<tr><td bgcolor="#%s">%s</td></tr>' %(distribution.colour(score), text))
 legend.append('</table>')
