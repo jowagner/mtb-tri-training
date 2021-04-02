@@ -45,7 +45,7 @@ cd ${SCRIPTDIR}
     %(wrpl_options)s   \
     %(disa_options)s   \
     %(decay_options)s  \
-    --model-module %(model_module)s  \
+    %(model_modules)s  \
     %(model_keyword_options)s           \
     --subset-size "%(subsetsize)dk"          \
     --subset-stratified                      \

@@ -157,8 +157,9 @@ Options:
 
     --model-module  NAME    train models using the module NAME;
                             combine with --help to see module-specific options;
-                            specify 3 times to mix different models in
-                            tri-training
+                            specify 3 times, or provide a space- or
+                            colon-separated list of module names, to mix
+                            different models in tri-training
                             (default: udpipe_future)
 
     --model-keyword  KEY  VALUE
@@ -167,6 +168,9 @@ Options:
                             module.
                             Can be specified multiple times to specify more
                             than one non-standard argument.
+                            If mixing different modules all modules must
+                            understand (some may ignore) the provided keyword
+                            arguments.
 
     --round-priority  NUMBER or FRACTION
                             The model module's training and prediction
@@ -610,7 +614,8 @@ def main():
             opt_dataset_basedir = sys.argv[1]
             del sys.argv[1]
         elif option == '--model-module':
-            opt_model_modules.append(sys.argv[1])
+            for model_module in sys.argv[1].replace(':',' ').split():
+                opt_model_modules.append(model_module)
             del sys.argv[1]
         elif option == '--model-keyword':
             key = sys.argv[1]
