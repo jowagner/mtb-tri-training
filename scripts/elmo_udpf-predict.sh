@@ -21,11 +21,7 @@ test -z $4 && echo "Missing conllu output file"
 test -z $4 && exit 1
 OUTPUT=$4
 
-test -z $5 && echo "Missing language code"
-test -z $5 && exit 1
-LANG_CODE=$5
-
-EXTRA_OPTIONS="$6"
+EXTRA_OPTIONS="$5"
 
 if [ -e "$IN_NPZ" ]; then
     echo "input npz ready" > /dev/null
