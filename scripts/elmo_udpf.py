@@ -1032,7 +1032,8 @@ class ElmoCache:
             command.append('./get-elmo-vectors.sh')
             target_queue = 'elmo-hdf5'
         command.append(conllu_file)
-        command.append(lcode)
+        if 'lcode' != 'mbert':
+            command.append(lcode)
         command.append(workdir)
         command.append(hdf5_basename)
         task = common_udpipe_future.Task(command, target_queue)
