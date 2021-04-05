@@ -44,9 +44,24 @@ def encode_batch(batch):
     encoded_batch['sentence_indices'] = s_idxs
     encoded_batch['part_indices']     = p_idxs
     encoded_batch['is_last']          = is_last
+    if opt_debug: print_encoded_batch(sentences, encoded_batch)
     if opt_use_gpu:
         encoded_batch.to('cuda')
     return encoded_batch
+
+def print_encoded_batch(sentences, encoded_batch):
+    global tokenizer
+    print('batch:')
+    for b_index, sentence in sentences:
+        print('[%d]' %b_index)
+        print('\ts_idx:', encoded_batch['sentence_indices'][b_index])
+        print('\tp_idx:', encoded_batch['part_indices'][b_index])
+        print('\tis_last:', encoded_batch['is_last'][b_index])
+        print('\tsentence:', sentences[b_index])
+        token_ids = encoded_bactch['input_ids'][b_index]
+        print('\tsubword units:', tokenizer.convert_ids_to_tokens(token_ids))
+        print('\t.word_ids():', encoded_bactch.word_ids(batch_index = i))
+
 
 def get_batches(conllu_file, batch_size = 64, buffer_batches = 2, shuffle_buffer = False):
     global tokenizer
@@ -154,6 +169,15 @@ with torch.no_grad():
             # TODO: concatenate vectors, reduce to tokens (pick first or pool)
             #       and add to hdf5
             raise NotImplementedError
+            for token in example:
+                # https://stackoverflow.com/questions/62317723/tokens-to-words-mapping-in-the-tokenizer-decode-step-huggingface
+                print('%18s --> %r' %(
+                    token,
+                    tokenizer.encode(
+                        token,
+                        add_special_tokens = False,
+                    )
+                ))
             # release memory
             for p_index in range(expected_n_parts):
                 key = (s_index, p_index)
