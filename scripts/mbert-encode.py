@@ -25,10 +25,10 @@ import conllu_dataset
 opt_verbose = False
 opt_debug   = False
 opt_use_gpu = False
-opt_max_sequence_length = 512
+opt_max_sequence_length = 512       # TODO: add option to change this
 opt_input_format = 'auto-detect'
-opt_output_layer = 0                # TODO: double check that this is the top layer
-opt_batch_size = 64
+opt_output_layer = -1               # TODO: double check that this is the top layer
+opt_batch_size = 64                 # TODO: add option to change this
 opt_pooling = 'first'   # one of first, last, max and average
 opt_help    = False
 
@@ -46,7 +46,7 @@ Options:
                             and line for stdin)
 
     --output-layer  LAYER   which layer to use
-                            (default: 0 = last layer)
+                            (default: -1 = use .last_hidden_state)
 
     --pooling  METHOD       first, last, max, average or binomial1234 for
                             binomial weight distribution with p = 0.1234
@@ -302,9 +302,12 @@ with torch.no_grad():
     for s_idxs, p_idxs, is_lasts, hdf5_keys, \
     encoded_batch in get_batches(infile):
         outputs = model(**encoded_batch)
-        batch_of_last_layers = outputs[opt_output_layer]
+        if opt_output_layer == -1:
+            selected_layer = outputs.last_hidden_layer
+        else:
+            selected_layer = outputs[opt_output_layer]
         # this should have shape (batch size, sequence length, model hidden dimension)
-        for index, vectors in enumerate(batch_of_last_layers):
+        for index, vectors in enumerate(selected_layer):
             hdf5_key = hdf5_keys[index]
             if hdf5_key in ignore:
                 # the elmoformanylangs hdf5 format does not allow duplicate sentences
