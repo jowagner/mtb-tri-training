@@ -46,7 +46,7 @@ fi
 
 hostname > ${OUTPUTDIR}/mbert.start
 
-LAYER=-1    # -1 for top layer
+LAYER=0    # TODO: double check this is the top layer
 
 INFILE=$(realpath ${TRAIN_CONLLU})
 
@@ -54,12 +54,11 @@ TMP_OUTFILE=${OUTPUTDIR}/${HDF5_NAME}_part
 
 echo "Running mBERT on ${INFILE} to produce ${TMP_OUTFILE}"
 cd ${PRJ_DIR}
-if ! python scripts/mbert-encode.py test \
-    --input_format conll           \
-    --input ${INFILE}                \
-    --output ${TMP_OUTFILE}  \
-    --output_format hdf5               \
-    --output_layer ${LAYER}
+if ! python scripts/mbert-encode.py \
+    --input-format conll            \
+    --output-layer ${LAYER}         \
+    ${INFILE}                       \
+    ${TMP_OUTFILE}
 then
     echo "An error occured"
     exit 1
