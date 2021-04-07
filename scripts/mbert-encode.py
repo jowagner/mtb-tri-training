@@ -10,6 +10,10 @@
 
 # adapted from https://huggingface.co/transformers/quickstart.html
 
+import time
+script_start = time.time()
+
+from   collections import defaultdict
 import h5py
 import hashlib
 import logging
@@ -23,18 +27,17 @@ from   transformers import BertTokenizerFast, BertModel
 import conllu_dataset
 
 opt_verbose = False
+opt_progress = False
 opt_debug   = False
+opt_quiet   = False
 opt_use_gpu = False
-opt_max_sequence_length = 512       # TODO: add option to change this
+opt_max_sequence_length = 512
 opt_input_format = 'auto-detect'
-opt_output_layer = -1               # TODO: double check that this is the top layer
-opt_batch_size = 64                 # TODO: add option to change this
+opt_output_layer = 0                # TODO: double check that this is the top layer
+opt_batch_size = 64
 opt_pooling = 'first'   # one of first, last, max and average
+opt_shuffle = False
 opt_help    = False
-
-if opt_debug:
-    opt_max_sequence_length = 10
-    opt_batch_size = 4
 
 def print_usage():
     print('Usage: %s [options] INFILE OUTFILE' %(os.path.split(sys.argv[0])[-1]))
@@ -52,10 +55,28 @@ Options:
                             binomial weight distribution with p = 0.1234
                             (default: first)
 
-    --debug                 detailed info and reduce sequence length and
-                            batch size if not specified
+    --batch-size  NUMBER    How many sequences to feed into mBERT in one
+                            go
+                            (Default: 64)
+
+    --length  NUMBER        Maximum sequence length in subword units to
+                            feed into mBERT
+                            (default: 512)
+
+    --use-gpu               Move tensors and model to cuda device
+
+    --debug                 Print detailed info
+                            (combine with a small value for --length to
+                            test handling of long sentences and/or long
+                            tokens)
+
+    --progress              Show progress information every second
 
     --verbose               print basic info
+                            (Default: only show warnings)
+
+    --quiet                 Do not even print the duration summary at the
+                            end
 
     --help                  show this message
 
@@ -88,10 +109,26 @@ if True:
         elif option in ('--pooling', '--pool'):
             opt_pooling = sys.argv[1]
             del sys.argv[1]
+        elif option == '--batch-size':
+            opt_batch_size = int(sys.argv[1])
+            del sys.argv[1]
+        elif option in ('--length', '--max-sequence-length'):
+            opt_max_sequence_length = int(sys.argv[1])
+            del sys.argv[1]
+        elif option in ('--use-gpu', '--gpu'):
+            opt_use_gpu = True
         elif option == '--debug':
             opt_debug = True
+            opt_max_sequence_length = 10
+            opt_batch_size = 4
+        elif option == '--shuffle':
+            opt_shuffle = True
         elif option == '--verbose':
             opt_verbose = True
+        elif option == '--progress':
+            opt_progress = True
+        elif option == '--quiet':
+            opt_quiet = True
         else:
             print('Unsupported option %s' %option)
             opt_help = True
@@ -121,6 +158,10 @@ fout = h5py.File(sys.argv[2], 'w')
 if opt_verbose:
     logging.basicConfig(level=logging.INFO)
 
+if opt_debug:
+    print(time.ctime(time.time()))
+    print('Loading model...')
+
 tokenizer = BertTokenizerFast.from_pretrained('bert-base-multilingual-cased')
 model     = BertModel.from_pretrained('bert-base-multilingual-cased')
 model.eval()  # evaluation mode without dropout
@@ -128,12 +169,42 @@ model.eval()  # evaluation mode without dropout
 if opt_use_gpu:
     model.to('cuda')
 
+starttime = {}
+duration = defaultdict(lambda: 0)
+duration['model ready'] = time.time() - script_start
+
+def log_starting(key):
+    starttime[key] = time.time()
+
+def log_finished(key):
+    if key not in starttime:
+        print('Warning: finished', key, 'but start time not recorded')
+        return
+    duration[key] += (time.time() - starttime[key])
+    del starttime[key]
+
+def print_durations():
+    print('running: %1.f seconds' %(time.time() - script_start))
+    for key in sorted(list(duration.keys())):
+        print('\t%s\t%.1f seconds' %(key, duration[key]))
+
+event_counter = defaultdict(lambda: 0)
+
+def print_progress():
+    row = []
+    row.append((time.ctime(time.time())))
+    for key in sorted(list(event_counter.keys())):
+        row.append(('%s: %d' %(key, event_counter[key])))
+    print('\t'.join(row))
+
 def encode_batch(batch):
+    log_starting('encode_batch')
     s_idxs, p_idxs, is_last, hdf5_keys, sequences = zip(*batch)
     if opt_debug:
         print('creating batch for %d sequences:' %len(batch))
         for index, sequence in enumerate(sequences):
             print('\t[%d]\t%r' %(index, sequence))
+    log_starting('tokenize')
     encoded_batch = tokenizer(
         list(sequences), # pre-tokenised input
         is_split_into_words = True,
@@ -141,10 +212,13 @@ def encode_batch(batch):
         #add_special_tokens  = True,  # TODO: no effect on output and not clear from documentation what it does
         padding             = True,
     )
+    event_counter['sequence encoded'] += len(batch)
+    log_finished('tokenize')
     if opt_debug:
         print_encoded_batch(sequences, encoded_batch, s_idxs, p_idxs, is_last)
     if opt_use_gpu:
         encoded_batch.to('cuda')
+    log_finished('encode_batch')
     return (s_idxs, p_idxs, is_last, hdf5_keys, encoded_batch)
 
 def print_encoded_batch(sequences, encoded_batch, s_idxs, p_idxs, is_last):
@@ -186,12 +260,14 @@ def get_hdf5_key(sentence):
     text = text.replace('/', '%backslash$')  # [!sic]
     return text
 
-def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buffer = False):
+def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buffer = None):
     global tokenizer
     global opt_debug
     global opt_batch_size
     if not batch_size:
         batch_size = opt_batch_size
+    if shuffle_buffer is None:
+        shuffle_buffer = opt_shuffle
     s_buffer = []
     buffer_size = batch_size * buffer_batches
     s_index = 0
@@ -207,10 +283,13 @@ def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buff
         while sentence:
             # test whether this sentence fits into the BERT sequence length
             #if opt_debug: print('trying first %d tokens' %split_point)
+            log_starting('tokenize')
             input_token_ids = tokenizer(
                 [sentence[:split_point]],
                 is_split_into_words = True,
             )['input_ids'][0]
+            log_finished('tokenize')
+            event_counter['sequence probed'] += 1
             n_subword_units = len(input_token_ids)
             if n_subword_units <= opt_max_sequence_length:
                 #if opt_debug: print('%d subword units --> part %d fits ok' %(
@@ -258,17 +337,21 @@ def get_sentences(conllu_file):
         for line in conllu_file.readlines():
             tokens = line.split()
             if tokens:
+                event_counter['sentence read'] += 1
                 yield tokens
         return
     assert opt_input_format == 'conll'
     while True:
+        log_starting('conllu reading')
         conllu = conllu_dataset.ConlluDataset()
         sentence = conllu.read_sentence(conllu_file)
+        log_finished('conllu reading')
         if sentence is None:
             break
         tokens = []
         for item in sentence:
             tokens.append(item[1])
+        event_counter['sentence read'] += 1
         yield tokens
 
 def pool(vectors, span, pooling_method):
@@ -292,29 +375,33 @@ def pool(vectors, span, pooling_method):
         retval += vectors[index] * weights[w_index]
     return retval
 
-
 data = []
 s2n_parts = {}
 sp2vectors = {}
 sp2word_ids = {}
 ignore = set()
+last_progress = 0.0
 with torch.no_grad():
     for s_idxs, p_idxs, is_lasts, hdf5_keys, \
     encoded_batch in get_batches(infile):
+        log_starting('apply model')
         outputs = model(**encoded_batch)
         if opt_output_layer == -1:
-            selected_layer = outputs.last_hidden_layer
+            selected_layer = outputs.last_hidden_layer  # TODO: AttributeError
         else:
             selected_layer = outputs[opt_output_layer]
+        log_finished('apply model')
         # this should have shape (batch size, sequence length, model hidden dimension)
         for index, vectors in enumerate(selected_layer):
             hdf5_key = hdf5_keys[index]
+            is_last = is_lasts[index]
             if hdf5_key in ignore:
                 # the elmoformanylangs hdf5 format does not allow duplicate sentences
+                if is_last:  # count this sentence only once
+                    event_counter['sentence completed'] += 1
                 continue
             s_index = s_idxs[index]
             p_index = p_idxs[index]
-            is_last = is_lasts[index]
             if is_last:
                 s2n_parts[s_index] = p_index + 1  # record number of parts
             key = (s_index, p_index)
@@ -342,7 +429,9 @@ with torch.no_grad():
                     print('still missing some part(s) of sentence', s_index+1)
                 continue
             # all parts ready
-            if opt_debug: print('all parts ready for sentence', s_index+1)
+            if opt_debug or opt_verbose:
+                print('all parts ready for sentence', s_index+1)
+            log_starting('pooling vectors')
             parts = []
             for p_index in range(expected_n_parts):
                 vectors  = sp2vectors[(s_index, p_index)]
@@ -363,10 +452,17 @@ with torch.no_grad():
                             span.append(v_index)
             if opt_debug: print('number of vectors:', len(parts))
             vectors = torch.stack(parts, dim = 0)
+            log_finished('pooling vectors')
             if opt_debug: print('shape of concatenation:', vectors.shape)
             if opt_debug: print('hdf5_key:', repr(hdf5_key))
             assert len(parts) == hdf5_key.count('\t') + 1
+            if opt_use_gpu:
+                # copy the tensor to host memory
+                log_starting('GPU copy')
+                vectors = torch.Tensor.cpu(vectors)
+                log_finished('GPU copy')
             # add to hdf5
+            log_starting('writing hdf5')
             try:
                 # following line adpated from
                 # https://github.com/HIT-SCIR/ELMoForManyLangs/blob/master/elmoformanylangs/__main__.py
@@ -389,6 +485,7 @@ with torch.no_grad():
                     )
                 # ignore sentences with this key in the future
                 ignore.add(old_hdf5_key)
+            log_finished('writing hdf5')
             # release memory
             for p_index in range(expected_n_parts):
                 key = (s_index, p_index)
@@ -396,11 +493,24 @@ with torch.no_grad():
                 del sp2word_ids[key]
             del s2n_parts[s_index]
             ignore.add(hdf5_key)
+            event_counter['sentence completed'] += 1
+        if opt_debug or (opt_progress and time.time() > last_progress + 1.0):
+            print_progress()
+            last_progress = time.time()
+        if opt_debug or opt_verbose:
+            print_durations()
         if opt_debug:
-           print('finished batch')
-           print()
+            print('finished batch')
+            print()
 
 fout.close()
 
 if filename != '-':
     infile.close()
+
+if opt_progress or not opt_quiet:
+    print_progress()
+
+if not opt_quiet:
+    print_durations()
+
