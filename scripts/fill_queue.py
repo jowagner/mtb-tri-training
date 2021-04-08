@@ -25,11 +25,13 @@ from collections import defaultdict
 def main():
     opt_jobs = [
         # job_name_prefix, script_name, max_waiting, max_running
-        ('udpfr', 'worker-udpf-grove-rtx.job',      0, 12),
-        ('udpft', 'worker-udpf-grove-tesla.job',    0,  4),
+        ('udpfr', 'worker-udpf-grove-rtx.job',      0,  2),
+        ('udpft', 'worker-udpf-grove-tesla.job',    0,  2),
         ('udpfv', 'worker-udpf-grove-titanv.job',   0,  1),
-        ('udpfq', 'worker-udpf-grove-quadro.job',   0,  3),
-        ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  8),
+        ('udpfq', 'worker-udpf-grove-quadro.job',   0,  2),
+        ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  4),
+        #('m5wo-', 'worker-mbert-hdf5-grove-cpu.job', 0,  1),
+        ('m5wq-', 'worker-mbert-hdf5-grove-quadro.job', 0,  1),
     ]
     opt_max_submit_per_occasion = 1
     opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))
@@ -79,7 +81,7 @@ def main():
         for key in sorted(list(queue.keys())):
             print('\t%r with frequency %d' %(key, queue[key]))
         # check what may be needed
-        for inbox in ('udpf', 'elmo-hdf5'):
+        for inbox in ('udpf', 'elmo-hdf5', 'mbert-hdf5'):
             inbox_path = '/'.join((opt_task_dir, inbox, 'inbox'))
             has_tasks[inbox] = False
             for inbox_f in os.listdir(inbox_path):
@@ -91,7 +93,8 @@ def main():
         prio_jobs = []
         for job_item in opt_jobs:
             job_name = job_item[0]
-            if job_name.startswith('e5wo') and has_tasks['elmo-hdf5']:
+            if job_name.startswith('e5w') and has_tasks['elmo-hdf5'] \
+            or job_name.startswith('m5w') and has_tasks['mbert-hdf5']:
                 prio_jobs.append(job_item)
                 print('Prioritising', job_name)
             else:
@@ -101,7 +104,9 @@ def main():
         opt_jobs = prio_jobs + std_jobs
         n_submitted = 0
         for job_name, script_name, max_waiting, max_running in opt_jobs:
-            if job_name.startswith('e5wo') and not has_tasks['elmo-hdf5']:
+            if job_name.startswith('e5w') and not has_tasks['elmo-hdf5']:
+                continue
+            if job_name.startswith('m5w') and not has_tasks['mbert-hdf5']:
                 continue
             if job_name.startswith('udpf') and not has_tasks['udpf']:
                 continue
