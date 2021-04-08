@@ -41,42 +41,45 @@ except:
 
 import common_udpipe_future
 
+# TODO: this function doesn't seem to be used anywhere
 def request_npz(conllu_filename, npz_filename, priority = 50):
-    task = ElmoNpzTask(
+    module_name_prefix = __name__.split('_')[0]
+    task = NpzTask(
         [conllu_filename, npz_filename],
-        queue_name = 'elmo-npz',
+        queue_name = 'npz',
         priority = priority,
     )
     task.submit()
 
-class ElmoNpzTask(common_udpipe_future.Task):
+class NpzTask(common_udpipe_future.Task):
 
     def __init__(self, command, **kw_args):
         if 'cache' in kw_args:
             self.cache = kw_args['cache']
             del kw_args['cache']
+        self.module_name_prefix = __name__.split('_')[0]
         if 'queue_name' not in kw_args:
-            kw_args['queue_name'] = 'elmo-npz'
+            kw_args['queue_name'] = 'npz'
         common_udpipe_future.Task.__init__(self, command, **kw_args)
 
     def start_processing(self):
-        print('Starting elmo-npz task for', self.command)
+        print('Starting npz task for', self.command)
         conllu_file, npz_name, lcode = self.command
         sentences = self.read_sentences(conllu_file)
         try:
             if lcode != self.lcode:
                 print('*** self.lcode pre-defined and not matching command lcode ***')
         except:
-            print('self.lcode needs to be initialised in start_processing() as expected')
+            pass  # expected situation is that the following line is necessary
         self.lcode = lcode
         self.npz_name = npz_name
         print('Registering sentences with elmo+mbert cache...')
         for tokens, hdf5_key in sentences:
             self.cache.request(tokens, hdf5_key, npz_name, lcode)
         print('Registered all %d sentence(s) with elmo+mbert cache' %len(sentences))
-        print('Asking elmo+mbert cache to submit required elmo-hdf5 tasks...')
+        print('Asking elmo+mbert cache to submit required hdf5 tasks...')
         self.cache.submit(npz_name)
-        print('Asked elmo+mbert cache to submit required elmo-hdf5 tasks')
+        print('Asked elmo+mbert cache to submit required hdf5 tasks')
         self.sentences = sentences
         self.number_of_sentences = len(sentences)
 
@@ -114,7 +117,7 @@ class ElmoNpzTask(common_udpipe_future.Task):
         return True
 
     def read_sentences(self, conllu_file):
-        print('ElmoNpzTask.read_sentences', conllu_file)
+        print('NpzTask.read_sentences', conllu_file)
         id_column    = 0
         token_column = 1
         sentences = []
@@ -128,7 +131,7 @@ class ElmoNpzTask(common_udpipe_future.Task):
                 needs_decoding = False
             except TypeError:
                 # Python 2
-                print('Warning: elmo-npz worker running with Python 2')
+                print('Warning: npz worker running with Python 2')
                 _file = open(conllu_file, mode='rb')
                 needs_decoding = False  # not sure this is right
         tokens = []
@@ -258,12 +261,12 @@ class ElmoCache:
         binary_vector.seek(0)
         binary_vector = zlib.compress(binary_vector.read())
         encoded = base64.b64encode(binary_vector)
-        if '\n' not in encoded:
+        if b'\n' not in encoded:
             while encoded:
-                if 192 < len(encoded) < 384:
+                if 960 < len(encoded) < 1920:
                     eat = 12 * (len(encoded) // 24)
                 else:
-                    eat = 192
+                    eat = 960
                 payload.append(encoded[:eat])
                 encoded = encoded[eat:]
         else:
@@ -471,14 +474,14 @@ class ElmoCache:
         sys.stdout.flush()
 
     def print_used_record_size_stats(self, lcode, total_bytes, n_used_records, max_used_size):
-        # lcode    GiB    records    average    maximum size
+        # lcode    GiB    records    average    max_size
         print('\t%s\t%7.2f\t%7d\t%6.2f%%\t%6.2f%%' %(
-            lcode,
+            utilities.std_string(lcode),
             total_bytes / 1024.0**3,
             n_used_records,
             100.0 * total_bytes / float(n_used_records * self.record_size),
             100.0 * max_used_size / float(self.record_size)
-        )
+        ))
 
     def load_from_disk(self):
         print('Loading elmo+mbert cache from disk...')
@@ -506,7 +509,7 @@ class ElmoCache:
         last_verbose = time.time()
         last_bytes = 0
         bytes_so_far = 0
-        used_size = defaultdict(lambda: 0)
+        used_size_stats = defaultdict(lambda: 0)
         lcodes_seen = set()
         for r_index in range(self.n_records):
             # TODO: move sections of code into functions to make this loop more readable
@@ -659,19 +662,19 @@ class ElmoCache:
         data_file.close()
         atime_file.close()
         # print record size stats
-        print('\tlcode\tGiB\trecords\taverage\tmaximum size')
+        print('\tlcode\t  GiB\trecords\taverage\tmaximum size')
         for lcode in sorted(list(lcodes_seen)):
             self.print_used_record_size_stats(
                 lcode,
-                used_size_stats[(lcode, 'total_bytes')]
-                used_size_stats[(lcode, 'n_used_records')]
-                used_size_stats[(lcode, 'max_used_size')]
+                used_size_stats[(lcode, 'total_bytes')],
+                used_size_stats[(lcode, 'n_used_records')],
+                used_size_stats[(lcode, 'max_used_size')],
             )
         self.print_used_record_size_stats(
             'total',
-            used_size_stats['total_bytes']
-            used_size_stats['n_used_records']
-            used_size_stats['max_used_size']
+            used_size_stats['total_bytes'],
+            used_size_stats['n_used_records'],
+            used_size_stats['max_used_size'],
         )
         # remove all incomplete in-memory cache entries
         incomplete = []
@@ -697,11 +700,12 @@ class ElmoCache:
         sys.stdout.flush()
 
     def __init__(self):
+        assert sys.version_info[0] == 3  # code for this class is in python 3
         self.npz2ready_count = {}
         self.key2entry = {}
         self.hdf5_tasks = []
         self.hdf5_workdir_usage = {}
-        cache_dir = os.environ['EFML_NPZ_CACHE_DIR']
+        cache_dir = os.environ['NPZ_CACHE_DIR']
         self.atime_filename = cache_dir + '/access'
         self.data_filename  = cache_dir + '/data'
         self.config_filename  = cache_dir + '/config'
@@ -710,11 +714,11 @@ class ElmoCache:
         self.last_scan = 0.0
         self.scan_interval = 20.0
         self.last_sync = 0.0
-        self.sync_interval = 900.0
+        self.sync_interval = 90.0   # TODO: restore 900
         self.verbosity_interval = 60.0
-        if 'EFML_NPZ_CACHE_MAX_WRITE' in os.environ:
+        if 'NPZ_CACHE_MAX_WRITE' in os.environ:
             self.npz_write_limit = utilities.float_with_suffix(
-                os.environ['EFML_NPZ_CACHE_MAX_WRITE']
+                os.environ['NPZ_CACHE_MAX_WRITE']
             )
         else:
             self.npz_write_limit = None
@@ -738,15 +742,15 @@ class ElmoCache:
             self.n_records = -1
         # check desired configuration against existing cache file
         rewrite_files = False
-        if 'EFML_NPZ_CACHE_RECORD_SIZE' in os.environ:
-            record_size = int(os.environ['EFML_NPZ_CACHE_RECORD_SIZE'])
+        if 'NPZ_CACHE_RECORD_SIZE' in os.environ:
+            record_size = int(os.environ['NPZ_CACHE_RECORD_SIZE'])
         else:
             record_size = 32768
         if record_size != self.record_size:
             self.record_size = record_size
             rewrite_files = True
-        if 'EFML_NPZ_CACHE_VECTORS_PER_RECORD' in os.environ:
-            vectors_per_record = int(os.environ['EFML_NPZ_CACHE_VECTORS_PER_RECORD'])
+        if 'NPZ_CACHE_VECTORS_PER_RECORD' in os.environ:
+            vectors_per_record = int(os.environ['NPZ_CACHE_VECTORS_PER_RECORD'])
         else:
             vectors_per_record = 6
         if vectors_per_record != self.vectors_per_record:
@@ -796,7 +800,7 @@ class ElmoCache:
               * self.record_size  and
               * self.n_records
         '''
-        print('Allocating elmo npz disk cache...')
+        print('Allocating elmo+mbert npz disk cache...')
         sys.stdout.flush()
         self.record_states = array.array('B', self.n_records * [ord('i')])
         self.idx2key_and_part = self.n_records * [None]
@@ -896,10 +900,10 @@ class ElmoCache:
         return b''.join(rows)
 
     def get_n_records(self):
-        if 'EFML_NPZ_CACHE_SIZE' in os.environ:
-            cache_size = os.environ['EFML_NPZ_CACHE_SIZE']
+        if 'NPZ_CACHE_SIZE' in os.environ:
+            cache_size = os.environ['NPZ_CACHE_SIZE']
         else:
-            raise ValueError('No EFML_NPZ_CACHE_SIZE configured')
+            raise ValueError('No NPZ_CACHE_SIZE configured')
         n_bytes = utilities.float_with_suffix(cache_size)
         return int(n_bytes/self.record_size)
 
@@ -973,11 +977,14 @@ class ElmoCache:
     def p_submit(self, entries, workdir, npz_name):
         if not entries:
             return 0
-        max_per_elmo_task = 2000
+        max_per_hdf5_task = 2000
+        if entries[0].lcode == b'mbert':
+            max_per_hdf5_task *= 12
         if 'TT_DEBUG' in os.environ \
         and os.environ['TT_DEBUG'].lower() not in ('0', 'false'):
-            max_per_elmo_task = 400
-        if len(entries) > max_per_elmo_task:
+            # create many small tasks for debugging
+            max_per_hdf5_task = 400
+        if len(entries) > max_per_hdf5_task:
             middle = int(len(entries)/2)
             part_1 = entries[:middle]
             part_2 = entries[middle:]
@@ -997,7 +1004,7 @@ class ElmoCache:
             _file = open(conllu_file, mode='w', encoding='utf-8')
         except TypeError:
             # Python 2
-            print('Warning: running elmo-npz worker with Python 2')
+            print('Warning: running npz worker with Python 2')
             _file = open(conllu_file, mode='wb')
         lcode = None
         for entry in entries:
@@ -1022,17 +1029,19 @@ class ElmoCache:
             entry.tokens = None
         _file.close()
         if lcode is None:
-            raise ValueError('Trying to submit an elmo hdf5 task without lcode, conllu =', conllu_file)
+            raise ValueError('Trying to submit an elmo or mbert hdf5 task without lcode, conllu =', conllu_file)
         # submit elmo hdf5 task
         command = []
-        if 'lcode' == 'mbert':
+        if lcode == b'mbert':
             command.append('./get-mbert-vectors.sh')
             target_queue = 'mbert-hdf5'
-        else:
+        elif len(lcode) == 2:
             command.append('./get-elmo-vectors.sh')
             target_queue = 'elmo-hdf5'
+        else:
+            raise ValueError('lcode %s' %repr(lcode))
         command.append(conllu_file)
-        if 'lcode' != 'mbert':
+        if lcode != b'mbert':
             command.append(lcode)
         command.append(workdir)
         command.append(hdf5_basename)
@@ -1079,7 +1088,16 @@ class ElmoCache:
                 hdf5_data = h5py.File(task.hdf5_name, 'r')
                 print('Reading hdf5 file', utilities.std_string(task.hdf5_name))
                 for entry in task.entries:
-                    entry.vectors = hdf5_data[entry.hdf5_key][()]
+                    try:
+                        entry.vectors = hdf5_data[entry.hdf5_key][()]
+                    except KeyError:
+                        alternative_hdf5_key = hashlib.sha256(
+                            entry.hdf5_key.encode('UTF-8')
+                        ).hexdigest()
+                        # keep same number of tabs as in old key
+                        alternative_hdf5_key = alternative_hdf5_key \
+                                           + entry.hdf5_key.count('\t') * '\tx'
+                        entry.vectors = hdf5_data[alternative_hdf5_key][()]
                     entry.hdf5_in_progress = False
                     entry.hdf5_key = None           # release memory as no longer needed
                     # all requesters, not just task.npz_name, need
@@ -1097,16 +1115,19 @@ class ElmoCache:
                 still_not_ready.append(task)
             if self.hdf5_workdir_usage[task.workdir] == 0:
                 for statsfile in os.listdir(task.workdir):
-                    if statsfile.split(b'.') not in (b'start', b'end'):
+                    if statsfile.split(b'.')[-1] not in (b'start', b'end'):
                         continue
                     statspath = b'/'.join((task.workdir, statsfile))
                     if os.path.exists(statspath):
                         os.unlink(statspath)
-                os.rmdir(task.workdir)
+                try:
+                    os.rmdir(task.workdir)
+                except:
+                    print('Warning: Could not remove folder', task.workdir)
                 del self.hdf5_workdir_usage[task.workdir]
         self.hdf5_tasks = still_not_ready
 
-class NPZTasks:
+class NpzTaskManager:
 
     def __init__(self, output_dir, lcode, priority = 50):
         self.tasks = []
@@ -1121,7 +1142,7 @@ class NPZTasks:
     def append(self, conllu_file):
         npz_file = '%s/file-%d.npz' %(self.workdir, self.next_index)
         self.next_index += 1
-        task = ElmoNpzTask(
+        task = NpzTask(
             [conllu_file, npz_file, self.lcode],
             priority = self.priority
         )
@@ -1134,7 +1155,7 @@ class NPZTasks:
         return [task.npz_file for task in self.tasks]
 
     def get_last_npz_file(self):
-        print('Deprecation warning: Please use return value of NPZTasks.append() instead of NPZTasks.get_last_npz_file().')
+        print('Deprecation warning: Please use return value of NpzTaskManager.append() instead of NpzTaskManager.get_last_npz_file().')
         return self.tasks[-1].npz_file
 
     def cleanup(self):
@@ -1166,9 +1187,9 @@ def train(
     if epoch_selection_dataset:
         raise ValueError('Epoch selection not supported with udpipe-future.')
     if __name__.startswith('elmo_'):
-        npz_tasks = NPZTasks(model_dir, lcode, priority = priority)
+        npz_tasks = NpzTaskManager(model_dir, lcode, priority = priority)
     elif __name__.startswith('mbert_'):
-        npz_tasks = NPZTasks(model_dir, 'mbert', priority = priority)
+        npz_tasks = NpzTaskManager(model_dir, 'mbert', priority = priority)
     else:
         raise NotImplementedError
     command = []
@@ -1241,6 +1262,7 @@ def predict(
     wait_for_input = False,
     wait_for_model = False,
 ):
+    assert sys.version_info[0] == 2  # code below only works in python 2
     if __name__.startswith('elmo_'):
         # read lcode from model file
         lcode_file = open('%s/elmo-lcode.txt' %model_path, 'rb')
@@ -1252,7 +1274,7 @@ def predict(
         raise NotImplementedError
     # prepare npz files and parser command
     command = []
-    npz_tasks = NPZTasks(prediction_output_path, lcode, priority = priority)
+    npz_tasks = NpzTaskManager(prediction_output_path, lcode, priority = priority)
     command.append('./elmo_udpf-predict.sh')
     command.append(model_path)
     command.append(input_path)
@@ -1282,18 +1304,20 @@ def main():
     last_arg_description = """
 QUEUENAME:
 
-    elmo-npz  for the .npz compiler with elmo+mbert cache (recommended
+    npz       for the .npz compiler with elmo+mbert cache (recommended
               to run exactly one; each instance needs its own
-              EFML_NPZ_CACHE_DIR),
+              NPZ_CACHE_DIR),
 
-    elmo-hdf5 for the .hdf5 workers (run as many as needed)"""
-    if len(sys.argv) > 1 and sys.argv[-1].endswith('elmo-npz'):
-        queue_name = sys.argv[-1]
+    elmo-hdf5 for the elmo hdf5 workers (run as many as needed)
+
+    mbert-hdf5 for the mbert hdf5 workers (run as many as needed)"""
+    if len(sys.argv) > 1 and sys.argv[-1].endswith('npz'):
+        queue_name = 'npz'
         del sys.argv[-1]
         cache = ElmoCache()
         common_udpipe_future.main(
             queue_name = queue_name,
-            task_processor = ElmoNpzTask,
+            task_processor = NpzTask,
             extra_kw_parameters = {'cache': cache},
             last_arg = (last_arg_name, last_arg_description),
             callback = cache,
@@ -1306,7 +1330,7 @@ QUEUENAME:
             task_processor = common_udpipe_future.Task,
             last_arg = (last_arg_name, last_arg_description),
         )
-    elif len(sys.argv) == 5 and sys.argv[1] == 'test-npz':
+    elif len(sys.argv) == 5 and sys.argv[1] == 'test':
         # undocumented test mode: get npz for given conllu file
         conllu_file = sys.argv[2]
         npz_file    = sys.argv[3]
@@ -1314,7 +1338,7 @@ QUEUENAME:
         or not npz_file.startswith('/'):
             raise ValueError('Must specify absolute paths to input and output files')
         lcode       = sys.argv[4]
-        task = ElmoNpzTask([conllu_file, npz_file, lcode])
+        task = NpzTask([conllu_file, npz_file, lcode])
         task.submit()
     else:
         common_udpipe_future.print_usage(
