@@ -714,7 +714,7 @@ class ElmoCache:
         self.last_scan = 0.0
         self.scan_interval = 20.0
         self.last_sync = 0.0
-        self.sync_interval = 90.0   # TODO: restore 900
+        self.sync_interval = 900.0
         self.verbosity_interval = 60.0
         if 'NPZ_CACHE_MAX_WRITE' in os.environ:
             self.npz_write_limit = utilities.float_with_suffix(
