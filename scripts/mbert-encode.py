@@ -26,6 +26,8 @@ from   transformers import BertTokenizerFast, BertModel
 
 import conllu_dataset
 
+assert sys.version_info[0] >= 3
+
 opt_verbose = False
 opt_progress = False
 opt_debug   = False
@@ -190,12 +192,13 @@ def print_durations():
 
 event_counter = defaultdict(lambda: 0)
 
-def print_progress():
+def print_progress(sep = '\t', print_time = True):
     row = []
-    row.append((time.ctime(time.time())))
+    if print_time:
+        row.append((time.ctime(time.time())))
     for key in sorted(list(event_counter.keys())):
         row.append(('%s: %d' %(key, event_counter[key])))
-    print('\t'.join(row))
+    print(sep.join(row))
 
 def encode_batch(batch):
     log_starting('encode_batch')
@@ -256,8 +259,8 @@ def protect_special(sentence):
 def get_hdf5_key(sentence):
     # replicate elmoformanylangs hdf5 key
     text = '\t'.join(sentence)
-    text = text.replace('.', '%period$')
-    text = text.replace('/', '%backslash$')  # [!sic]
+    text = text.replace('.', '$period$')
+    text = text.replace('/', '$backslash$')  # [!sic]
     return text
 
 def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buffer = None):
@@ -475,7 +478,7 @@ with torch.no_grad():
                     hdf5_key.encode('UTF-8')
                 ).hexdigest()
                 # keep same number of tabs as in old key
-                hdf5_key = hdf5_key + old_hdf5_key.count('\t') * '\t.'
+                hdf5_key = hdf5_key + old_hdf5_key.count('\t') * '\tx'
                 print('Warning: cannot use hdf5_key %r, changing it to %r' %(
                     old_hdf5_key, hdf5_key
                 ))
@@ -508,9 +511,11 @@ fout.close()
 if filename != '-':
     infile.close()
 
-if opt_progress or not opt_quiet:
+if opt_progress:
     print_progress()
 
 if not opt_quiet:
+    if not opt_progress:
+        print_progress(sep = '\n', print_time = False)
     print_durations()
 
