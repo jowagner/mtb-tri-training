@@ -55,6 +55,7 @@ TMP_OUTFILE=${OUTPUTDIR}/${HDF5_NAME}_part
 echo "Running mBERT on ${INFILE} to produce ${TMP_OUTFILE}"
 cd ${PRJ_DIR}
 if ! python scripts/mbert-encode.py \
+    ${MBERT_OPTIONS}                \
     --input-format conll            \
     --output-layer ${LAYER}         \
     ${INFILE}                       \
