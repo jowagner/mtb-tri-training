@@ -268,10 +268,11 @@ class ElmoCache:
                 else:
                     eat = 960
                 payload.append(encoded[:eat])
+                payload.append(b'\n')
                 encoded = encoded[eat:]
         else:
             payload.append(encoded)
-        payload.append(b'\n')
+            payload.append(b'\n')
         payload = b''.join(payload)
         payload_hash = self.get_payload_hash(payload)
         n_payload_lines = payload.count(b'\n')
