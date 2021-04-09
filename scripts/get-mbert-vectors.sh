@@ -46,11 +46,21 @@ fi
 
 hostname > ${OUTPUTDIR}/mbert.start
 
-LAYER=0    # TODO: double check this is the top layer
+LAYER=-1    # TODO: double check this is the top layer
 
 INFILE=$(realpath ${TRAIN_CONLLU})
 
 TMP_OUTFILE=${OUTPUTDIR}/${HDF5_NAME}_part
+
+if [ -z $CUDA_VISIBLE_DEVICES ] ; then
+    echo "Running cpu-only"
+else
+    echo "Monitoring GPU usage in parallel"
+    #nvidia-smi
+    #nvidia-smi dmon &  # cannot poll faster than 1 second
+    nvidia-smi --loop-ms=250 &
+    NVIDIA_SMI_PID=$!
+fi
 
 echo "Running mBERT on ${INFILE} to produce ${TMP_OUTFILE}"
 cd ${PRJ_DIR}
@@ -69,3 +79,10 @@ mv ${TMP_OUTFILE} ${OUTPUTDIR}/${HDF5_NAME}
 
 touch ${OUTPUTDIR}/mbert.end
 
+if [ -z $CUDA_VISIBLE_DEVICES ] ; then
+    echo
+else
+    kill $NVIDIA_SMI_PID
+    sleep 1
+    echo
+fi
