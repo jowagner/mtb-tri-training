@@ -35,7 +35,7 @@ opt_quiet   = False
 opt_use_gpu = False
 opt_max_sequence_length = 512
 opt_input_format = 'auto-detect'
-opt_output_layer = 0                # TODO: double check that this is the top layer
+opt_output_layer = -1                # TODO: double check that this is the top layer
 opt_batch_size = 64
 opt_pooling = 'first'   # one of first, last, max and average
 opt_shuffle = False
@@ -51,7 +51,11 @@ Options:
                             and line for stdin)
 
     --output-layer  LAYER   which layer to use
-                            (default: -1 = use .last_hidden_state)
+                            -1 = use .last_hidden_state
+                             0 = BERT's embedding layer (context-free)
+                             1 = first layer
+                            12 = 12th layer, should be identical to -1
+                            (default: -1)
 
     --pooling  METHOD       first, last, max, average or binomial1234 for
                             binomial weight distribution with p = 0.1234
@@ -378,6 +382,8 @@ def pool(vectors, span, pooling_method):
         retval += vectors[index] * weights[w_index]
     return retval
 
+print('Layer:', opt_output_layer)
+
 data = []
 s2n_parts = {}
 sp2vectors = {}
@@ -388,11 +394,15 @@ with torch.no_grad():
     for s_idxs, p_idxs, is_lasts, hdf5_keys, \
     encoded_batch in get_batches(infile):
         log_starting('apply model')
-        outputs = model(**encoded_batch)
+        outputs = model(
+            output_hidden_states = True,
+            return_dict = True,
+            **encoded_batch
+        )
         if opt_output_layer == -1:
-            selected_layer = outputs.last_hidden_layer  # TODO: AttributeError
+            selected_layer = outputs.last_hidden_state
         else:
-            selected_layer = outputs[opt_output_layer]
+            selected_layer = outputs.hidden_states[opt_output_layer]
         log_finished('apply model')
         # this should have shape (batch size, sequence length, model hidden dimension)
         for index, vectors in enumerate(selected_layer):
