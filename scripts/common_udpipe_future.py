@@ -210,7 +210,7 @@ class Task:
         task_id = utilities.bstring('%03d-%05x-%s-%s-%d-%s-%s' %(
             self.priority,
             int((time.time()-t0)/60.0),
-            os.environ['HOSTNAME'].replace('-', '_'),
+            os.environ['HOSTNAME'].replace('-', '_') if 'HOSTNAME' in os.environ else 'na',
             os.environ['SLURM_JOB_ID'] if 'SLURM_JOB_ID' in os.environ else 'na',
             os.getpid(),
             command_fingerprint[:8],
