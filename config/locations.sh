@@ -84,7 +84,7 @@ case "${SETTING}" in
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
-"jwagner@ok-opensuse-leap-15.1")
+"jwagner@ok-cpu-opensuse-leap-15.1")
     SCRATCH=/scratch/${USER}
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${SCRATCH}/ud-parsing/ud-treebanks-v2.3
