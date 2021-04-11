@@ -14,12 +14,21 @@
 # configuration for each node on the cluster.
 SIMPLEHOST=`echo ${HOSTNAME} | cut -c-2 | tr '23456789' '11111111'`
 
+# check whether GPU available (being on a GPU node is not enough as
+# CPU-only jobs may be scheduled to run on a GPU node)
+if [ -z $CUDA_VISIBLE_DEVICES ] ; then
+    JOBTYPE=cpu
+else
+    JOBTYPE=gpu
+fi
+
 # Need detail on the OS to dinstinguish old and new grove cluster
-SETTING=${USER}@${SIMPLEHOST}
+SETTING=${USER}@${SIMPLEHOST}-${JOBTYPE}
 if [ -e /etc/os-release ]; then
     source /etc/os-release
     SETTING=${SETTING}-${ID}-${VERSION_ID}
 fi
+
 
 case "${SETTING}" in
 "jwagner@n1")
@@ -38,8 +47,8 @@ case "${SETTING}" in
     export EFML_ICHEC_CONDA=efml
     export EFML_LIB_PATH="/ichec/packages/cuda/10.1.243/lib64":"$HOME/cudnn-for-10.1/lib64"
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_NPZ_CACHE_SIZE=120GiB
+    export NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export NPZ_CACHE_SIZE=120GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
@@ -64,8 +73,8 @@ case "${SETTING}" in
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${HOME}/tri-training/ELMoForManyLangs/venv-efml
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_NPZ_CACHE_SIZE=40GiB
+    export NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export NPZ_CACHE_SIZE=40GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks
@@ -75,7 +84,7 @@ case "${SETTING}" in
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
-"jwagner@ok-opensuse-leap-15.1")
+"jwagner@ok-cpu-opensuse-leap-15.1")
     SCRATCH=/scratch/${USER}
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${SCRATCH}/ud-parsing/ud-treebanks-v2.3
@@ -89,8 +98,8 @@ case "${SETTING}" in
     export EFML_MODEL_DIR=${HOME}/elmo
     export EFML_HDF5_CACHE_DIR=${SCRATCH}/elmo/cache
     export EFML_HDF5_MAX_CACHE_ENTRIES=50
-    export EFML_NPZ_CACHE_DIR=${SCRATCH}/elmo/cache
-    export EFML_NPZ_CACHE_SIZE=12GiB
+    export NPZ_CACHE_DIR=${SCRATCH}/elmo/cache
+    export NPZ_CACHE_SIZE=12GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_DISTRIBUTIONS_DIR=${SCRATCH}/tri-training/workdirs
@@ -101,7 +110,7 @@ case "${SETTING}" in
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
-"jwagner@g0-debian-10")
+"jwagner@g"[01]"-cpu-debian-10")
     #echo "Detected grove cluster CPU node"
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
@@ -111,9 +120,10 @@ case "${SETTING}" in
     export CONLLU_COMBINER=${HOME}/tri-training/ud-combination/scripts/combine.py
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
+    export MBERT_ENV=${HOME}/tri-training/bert-transformers/venv-mbert-cpu
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_NPZ_CACHE_SIZE=200GiB
+    export NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export NPZ_CACHE_SIZE=200GiB
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=1728000
@@ -121,7 +131,7 @@ case "${SETTING}" in
     export TT_TASK_ARCHIVE_COMPLETED=true
     export TT_TASK_CLEANUP_COMPLETED=otherwise
     ;;
-"jwagner@g1-debian-10")
+"jwagner@g1-gpu-debian-10")
     #echo "Detected grove cluster GPU node"
     export PRJ_DIR=${HOME}/tri-training/mtb-tri-training
     export UD_TREEBANK_DIR=${HOME}/data/ud-treebanks-v2.3
@@ -132,9 +142,11 @@ case "${SETTING}" in
     export FASTTEXT_NPZ_DIR=${HOME}/data/conll2017/text
     export EFML_TOOL_DIR=${HOME}/tri-training/ELMoForManyLangs
     export EFML_ENV=${EFML_TOOL_DIR}/venv-efml
+    export MBERT_ENV=${HOME}/tri-training/bert-transformers/venv-mbert-gpu
+    export MBERT_OPTIONS="--use-gpu"
     export EFML_MODEL_DIR=${HOME}/elmo
-    export EFML_NPZ_CACHE_DIR=${HOME}/data/elmo-cache
-    export EFML_NPZ_CACHE_SIZE=200GiB
+    export NPZ_CACHE_DIR=${HOME}/data/elmo-cache
+    export NPZ_CACHE_SIZE=200GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
     export TT_TASK_DIR=${HOME}/tri-training/tasks

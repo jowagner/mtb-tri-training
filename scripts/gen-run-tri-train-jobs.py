@@ -98,7 +98,7 @@ def get_modelseedsuffix(setting):
         retval = setting2modelseedsuffix[setting]
     except KeyError:
         retval = len(modelseedsuffix2setting)
-        retval += 200  # skip values used in previous version
+        retval += 350  # skip values used in previous version
         setting2modelseedsuffix[setting] = retval
         modelseedsuffix2setting.append(setting)
     return retval
@@ -132,6 +132,7 @@ for augment_size_code in augment_size_codes:
                 ('w', '--without-replacement'),
                 ('x', '--without-replacement --seed-size "250%"'),
                 ('t', '--without-replacement --seed-size "300%"'),
+                ('p', '--seed-size "300%"'),
             ]:
                 for disa_code, disa_options in [
                     #('a', '--all-knowledge-transfers'),  # not implemented yet
@@ -171,21 +172,21 @@ for augment_size_code in augment_size_codes:
                             iterations = aug2iterations[augment_size_code]
                             last_iterations = aug2last_iterations[augment_size_code]
                             iterations = min(max_iterations, iterations)
-                            for parser_code, model_module in [
-                                #('a', 'allennlp'),
-                                ('f', 'udpipe_future'),
-                                #('t', 'udpipe_future'),
-                                ('g', 'fasttext_udpf'),
-                                ('h', 'elmo_udpf'),
-                                #('i', 'mbert_udpf'),
-                                #('u', 'uuparser'),
-                                #('v', 'fasttext_uup'),
-                                #('w', 'elmo_uup'),
-                                #('m', 'mixed'),
-                                #('n', 'fasttext_mx'),
-                                #('o', 'elmo_mx'),
+                            for parser_code, model_modules in [
+                                #('a', '--model-module allennlp'),
+                                ('f', '--model-module udpipe_future'),
+                                #('t', '--model-module udpipe_future'),
+                                ('g', '--model-module fasttext_udpf'),
+                                ('h', '--model-module elmo_udpf'),
+                                ('i', '--model-module mbert_udpf'),
+                                #('u', '--model-module uuparser'),
+                                #('v', '--model-module fasttext_uup'),
+                                #('w', '--model-module elmo_uup'),
+                                ('m', '--model-module fasttext_udpf:elmo_udpf:mbert_udpf'),
+                                #('n', '--model-module fasttext_mx'),
+                                #('o', '--model-module elmo_mx'),
                             ]:
-                                if parser_code in 'aftum':
+                                if parser_code in 'aftu':
                                     model_keyword_options = ''
                                 else:
                                     model_keyword_options = '--model-keyword lcode %s' %lcode
