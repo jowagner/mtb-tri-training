@@ -63,7 +63,7 @@ Options:
 
     --batch-size  NUMBER    How many sequences to feed into mBERT in one
                             go
-                            (Default: 64)
+                            (Default: 96)
 
     --length  NUMBER        Maximum sequence length in subword units to
                             feed into mBERT
