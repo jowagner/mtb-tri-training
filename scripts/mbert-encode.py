@@ -35,8 +35,8 @@ opt_quiet   = False
 opt_use_gpu = False
 opt_max_sequence_length = 512
 opt_input_format = 'auto-detect'
-opt_output_layer = -1                # TODO: double check that this is the top layer
-opt_batch_size = 64
+opt_output_layer = -1
+opt_batch_size = 96
 opt_pooling = 'first'   # one of first, last, max and average
 opt_shuffle = False
 opt_help    = False
@@ -316,13 +316,15 @@ def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buff
             else:
                 #if opt_debug: print('%d subword units --> too big' %n_subword_units)
                 # TODO: replace inefficient linear search with binary search
-                #       if we spend too much time in this function
+                #       (linear search seems fine for data with predominantly short
+                #       sentences but a lot of time is spent here when many sentences
+                #       are long)
                 split_point -= 1
                 if split_point == 0:
                     if opt_debug: print('replacing first token with [UNK] to make it fit')
                     # cannot even fit the first token
                     # --> change it to [UNK] and try again
-                    # TODO: check that [UNK] is protected
+                    # (debugging output confirms that [UNK] is protected)
                     sentence[0] = '[UNK]'
                     split_point = len(sentence)
         while len(s_buffer) >= buffer_size:
@@ -395,7 +397,7 @@ with torch.no_grad():
     encoded_batch in get_batches(infile):
         log_starting('apply model')
         outputs = model(
-            output_hidden_states = True,
+            output_hidden_states = opt_output_layer >= 0,
             return_dict = True,
             **encoded_batch
         )

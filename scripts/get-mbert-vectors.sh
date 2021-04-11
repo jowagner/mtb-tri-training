@@ -46,7 +46,7 @@ fi
 
 hostname > ${OUTPUTDIR}/mbert.start
 
-LAYER=-1    # TODO: double check this is the top layer
+LAYER=-1
 
 INFILE=$(realpath ${TRAIN_CONLLU})
 
