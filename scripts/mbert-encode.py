@@ -36,6 +36,7 @@ opt_use_gpu = False
 opt_max_sequence_length = 512
 opt_input_format = 'auto-detect'
 opt_output_layer = -1
+opt_expand_to    = 0
 opt_batch_size = 96
 opt_pooling = 'first'   # one of first, last, max and average
 opt_shuffle = False
@@ -52,10 +53,20 @@ Options:
 
     --output-layer  LAYER   which layer to use
                             -1 = use .last_hidden_state
+                            -n = use average of last n layers
                              0 = BERT's embedding layer (context-free)
                              1 = first layer
                             12 = 12th layer, should be identical to -1
                             (default: -1)
+
+    --expand-to  NUMBER     When averaging over k layers, expand the
+                            output dimension to NUMBER, inserting into
+                            each vector a range of unpopulated components
+                            and then only averaging the populated
+                            components, which are positioned to reduce
+                            the number of values that are averaged.
+                            Must not exceed 2 * BERT's output dimension.
+                            (Default: 0 = keep dimension as is)
 
     --pooling  METHOD       first, last, max, average or binomial1234 for
                             binomial weight distribution with p = 0.1234
@@ -112,6 +123,9 @@ if True:
         elif option in ('--output-layer', '--layer'):
             opt_output_layer = int(sys.argv[1])
             del sys.argv[1]
+        elif option in ('--expand-to', '--expand'):
+            opt_expand_to = int(sys.argv[1])
+            del sys.argv[1]
         elif option in ('--pooling', '--pool'):
             opt_pooling = sys.argv[1]
             del sys.argv[1]
@@ -144,6 +158,11 @@ if True:
     if opt_help:
         print_usage()
         sys.exit(0)
+
+if opt_output_layer > -2 and opt_expand_to:
+    raise ValueError('need multiple layers to expand output vector')
+if opt_expand_to < 0:
+    raise ValueError('vector dimension must not be negative')
 
 filename = sys.argv[1]
 if filename == '-':
@@ -379,12 +398,109 @@ def pool(vectors, span, pooling_method):
         p = float('0.'+(pooling_method[8:]))
         weights = Binomial(len(span), probs = p).probs()
     # add other weight distributions here
-    retval = 0
+    retval = 0  # auto-expands to tensor of zeros below
     for w_index, v_index in enumerate(span):
         retval += vectors[index] * weights[w_index]
     return retval
 
-print('Layer:', opt_output_layer)
+class LayerWithGap:
+
+    def __init__(self, layer, gap_start, gap_end):
+        assert gap_start <= gap_end
+        self.layer     = layer
+        if gap_start == gap_end:
+            gap_start = gap_end = 0
+        self.gap_start = gap_start
+        self.gap_end   = gap_end
+        self.position  = 0
+        self.gap_width = gap_end - gap_start
+        self.batch_size, self.seq_length, self.h_dim = self.layer.shape
+
+    def get_next(self, width):
+        assert width > 0
+        if not self.gap_start and not self.gap_end \
+        and not self.position \
+        and self.h_dim == width:
+            # speed up pass through
+            self.position = width
+            return self.layer
+        new_position = self.position + width
+        if self.position >= self.gap_end:
+            # after gap
+            slice_start = self.position - self.gap_width
+        elif new_position <= self.gap_start:
+            # before gap
+            slice_start = self.position
+        elif self.position >= self.gap_start \
+        and new_position <= self.gap_end:
+            # inside gap:
+            self.position = new_position
+            return None
+        else:
+            raise ValueError('cannot slice %d-dimensional layer with gap %r from virtual position %d with width %d' %(
+                h_dim, (gap_start, gap_end), self.position, width
+            ))
+        self.position = new_position
+        retval = self.layer[..., slice_start:slice_start+width]
+        assert retval.shape[0] == self.batch_size
+        assert retval.shape[1] == self.seq_length
+        assert retval.shape[2] == width
+        return retval
+
+def average_and_expand(all_layers, n_layers = 4, expand_to = 0):
+    log_starting('average_and_expand')
+    # each layer has shape (batch size, sequence length, model hidden dimension)
+    if not expand_to:
+        expand_to = all_layers[-1].shape[-1]
+    positions = set()
+    positions.add(0)
+    positions.add(expand_to)
+    layers_with_gap = []
+    for index in range(n_layers):
+        layer_index = len(all_layers) - (index+1)
+        layer = all_layers[layer_index]
+        h_dim = layer.shape[-1]
+        gap = expand_to - h_dim
+        if gap > 0:
+            gap_start = (index * h_dim) // (n_layers - 1)
+            gap_end = gap_start + gap
+            positions.add(gap_start)
+            positions.add(gap_end)
+        else:
+            gap_start = gap_end = 0
+        layers_with_gap.append(LayerWithGap(layer, gap_start, gap_end))
+        if opt_debug: print('layer %d with gap %r' %(layer_index, (gap_start, gap_end)))
+    parts = []
+    last_position = 0
+    for position in sorted(list(positions)):
+        width = position - last_position
+        if width:
+            # get slices
+            to_be_averaged = []
+            for layer_with_gap in layers_with_gap:
+                layer_slice = layer_with_gap.get_next(width)
+                if layer_slice is not None:
+                    to_be_averaged.append(layer_slice)
+            if opt_debug: print('averaging %d slices of width %d at position %d' %(len(to_be_averaged), width, last_position))
+            # get average
+            assert len(to_be_averaged) > 0
+            weight = 1.0 / len(to_be_averaged)  # uniform weights
+            average = 0  # auto-expands to tensor of zeros below
+            for layer_slice in to_be_averaged:
+                average += layer_slice * weight
+            # add to stack
+            parts.append(average)
+        last_position = position
+    # put them together
+    retval = torch.cat(parts, dim = 2)
+    assert retval.shape[2] == expand_to
+    log_finished('average_and_expand')
+    return retval
+
+if opt_output_layer > -2:
+    print('Layer:', opt_output_layer)
+else:
+    print('Layer: average of last', -opt_output_layer)
 
 data = []
 s2n_parts = {}
@@ -397,12 +513,18 @@ with torch.no_grad():
     encoded_batch in get_batches(infile):
         log_starting('apply model')
         outputs = model(
-            output_hidden_states = opt_output_layer >= 0,
+            output_hidden_states = opt_output_layer != -1,
             return_dict = True,
             **encoded_batch
         )
         if opt_output_layer == -1:
             selected_layer = outputs.last_hidden_state
+        elif opt_output_layer < -1:
+            selected_layer = average_and_expand(
+                outputs.hidden_states,
+                n_layers  = -opt_output_layer,
+                expand_to = opt_expand_to
+            )
         else:
             selected_layer = outputs.hidden_states[opt_output_layer]
         log_finished('apply model')
