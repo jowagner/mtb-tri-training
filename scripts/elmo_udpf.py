@@ -278,7 +278,7 @@ class ElmoCache:
         n_payload_lines = payload.count(b'\n')
         header = b'data %d %d %s\n' %(r_index, n_payload_lines, payload_hash)
         data = b''.join((header, payload, b'\n'))
-        pad_to = 4096 * int((len(data)+4095)/4096)
+        pad_to = 4096 * int((len(data)+4095+512)/4096)
         data_file.write(self.get_data_record(
             r_index,
             prefix = data,
@@ -864,16 +864,26 @@ class ElmoCache:
             record = b'%.0f\t' %atime
         return self.with_padding(record, self.atime_size)
 
-    def with_padding(self, record, target_size):
+    def with_padding(self, record, target_size, optional_msg = None):
         ''' note that the last character may be replaced with a newline
+            if it is a tab or space character
         '''
         length = len(record)
         if length > target_size:
             raise ValueError('Record size %d is too small for %d bytes in %r...' %(target_size, length, record[:20]))
         if length == target_size:
-            return record[:target_size-1] + b'\n'
+            if record[-1] in (b'\t', b' '):
+                record = record[:-1] + b'\n'
+            return record
+        elif optional_msg and length + len(optional_msg) + 1 == target_size:
+            # can fit optional message exactly
+            return record + optional_msg + b'\n'
+        elif optional_msg and length + len(optional_msg) + 2 <= target_size:
+            # can fit optional message and padding
+            padding = (target_size - length - len(optional_msg) - 2) * b'.'
+            return record + optional_msg + b'\n' + padding + b'\n'
         else:
-            padding = (target_size - len(record) - 1) * b'.'
+            padding = (target_size - length - 1) * b'.'
             return record + padding + b'\n'
 
     def get_data_record(self, r_index, prefix = None, pad_to = None):
@@ -882,20 +892,24 @@ class ElmoCache:
         rows = []
         if prefix is None:
             row = b'init %d ' %r_index
-        elif prefix[-1] == '\n':
+        elif prefix[-1] == b'\n':
             row = prefix
         else:
             row = prefix + b'\t'
         start_pad_lines = int((len(row)+127)/128)
         first_line_pad_to = 128 * start_pad_lines
-        rows.append(self.with_padding(row, first_line_pad_to))
+        optional_msg = b'using %.2f%% of space' %(
+            100.0*len(row) / float(self.record_size)
+        )
+        rows.append(self.with_padding(row, first_line_pad_to, optional_msg))
         if pad_to is None:
             record_size = self.record_size
         else:
             record_size = min(pad_to, self.record_size)
         for pad_index in range(start_pad_lines, int(record_size/128)):
-            row = b'........ padding %d of %d for record # %d ' %(
-                pad_index, self.record_size/128-1, r_index
+            row = b'........ padding %d of %d for record # %d %s' %(
+                pad_index, self.record_size/128-1, r_index,
+                optional_msg,
             )
             rows.append(self.with_padding(row, 128))
         return b''.join(rows)
