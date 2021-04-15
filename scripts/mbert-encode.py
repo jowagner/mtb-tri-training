@@ -68,8 +68,14 @@ Options:
                             Must not exceed 2 * BERT's output dimension.
                             (Default: 0 = keep dimension as is)
 
-    --pooling  METHOD       first, last, max, average or binomial1234 for
-                            binomial weight distribution with p = 0.1234
+    --pooling  METHOD       How to pool the vectors of tokens that have
+                            more than one subword unit. One of "first",
+                            "last", "max", "average" and "binomial{d}".
+                            The maximum is element-wise. Binomial1234
+                            takes a weighted average using the binomial
+                            distribution with p = 0.1234 as weights.
+                            Tokens are pooled after the layers have been
+                            merged if more than one layer is selected.
                             (default: first)
 
     --batch-size  NUMBER    How many sequences to feed into mBERT in one
@@ -352,7 +358,7 @@ def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buff
             yield encode_batch(s_buffer[:batch_size])
             s_buffer = s_buffer[batch_size:]
         s_index += 1
-        if opt_debug: print('%d parts created for sentence %d' %(part_index, s_index))
+        if opt_debug: print('%d part(s) created for sentence %d' %(part_index, s_index))
     if opt_debug: print('finished reading sentences')
     while s_buffer:
         if opt_debug: print('still %d parts in buffer' %len(s_buffer))
@@ -382,8 +388,43 @@ def get_sentences(conllu_file):
         event_counter['sentence read'] += 1
         yield tokens
 
+# https://gist.github.com/rougier/ebe734dcc6f4ff450abf
+# with suggestions from
+# https://gist.github.com/keithbriggs
+# and alisianoi's answer on
+# https://stackoverflow.com/questions/26560726/python-binomial-coefficient
+# (can be replaced with math.comb() when Python 3.8 or
+# greater is used widely)
+def binomial(n, k):
+    # For compatibility with scipy.special.{comb, binom} returns 0 instead.
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1
+    b = 1
+    for t in range(min(k, n - k)):
+        b = (b * n) // (t + 1)
+        n -= 1
+    return b
+
+def get_binomial_distribution(n, p):
+    q = 1 - p
+    pks = [1.0]
+    qks = [1.0]
+    for _ in range(n+1):
+        pks.append(pks[-1]*p)
+        qks.append(qks[-1]*q)
+    retval = []
+    for k in range(n+1):
+        retval.append(
+            binomial(n, k) * pks[k] * qks[n-k]
+        )
+    print('Binomial distribution', retval)
+    return retval
+
 def pool(vectors, span, pooling_method):
-    if pooling_method == 'first':
+    assert len(span) > 0
+    if pooling_method == 'first' or len(span) == 1:
         return vectors[span[0]]
     if pooling_method == 'last':
         return vectors[span[-1]]
@@ -396,11 +437,13 @@ def pool(vectors, span, pooling_method):
         weights = len(span) * [1.0 / len(span)]  # uniform weights
     elif pooling_method.startswith('binomial'):
         p = float('0.'+(pooling_method[8:]))
-        weights = Binomial(len(span), probs = p).probs()
+        weights = get_binomial_distribution(len(span)-1, probs = p)
     # add other weight distributions here
+    else:
+        raise ValueError('unknown pooling method %s' %pooling_method)
     retval = 0  # auto-expands to tensor of zeros below
     for w_index, v_index in enumerate(span):
-        retval += vectors[index] * weights[w_index]
+        retval += vectors[v_index] * weights[w_index]
     return retval
 
 class LayerWithGap:
@@ -581,6 +624,7 @@ with torch.no_grad():
                         # transition to a new input token
                         if span:
                             assert last_word_id is not None
+                            event_counter['token with %d subword unit(s)' %len(span)] += 1
                             vector = pool(vectors, span, opt_pooling)
                             parts.append(vector)
                             span = []
