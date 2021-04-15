@@ -221,7 +221,7 @@ def print_durations():
 
 event_counter = defaultdict(lambda: 0)
 
-def print_progress(sep = '\t', print_time = True):
+def print_progress(sep = '\n', print_time = True):
     row = []
     if print_time:
         row.append((time.ctime(time.time())))
@@ -419,7 +419,6 @@ def get_binomial_distribution(n, p):
         retval.append(
             binomial(n, k) * pks[k] * qks[n-k]
         )
-    print('Binomial distribution', retval)
     return retval
 
 def pool(vectors, span, pooling_method):
@@ -437,7 +436,7 @@ def pool(vectors, span, pooling_method):
         weights = len(span) * [1.0 / len(span)]  # uniform weights
     elif pooling_method.startswith('binomial'):
         p = float('0.'+(pooling_method[8:]))
-        weights = get_binomial_distribution(len(span)-1, probs = p)
+        weights = get_binomial_distribution(len(span)-1, p)
     # add other weight distributions here
     else:
         raise ValueError('unknown pooling method %s' %pooling_method)
@@ -620,17 +619,16 @@ with torch.no_grad():
                 last_word_id = None
                 span = []
                 for v_index, word_id in enumerate(word_ids):
-                    if word_id != last_word_id:
+                    if span and word_id != last_word_id:
                         # transition to a new input token
-                        if span:
-                            assert last_word_id is not None
-                            event_counter['token with %d subword unit(s)' %len(span)] += 1
-                            vector = pool(vectors, span, opt_pooling)
-                            parts.append(vector)
-                            span = []
-                        last_word_id = word_id
-                        if word_id is not None:
-                            span.append(v_index)
+                        assert last_word_id is not None
+                        event_counter['token with %03d subword unit(s)' %len(span)] += 1
+                        vector = pool(vectors, span, opt_pooling)
+                        parts.append(vector)
+                        span = []
+                    if word_id is not None:
+                        span.append(v_index)
+                    last_word_id = word_id
             if opt_debug: print('number of vectors:', len(parts))
             vectors = torch.stack(parts, dim = 0)
             log_finished('pooling vectors')
