@@ -429,8 +429,8 @@ def pool(vectors, span, pooling_method):
         return vectors[span[-1]]
     if pooling_method.startswith('max'):
         retval = vectors[span[0]]
-        for index in span[1:]:
-            retval = torch.maximum(retval, vectors[span[index]])
+        for v_index in span[1:]:
+            retval = torch.maximum(retval, vectors[v_index])
         return retval
     if pooling_method == 'average':
         weights = len(span) * [1.0 / len(span)]  # uniform weights
