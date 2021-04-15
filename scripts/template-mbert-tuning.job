@@ -1,0 +1,63 @@
+#!/bin/bash
+  
+#SBATCH -p compute       # which partition to run on
+#SBATCH --gres=gpu:1
+#SBATCH -J %(name)s    # name for the job
+#SBATCH -d singleton
+#SBATCH --mem=18000
+#SBATCH --cpus-per-task=4
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+source ${HOME}/tri-training/mtb-tri-training/config/locations.sh
+
+SCRIPTDIR=${PRJ_DIR}/scripts
+WORKDIR=${PRJ_DIR}/workdirs/%(name)s
+
+mkdir -p ${WORKDIR}
+
+cd ${WORKDIR}
+touch run.start
+echo $(hostname) $(date) >> run.start
+if [ -e run.end ]; then
+    mv run.end previous-run.end
+fi
+if [ -e stderr.txt ]; then
+    mv stderr.txt previous-stderr.txt
+fi
+if [ -e stdout.txt ]; then
+    mv stdout.txt previous-stdout.txt
+fi
+
+rm -rf stop *workdir
+
+cd ${SCRIPTDIR}
+./tri-train.py                \
+    --learners 5                    \
+    --without-replacement                \
+    --model-module mbert_udpf                \
+    --model-keyword lcode %(lcode)s             \
+    --model-keyword epochs 30                     \
+    --model-keyword mbert_layer %(layer)d          \
+    --model-keyword mbert_expand_to %(expand_to)d  \
+    --model-keyword mbert_pooling %(pooling)s      \
+    --average 2                                    \
+    --max-subsets 1  \
+    --init-seed %(seed)s       \
+    %(lang_options)s   \
+    --deadline 232.0            \
+    --stopfile ${WORKDIR}/stop  \
+    --model-init "compose"  \
+    --labelled   %(tbid)s  \
+    --final-test          \
+    --continue             \
+    --tolerant              \
+    --rename-dispensable    \
+    --epoch-selection last  \
+    --iterations 0  \
+    --workdir ${WORKDIR}     \
+    2> ${WORKDIR}/stderr.txt  \
+    >  ${WORKDIR}/stdout.txt
+
+touch ${WORKDIR}/run.end
+
