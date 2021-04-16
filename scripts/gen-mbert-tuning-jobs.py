@@ -36,8 +36,8 @@ for pooling_code, pooling in [
     ('fst', 'first'),
     ('max', 'max'),
     ('z50', 'binomial50'),
-    ('z30', 'binomial50'),
-    ('z70', 'binomial50'),
+    ('z30', 'binomial30'),
+    ('z70', 'binomial70'),
 ]:
     for layer_code, layer, expand_to_values in [
         ('L08',  8, ('0768', 0)),
