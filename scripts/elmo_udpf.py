@@ -595,8 +595,10 @@ class ElmoCache:
             fields = payload_lines[3].split()
             if fields[0] == b'embcode':
                 embcode = fields[1]
-            elif fields[0] == b'lcode':
-                # let's assume this is an old elmo cache entry
+            elif fields[0] == b'lcode' \
+            and len(fields) == 2 \
+            and len(fields[1]) == 2:
+                # this looks like an old elmo cache entry
                 embcode = b'elmo:' + fields[1]
             else:
                 raise ValueError('cannot guess embcode for cache record %d from line %r' %(
