@@ -86,7 +86,7 @@ def hex2base62(h, min_length = 0):
     while i or (min_length and len(digits) < min_length):
         d = i % 62
         digits.append(s[d])
-        i = int(i/62)
+        i = i // 62
     return ''.join(digits)
 
 def bstring(s):

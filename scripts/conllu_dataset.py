@@ -17,24 +17,13 @@ import subprocess
 import sys
 
 import basic_dataset
+from   utilities import hex2base62
 
 id_column = 0
 token_column = 1
 pos_column = 3
 head_column = 6
 label_column = 7
-
-def hex2base62(h):
-    s = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    i = int(h, 16)
-    if not i:
-        return '0'
-    digits = []
-    while i:
-        d = i % 62
-        digits.append(s[d])
-        i = int(i/62)
-    return ''.join(digits)
 
 class ConlluSentence(basic_dataset.Sentence):
 
