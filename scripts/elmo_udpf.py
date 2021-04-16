@@ -1210,7 +1210,7 @@ def train(
     if __name__.startswith('elmo_'):
         embcode = 'elmo:%s' %lcode
     elif __name__.startswith('mbert_'):
-        embcode = 'mbert:%d:%d:%s' %(mbert_layer, mbert_expand_to, mbert_pooling)
+        embcode = 'mbert:%s:%s:%s' %(mbert_layer, mbert_expand_to, mbert_pooling)
     else:
         raise NotImplementedError
     npz_tasks = NpzTaskManager(model_dir, embcode, priority = priority)
