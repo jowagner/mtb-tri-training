@@ -30,8 +30,10 @@ def main():
         ('udpfv', 'worker-udpf-grove-titanv.job',   0,  1),
         ('udpfq', 'worker-udpf-grove-quadro.job',   0,  2),
         ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  4),
-        #('m5wo-', 'worker-mbert-hdf5-grove-cpu.job', 0,  1),
+        ('m5wo-', 'worker-mbert-hdf5-grove-cpu.job',    0,  4),
         ('m5wq-', 'worker-mbert-hdf5-grove-quadro.job', 0,  1),
+        ('m5wr-', 'worker-mbert-hdf5-grove-rtx.job',    0,  1),
+        ('m5wv-', 'worker-mbert-hdf5-grove-titanv.job', 0,  1),
     ]
     opt_max_submit_per_occasion = 1
     opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))

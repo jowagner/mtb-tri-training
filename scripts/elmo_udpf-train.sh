@@ -41,12 +41,16 @@ test -z $7 && echo "Missing language code"
 test -z $7 && exit 1
 LANG_CODE=$7
 
+test -z $8 && echo "Missing embedding code"
+test -z $8 && exit 1
+EMB_CODE=$8
+
 # optional args:
-EXTRA_OPTIONS="$8"
-DEV_SET=$9
-DEV_NPZ=${10}
-TEST_SET=${11}
-TEST_NPZ=${12}
+EXTRA_OPTIONS="$9"
+DEV_SET=${10}
+DEV_NPZ=${11}
+TEST_SET=${12}
+TEST_NPZ=${13}
 
 if [ -e "$TRAIN_NPZ" ]; then
     echo "training npz ready" > /dev/null
@@ -151,6 +155,7 @@ fi
 cd $MODELDIR
 
 echo ${LANG_CODE} > elmo-lcode.txt
+echo ${EMB_CODE} > embcode.txt
 ln -s ${FASTTEXT_NPZ} fasttext.npz
 
 if [ -n "$TEST_SET" ]; then
