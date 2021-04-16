@@ -662,6 +662,14 @@ with torch.no_grad():
                     fout.create_dataset(
                         hdf5_key, vectors.shape, dtype = 'float32', data = vectors
                     )
+                elif opt_debug:
+                    print('Warning: Either found an sha256 hash collision or')
+                    print('the input data contains the hash (and the matching')
+                    print('number of "x" tokens) for one of the input')
+                    print('sentences. The same list of vectors will be')
+                    print('returned for the two conflicting sentences of same')
+                    print('length. For sentence %d, this vector representation')
+                    print('is likely to be bad.')
                 # ignore sentences with this key in the future
                 ignore.add(old_hdf5_key)
             log_finished('writing hdf5')
