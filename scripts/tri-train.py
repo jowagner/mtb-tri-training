@@ -16,6 +16,7 @@
 from __future__ import print_function
 
 import bz2
+import collections
 import importlib
 import hashlib
 import os
@@ -171,6 +172,12 @@ Options:
                             If mixing different modules all modules must
                             understand (some may ignore) the provided keyword
                             arguments.
+
+    --model-keywords-from-file  FILE
+                            Like --model-keyword but reading from a file and
+                            allowing different sets of key-value pairs for
+                            each learner. Sets are separated by an empty
+                            line. Lines starting with "#" are ignored.
 
     --round-priority  NUMBER or FRACTION
                             The model module's training and prediction
@@ -501,6 +508,7 @@ def main():
     opt_model_modules  = []
     opt_model_init_type = None
     opt_model_kwargs = {}
+    opt_model_kwargs_from_file = None
     opt_round_priority = 1.0
     opt_seed_size = '100.0%'
     opt_seed_attempts = 5
@@ -622,6 +630,9 @@ def main():
             value = sys.argv[2]
             opt_model_kwargs[key] = value
             del sys.argv[1]   # consume two args
+            del sys.argv[1]
+        elif option == '--model-keywords-from-file':
+            opt_model_kwargs_from_file = sys.argv[1]
             del sys.argv[1]
         elif option == '--round-priority':
             if '/' in sys.argv[1]:
@@ -748,6 +759,19 @@ def main():
         raise ValueError('last_decay must not be greater than 1')
     if opt_last_decay <= 0.0:
         raise ValueError('last_decay must not be zero or negative')
+
+    if opt_model_kwargs and opt_model_kwargs_from_file:
+        raise ValueError('cannot combine --model-keyword and --model-keywords-from-file')
+
+    if opt_model_kwargs_from_file:
+        opt_model_kwargs = read_model_kwargs(opt_model_kwargs_from_file)
+        if not opt_model_kwargs:
+            print('The specified model key-value pairs file does not contain any sets of key-value pairs.')
+            opt_model_kwargs = {}
+        elif len(opt_model_kwargs) != opt_learners:
+            print('%d set(s) of model module key-value pairs for %d learner(s)' %(
+                len(opt_model_kwargs_from_file), opt_learners
+            ), 'will be assigned in a round-robin way.')
 
     if not opt_model_modules:
         opt_model_modules.append('udpipe_future')
@@ -1543,6 +1567,30 @@ def check_deadline(deadline = None, stopfile = None):
         if os.path.exists(stopfile):
             print_t('\n*** Found stop file. ***\n')
             sys.exit(0)
+
+def read_model_kwargs(opt_model_kwargs_from_file)
+    retval = []
+    kwargs = {}
+    f = open(opt_model_kwargs_from_file, 'rb')
+    while True:
+        line = f.readline()
+        if not line:
+            break
+        if line.startswith('#'):
+            continue
+        if line.isspace():
+            retval.append(kwargs)
+            kwargs = {}
+        fields = line.split()
+        if len(fields) != 2:
+            raise ValueError('Wrong format in key-value line in %s: %r' %(
+                opt_model_kwargs_from_file, line
+            ))
+        kwargs[fields[0]] = fields[1]
+    f.close()
+    if kwargs:
+        retval.append(kwargs)
+    return retval
 
 def make_predictions(
     models, dataset,
@@ -2375,7 +2423,14 @@ def train_models(
             sys.exit(0)
         else:
             # ask model module to train the model
-            model_kwargs = opt_model_kwargs.copy()
+            if isinstance(opt_model_kwargs, collections.abc.Mapping):
+                model_kwargs = opt_model_kwargs
+            elif isinstance(opt_model_kwargs, collections.abc.Sequence):
+                model_kwargs = opt_model_kwargs[learner_index % \
+                                                len(opt_model_kwargs)]
+            else:
+                raise ValueError('model_kwargs of type %s' %type(opt_model_kwargs))
+            model_kwargs = model_kwargs.copy()
             model_kwargs['priority'] = min(
                 99,
                 int(opt_round_priority * training_round)
