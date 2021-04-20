@@ -1201,9 +1201,9 @@ def train(
     priority = 50,
     is_multi_treebank = False,
     submit_and_return = False,
-    mbert_layer = -4,
+    mbert_layer = 9,
     mbert_expand_to = 0,
-    mbert_pooling = 'first',
+    mbert_pooling = 'average',
 ):
     if lcode is None:
         raise ValueError('Missing lcode; use --module-keyword to specify a key-value pair')
