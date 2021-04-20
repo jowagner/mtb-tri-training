@@ -34,6 +34,7 @@ seed = '%d' %(100+repeat_run)
 for pooling_code, pooling in [
     ('avg', 'average'),
     ('fst', 'first'),
+    ('lst', 'last'),
     ('max', 'max'),
     ('z50', 'binomial50'),
     ('z30', 'binomial30'),
