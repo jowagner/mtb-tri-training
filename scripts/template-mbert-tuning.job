@@ -1,5 +1,5 @@
 #!/bin/bash
-  
+
 #SBATCH -p compute       # which partition to run on
 #SBATCH --gres=gpu:1
 #SBATCH -J %(name)s    # name for the job
