@@ -16,7 +16,14 @@
 from __future__ import print_function
 
 import bz2
-import collections
+
+# Python 2 compatibility adapted from
+# https://github.com/cdgriffith/Box/issues/34
+try:
+    from collections.abc import Mapping
+except ImportError:
+    Mapping = dict
+
 import importlib
 import hashlib
 import os
@@ -27,6 +34,7 @@ import time
 
 import basic_dataset
 import utilities
+
 
 def print_usage():
     print('Usage: %s [options]' %(os.path.split(sys.argv[0])[-1]))
@@ -1568,7 +1576,7 @@ def check_deadline(deadline = None, stopfile = None):
             print_t('\n*** Found stop file. ***\n')
             sys.exit(0)
 
-def read_model_kwargs(opt_model_kwargs_from_file)
+def read_model_kwargs(opt_model_kwargs_from_file):
     retval = []
     kwargs = {}
     f = open(opt_model_kwargs_from_file, 'rb')
@@ -2427,13 +2435,16 @@ def train_models(
             sys.exit(0)
         else:
             # ask model module to train the model
-            if isinstance(opt_model_kwargs, collections.abc.Mapping):
+            if isinstance(opt_model_kwargs, Mapping):
                 model_kwargs = opt_model_kwargs
-            elif isinstance(opt_model_kwargs, collections.abc.Sequence):
+            # not easy to translate to Python 2, see
+            # https://stackoverflow.com/questions/51151270/the-equivalents-of-abc-sequence-in-python-2
+            #elif isinstance(opt_model_kwargs, collections.abc.Sequence):
+            else:
                 model_kwargs = opt_model_kwargs[learner_index % \
                                                 len(opt_model_kwargs)]
-            else:
-                raise ValueError('model_kwargs of type %s' %type(opt_model_kwargs))
+            #else:
+            #    raise ValueError('model_kwargs of type %s' %type(opt_model_kwargs))
             model_kwargs = model_kwargs.copy()
             model_kwargs['priority'] = min(
                 99,
