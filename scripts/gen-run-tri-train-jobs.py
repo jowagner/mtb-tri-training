@@ -111,6 +111,7 @@ aug2last_iterations = [24, 21, 17, 15, 14, 11,  9,  7,  5,  4,  3,  2,  2,  2,  
 if opt_high_priority:
     aug2last_iterations = map(lambda x: 10*x, aug2last_iterations)
 
+config_dir = os.path.join(os.environ['PRJ_DIR'], 'config')
 
 for augment_size_code in augment_size_codes:
     augsize = int(0.5+5*(2.0**0.5)**augment_size_code)
@@ -188,6 +189,9 @@ for augment_size_code in augment_size_codes:
                             ]:
                                 if parser_code in 'aftu':
                                     model_keyword_options = ''
+                                elif parser_code == 'i':
+                                    model_keyword_options = '--model-keywords-from-file ' + \
+                                        '%s/mbert-settings-for-%s.txt' %(config_dir, lcode)
                                 else:
                                     model_keyword_options = '--model-keyword lcode %s' %lcode
                                 name = '%s%s%s%s%s%s%d%X' %(
