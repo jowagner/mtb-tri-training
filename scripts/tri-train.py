@@ -1581,6 +1581,10 @@ def read_model_kwargs(opt_model_kwargs_from_file)
         if line.isspace():
             retval.append(kwargs)
             kwargs = {}
+        if '#' in line:
+            start_of_comment = line.find('#')
+            line = line[:start_of_comment]
+        line = line.replace('=', ' ')
         fields = line.split()
         if len(fields) != 2:
             raise ValueError('Wrong format in key-value line in %s: %r' %(

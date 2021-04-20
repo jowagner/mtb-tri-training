@@ -1,0 +1,18 @@
+# learner 1
+lcode           = ug
+mbert_pooling   = binomial50
+mbert_layer     = 12
+mbert_expand_to = 0
+
+# learner 2
+lcode           = ug
+mbert_pooling   = average
+mbert_layer     = -5      # average of last 5 layers
+mbert_expand_to = 0
+
+# learner 3
+lcode           = ug
+mbert_pooling   = max
+mbert_layer     = 8
+mbert_expand_to = 0
+
