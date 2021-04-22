@@ -231,7 +231,7 @@ def print_progress(sep = '\n', print_time = True):
 
 def encode_batch(batch):
     log_starting('encode_batch')
-    s_idxs, p_idxs, is_last, hdf5_keys, sequences = zip(*batch)
+    lengths, s_idxs, p_idxs, is_last, hdf5_keys, sequences = zip(*batch)
     if opt_debug:
         print('creating batch for %d sequences:' %len(batch))
         for index, sequence in enumerate(sequences):
@@ -247,13 +247,13 @@ def encode_batch(batch):
     event_counter['sequence encoded'] += len(batch)
     log_finished('tokenize')
     if opt_debug:
-        print_encoded_batch(sequences, encoded_batch, s_idxs, p_idxs, is_last)
+        print_encoded_batch(sequences, encoded_batch, s_idxs, p_idxs, is_last, lengths)
     if opt_use_gpu:
         encoded_batch.to('cuda')
     log_finished('encode_batch')
     return (s_idxs, p_idxs, is_last, hdf5_keys, encoded_batch)
 
-def print_encoded_batch(sequences, encoded_batch, s_idxs, p_idxs, is_last):
+def print_encoded_batch(sequences, encoded_batch, s_idxs, p_idxs, is_last, lengths):
     global tokenizer
     print('batch:')
     for b_index, sequence in enumerate(sequences):
@@ -261,6 +261,7 @@ def print_encoded_batch(sequences, encoded_batch, s_idxs, p_idxs, is_last):
         print('\ts_idx:', s_idxs[b_index])
         print('\tp_idx:', p_idxs[b_index])
         print('\tis_last:', is_last[b_index])
+        print('\tn_units:', lengths[b_index])
         print('\tsequence:', sequence)
         token_ids = encoded_batch['input_ids'][b_index]
         print('\tsubword units:', tokenizer.convert_ids_to_tokens(token_ids))
@@ -292,7 +293,12 @@ def get_hdf5_key(sentence):
     text = text.replace('/', '$backslash$')  # [!sic]
     return text
 
-def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buffer = None):
+def get_batches(
+    conllu_file, batch_size = None,
+    buffer_batches = 8,
+    shuffle_buffer = None,
+    in_order_of_length = True,
+):
     global tokenizer
     global opt_debug
     global opt_batch_size
@@ -331,6 +337,7 @@ def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buff
                 right_half = sentence[split_point:]
                 is_last_part = not right_half
                 s_buffer.append((
+                    n_subword_units,
                     s_index, part_index, is_last_part, hdf5_key, left_half,
                 ))
                 part_index += 1
@@ -352,9 +359,21 @@ def get_batches(conllu_file, batch_size = None, buffer_batches = 2, shuffle_buff
                     # (debugging output confirms that [UNK] is protected)
                     sentence[0] = '[UNK]'
                     split_point = len(sentence)
+        if shuffle_buffer:
+            random.shuffle(s_buffer)
+        if in_order_of_length and len(s_buffer) >= buffer_size:
+            n_batches = len(s_buffer) // batch_size
+            if n_batches:
+                n_selected = batch_size * n_batches
+                if opt_debug: print('producing %d sorted batches from %d of %d items' %(n_batches, n_selected, len(s_buffer)))
+                selected  = s_buffer[:n_selected]
+                remaining = s_buffer[n_selected:]
+                selected.sort()
+                for _ in range(n_batches):
+                    yield encode_batch(selected[:batch_size])
+                    selected = selected[batch_size:]
+                s_buffer = remaining
         while len(s_buffer) >= buffer_size:
-            if shuffle_buffer:
-                random.shuffle(s_buffer)
             yield encode_batch(s_buffer[:batch_size])
             s_buffer = s_buffer[batch_size:]
         s_index += 1
