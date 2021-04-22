@@ -134,7 +134,7 @@ if opt_high_priority:
     aug2last_iterations = map(lambda x: 10*x, aug2last_iterations)
 
 if opt_equal_priority:
-    aug2last_iterations = len(aug2last_iterations) * [0]
+    aug2last_iterations = len(aug2last_iterations) * [999999]
 
 config_dir = os.path.join(os.environ['PRJ_DIR'], 'config')
 
