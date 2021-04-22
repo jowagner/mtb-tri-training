@@ -24,6 +24,22 @@ if len(sys.argv) > 1 and sys.argv[1].startswith('--high-prio'):
 else:
     opt_high_priority = False
 
+if len(sys.argv) > 1 and sys.argv[1].startswith('--equal-prio'):
+    opt_equal_priority = True
+    del sys.argv[1]
+else:
+    opt_equal_priority = False
+
+if opt_high_priority and opt_equal_priority:
+    raise ValueError('cannot combine high and equal priority')
+
+if len(sys.argv) > 1 and sys.argv[1].startswith('--iterations'):
+    opt_iterations = int(sys.argv[2])
+    del sys.argv[2]
+    del sys.argv[1]
+else:
+    opt_iterations = 0
+
 if len(sys.argv) > 1 and sys.argv[1] == '--repeat':
     # repeat run with different main seed
     repeat_run = 1
@@ -47,6 +63,9 @@ elif len(sys.argv) > 1 and sys.argv[1].startswith('--eval'):
     skip_missing = True
     mini_option = '--max-model-training 0'
     del sys.argv[1]
+elif len(sys.argv) > 1 and sys.argv[1].startswith('--mbert-tuning'):
+    print('for mbert-tuning jobs, use gen-mbert-tuning-jobs.py')
+    sys.exit(0)
 else:
     job_dir = 'jobs'
 
@@ -108,8 +127,14 @@ aug2iterations      = [24, 22, 20, 18, 16, 14, 12, 10,  8,  6,  4,  3,  2,  1,  
 
 aug2last_iterations = [24, 21, 17, 15, 14, 11,  9,  7,  5,  4,  3,  2,  2,  2,  2,  2]    # for --round-priority
 
+if opt_iterations:
+    aug2iterations = len(aug2iterations) * [opt_iterations]
+
 if opt_high_priority:
     aug2last_iterations = map(lambda x: 10*x, aug2last_iterations)
+
+if opt_equal_priority:
+    aug2last_iterations = len(aug2last_iterations) * [0]
 
 config_dir = os.path.join(os.environ['PRJ_DIR'], 'config')
 
