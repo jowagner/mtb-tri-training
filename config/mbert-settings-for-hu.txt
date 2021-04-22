@@ -1,6 +1,6 @@
 # learner 1
 lcode           = hu
-mbert_pooling   = max
+mbert_pooling   = last
 mbert_layer     = 9
 mbert_expand_to = 0
 
@@ -8,11 +8,11 @@ mbert_expand_to = 0
 lcode           = hu
 mbert_pooling   = average
 mbert_layer     = -5      # average of last 5 layers
-mbert_expand_to = 0
+mbert_expand_to = 1024
 
 # learner 3
 lcode           = hu
-mbert_pooling   = binomial50
-mbert_layer     = -4      # average of last 4 layers
+mbert_pooling   = max
+mbert_layer     = 8
 mbert_expand_to = 0
 
