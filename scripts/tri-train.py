@@ -1592,6 +1592,7 @@ def read_model_kwargs(opt_model_kwargs_from_file):
         if line.isspace():
             retval.append(kwargs)
             kwargs = {}
+            continue
         if '#' in line:
             start_of_comment = line.find('#')
             line = line[:start_of_comment]
