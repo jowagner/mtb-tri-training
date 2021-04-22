@@ -198,6 +198,9 @@ Options:
                             behind, adjusted with this round priority factor.
                             If a fraction a/b is provided, NUMBER is set to
                             a / float(b).
+                            Set to 0 to ignore the tri-training round in task
+                            prioritisation. Usually this means to fall back to
+                            ordering tasks by submission time.
                             (Default: 1.0)
 
     --seed-size  NUMBER     How many tokens to sample (with replacement) from
