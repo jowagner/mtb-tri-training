@@ -98,9 +98,12 @@ class NpzTask(common_udpipe_future.Task):
             npz_key = 'arr_%d' %index
             npz_data[npz_key] = vectors
         # write npz file
-        numpy.savez(utilities.std_string(npz_name) + '.prep.npz', **npz_data)
-        os.rename(npz_name + b'.prep.npz', npz_name)
-        self.cache.npz_bytes_written += os.path.getsize(npz_name)
+        try:
+            numpy.savez(utilities.std_string(npz_name) + '.prep.npz', **npz_data)
+            self.cache.npz_bytes_written += os.path.getsize(npz_name + b'.prep.npz')
+            os.rename(npz_name + b'.prep.npz', npz_name)
+        except FileNotFoundError:
+            print('Cannot save data. Workdir not found for', npz_name)
         # clean up and mark as finished
         del self.cache.npz2ready_count[npz_name]
         self.sentences = None
