@@ -58,7 +58,7 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
        content.append('no model')
     #elif date >= '2021-01-04':
     #   content.append('newest')
-    elif date >= '2021-03-30':
+    elif date >= '2021-04-06':
        content.append('<span style="%s">new</span>' %tinyfont)
     elif date >= '2005-01-01':
        y,m,d = date.split('-')
@@ -136,6 +136,7 @@ p2text = {
     'f': 'udpipe-future',
     'g': '+fasttext',
     'h': '+elmo',
+    'i': 'udpf+fasttext+mBERT',
 }
 v2text = {
     '-': 'no, using copy of seed sample',
@@ -151,10 +152,11 @@ d2text = {
     '-': 'use all',
     'v': 'vanilla',
     'y': 'last 5',
-    'z': 'decaying',
+    'o': 'decaying with factor 0.71',
+    'z': 'decaying with factor 0.50',
     'a': 'use all, using all labelled data',
     'u': 'vanilla, using all labelled data',
-    'r': 'decaying, using all labelled data',
+    'r': 'decaying with factor 0.50, using all labelled data',
 }
 
 #    ( 99.0, 'background light violet-blue: in top 2.5% of baselines'),
@@ -240,13 +242,13 @@ def print_n_round_for_language_and_parser(target_language, target_parser):
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-twx':
-                for p_decay in '-aruvyz':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, self.target_parser, p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-twx':
-                for p_decay in '-aruvyz':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         setting_key = (self.target_language, '1', '-', p_augsize, self.target_parser, p_sample, p_decay, p_oversampling)
                         n_rounds = setting2rounds[setting_key]
@@ -265,19 +267,19 @@ def print_n_round_for_language_by_parser(target_language):
             print('<tr><th colspan="%d">' %left_columns)
             row = []
             row.append('')
-            for p_parser in 'fgh':
+            for p_parser in 'fghi':
                 row.append(p2text[p_parser])
             print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
-            for p_parser in 'fgh':
-                for p_decay in '-aruvyz':
+            for p_parser in 'fghi':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, p_parser, p_oversampling, '*', p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
-            for p_parser in 'fgh':
-                for p_decay in '-aruvyz':
+            for p_parser in 'fghi':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_sample in '-twx':
@@ -306,16 +308,16 @@ def print_n_round_for_language_by_sample(target_language):
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-twx':
-                for p_decay in '-aruvyz':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %(self.target_language, '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-twx':
-                for p_decay in '-aruvyz':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         values = []
-                        for p_parser in 'fgh':
+                        for p_parser in 'fghi':
                             setting_key = (self.target_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                             n_rounds = setting2rounds[setting_key]
                             values.append(n_rounds)
@@ -333,19 +335,19 @@ def print_n_round_overall_by_parser():
             print('<tr><th colspan="%d">' %left_columns)
             row = []
             row.append('')
-            for p_parser in 'fgh':
+            for p_parser in 'fghi':
                 row.append(p2text[p_parser])
             print('</th><th colspan="8">'.join(row))
             print('</th></tr>')
         def get_secondary_header(self, row):
-            for p_parser in 'fgh':
-                for p_decay in '-aruvyz':
+            for p_parser in 'fghi':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %('*', p_parser, p_oversampling, '*', p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
-            for p_parser in 'fgh':
-                for p_decay in '-aruvyz':
+            for p_parser in 'fghi':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         values = []
                         for p_sample in '-twx':
@@ -371,16 +373,16 @@ def print_n_round_overall_by_sample():
             print('</th></tr>')
         def get_secondary_header(self, row):
             for p_sample in '-twx':
-                for p_decay in '-aruvyz':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         p_code = '%s%s%s%s-%s' %('*', '*', p_oversampling, p_sample, p_decay)
                         row.append(p_code)
         def get_row(self, row, p_augsize):
             for p_sample in '-twx':
-                for p_decay in '-aruvyz':
+                for p_decay in '-aoruvyz':
                     for p_oversampling in '-o':
                         values = []
-                        for p_parser in 'fgh':
+                        for p_parser in 'fghi':
                             for p_language in 'ehuv':
                                 setting_key = (p_language, '1', '-', p_augsize, p_parser, p_sample, p_decay, p_oversampling)
                                 n_rounds = setting2rounds[setting_key]
