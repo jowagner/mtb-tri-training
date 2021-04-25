@@ -376,7 +376,8 @@ class ElmoCache:
         # get subset of keys that need syncing
         filtered_keys = []
         for _, key, n_parts in keys:
-            if entry.vectors \
+            entry = self.key2entry[key]
+            if entry.vectors is not None \
             and (not entry.access_time_synced or not entry.vectors_on_disk):
                 filtered_keys.append((key, n_parts))
         last_verbose = start_time
