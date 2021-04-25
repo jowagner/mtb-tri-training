@@ -356,25 +356,37 @@ class ElmoCache:
             return
         self.last_sync = now
         keys = self.prune_cache_to_max_load_factor(now)
-        self.p_sync_to_disk_files(keys)
+        self.p_sync_to_disk_files(
+            keys,
+            time_limit = 30.0 if not force else None,
+        )
 
-    def p_sync_to_disk_files(self, keys):
+    def p_sync_to_disk_files(self, keys, time_limit = None):
         print('Syncing elmo+mbert cache to disk...')
         sys.stdout.flush()
         start_time = time.time()
         data_file = open(self.data_filename, 'r+b')
         atime_file = open(self.atime_filename, 'r+b')
         vectors_per_record = self.vectors_per_record
-        n_entries_total = 0
+        n_entries_total = len(keys)
         n_entries_vectors = 0
         n_entries_atime = 0
         n_records_vectors = 0
         n_records_atime = 0
-        last_verbose = start_time
-        n_keys = len(keys)
-        key_index = 0
+        # get subset of keys that need syncing
+        filtered_keys = []
         for _, key, n_parts in keys:
+            if entry.vectors \
+            and (not entry.access_time_synced or not entry.vectors_on_disk):
+                filtered_keys.append((key, n_parts))
+        last_verbose = start_time
+        n_keys = len(filtered_keys)
+        key_index = 0
+        for key, n_parts in filtered_keys:
             now = time.time()
+            if time_limit and now > start_time + time_limit:
+                print('\taborting sync as time limit has been reached')
+                break
             if now > last_verbose + self.verbosity_interval:
                 print('\t%.1f%% of entries processed (%d of %d)' %(
                     100.0*key_index/n_keys, key_index, n_keys
@@ -383,7 +395,6 @@ class ElmoCache:
                 last_verbose = now
             key_index += 1
             entry = self.key2entry[key]
-            n_entries_total += 1
             if entry.access_time_synced and entry.vectors_on_disk \
             or entry.vectors is None:
                 # nothing to do for this entry
