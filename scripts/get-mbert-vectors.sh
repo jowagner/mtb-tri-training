@@ -79,6 +79,16 @@ if ! python scripts/mbert-encode.py \
     ${TMP_OUTFILE}
 then
     echo "An error occured"
+    echo "Repeating the run with --debug to produce detailed log"
+    python scripts/mbert-encode.py \
+        --debug                         \
+        ${MBERT_OPTIONS}                \
+        --input-format conll            \
+        --output-layer ${LAYER}         \
+        --expand-to ${EXPAND_TO}        \
+        --pooling ${POOLING}            \
+        ${INFILE}                       \
+        ${TMP_OUTFILE}
     exit 1
 fi
 
