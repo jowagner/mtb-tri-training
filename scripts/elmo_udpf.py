@@ -752,7 +752,7 @@ class ElmoCache:
         self.scan_interval = 20.0
         self.last_sync = 0.0
         self.sync_interval = 900.0
-        self.verbosity_interval = 5 # 60.0
+        self.verbosity_interval = 60.0
         if 'NPZ_CACHE_MAX_WRITE' in os.environ:
             self.npz_write_limit = utilities.float_with_suffix(
                 os.environ['NPZ_CACHE_MAX_WRITE']
