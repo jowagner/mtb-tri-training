@@ -375,31 +375,41 @@ class ElmoCache:
         n_records_atime = 0
         # get subset of keys that need syncing
         filtered_keys = []
+        total_dirty_records = 0
         for _, key, n_parts in keys:
             entry = self.key2entry[key]
             if entry.vectors is not None \
             and (not entry.access_time_synced or not entry.vectors_on_disk):
                 filtered_keys.append((key, n_parts))
-        last_verbose = start_time
-        n_keys = len(filtered_keys)
-        key_index = 0
+                total_dirty_records += n_parts
+        if time_limit:
+            now = time.time()
+            percentage = 100.0 * (now - start_time) / time_limit
+            if percentage > 50.0:
+                print('\t%.0f%% of the available time spent on finding dirty entries' %percentage)
+            extra_time = 0.1 * time_limit
+            if now + extra_time > start_time + time_limit:
+                # less than 5 seconds to time limit
+                print('\tadding %.1f seconds to make some sync progress' %extra_time)
+                time_limit = extra_time + now - start_time
+        progress_info = ElmoCache.ProgressInfo(
+            total_dirty_records, self.record_size,
+            '\t%(percentage).1f%% of records synced, %(speed)s, %(eta)s',
+            verbosity_interval = self.verbosity_interval,
+        )
+        n_records_synced = 0
         for key, n_parts in filtered_keys:
             now = time.time()
             if time_limit and now > start_time + time_limit:
                 print('\taborting sync as time limit has been reached')
                 break
-            if now > last_verbose + self.verbosity_interval:
-                print('\t%.1f%% of entries processed (%d of %d)' %(
-                    100.0*key_index/n_keys, key_index, n_keys
-                ))
-                sys.stdout.flush()
-                last_verbose = now
-            key_index += 1
+            progress_info.update(
+                n_records_synced, is_after = False,
+            )
             entry = self.key2entry[key]
             if entry.access_time_synced and entry.vectors_on_disk \
             or entry.vectors is None:
-                # nothing to do for this entry
-                continue
+                raise ValueError('wrongly filtered entry')
             if not entry.records:
                 # find out where the parts are or will be stored
                 for part_index in range(n_parts):
@@ -426,6 +436,7 @@ class ElmoCache:
                 n_entries_atime += 1
                 n_records_atime += n_parts
                 entry.access_time_synced = True
+            n_records_synced += n_parts
         data_file.close()
         atime_file.close()
         duration = time.time() - start_time
@@ -434,7 +445,7 @@ class ElmoCache:
             nan = math.nan
         except AttributeError:
             nan = float('nan')
-        print('\t# entries, i.e. sentences, that needed vectors written: %d (of %d, %.2f%%)' %(
+        print('\t# entries, i.e. sentences, that had vectors written: %d (of %d, %.2f%%)' %(
             n_entries_vectors, n_entries_total,
             100.0*n_entries_vectors/n_entries_total if n_entries_total else nan
         ))
@@ -442,7 +453,7 @@ class ElmoCache:
             n_records_vectors, self.n_records,
             100.0*n_records_vectors/self.n_records if self.n_records else nan
         ))
-        print('\t# entries, i.e. sentences, that needed access time updated: %d (of %d, %.2f%%)' %(
+        print('\t# entries, i.e. sentences, that had access time updated: %d (of %d, %.2f%%)' %(
             n_entries_atime, n_entries_total,
             100.0*n_entries_atime/n_entries_total if n_entries_total else nan
         ))
@@ -481,11 +492,15 @@ class ElmoCache:
 
     def print_used_record_size_stats(self, embcode, total_bytes, n_used_records, max_used_size):
         # embcode    GiB    records    average    max_size
-        print('\t%s\t%7.2f\t%7d\t%6.2f%%\t%6.2f%%' %(
+        if n_used_records > 0:
+            average_size = 100.0 * total_bytes / float(n_used_records * self.record_size),
+        else:
+            average_size = -1.0
+        print('\t%20s\t%7.2f\t%7d\t%6.2f%%\t%6.2f%%' %(
             utilities.std_string(embcode),
             total_bytes / 1024.0**3,
             n_used_records,
-            100.0 * total_bytes / float(n_used_records * self.record_size),
+            average_size,
             100.0 * max_used_size / float(self.record_size)
         ))
 
@@ -512,18 +527,22 @@ class ElmoCache:
         data_file = open(self.data_filename, 'rb')
         atime_file = open(self.atime_filename, 'rb')
         n_discarded_records = 0
-        last_verbose = time.time()
-        last_bytes = 0
         bytes_so_far = 0
         used_size_stats = defaultdict(lambda: 0)
         embcodes_seen = set()
+        # TODO: we want to report the I/O speed but limiting `bytes_so_far`
+        #       to the actually read data means that we overestimate the
+        #       arrival time as `remaining_bytes` does not account for
+        #       that records are not read in full
+        progress_info = ElmoCache.ProgressInfo(
+            self.n_records, self.record_size,
+            '\t%(percentage).1f%% of disk cache records read, %(speed)s, %(eta)s',
+            verbosity_interval = self.verbosity_interval,
+        )
         for r_index in range(self.n_records):
             # TODO: move sections of code into functions to make this loop more readable
-            last_verbose, last_bytes = self.p_progress(
-                last_verbose, last_bytes, r_index, self.record_size,
-                'of elmo disk cache records read',
-                is_after = False,
-                bytes_so_far = bytes_so_far,
+            progress_info.update(
+                r_index, is_after = False, bytes_so_far = bytes_so_far
             )
             data_file.seek(r_index * self.record_size)
             line = data_file.readline(self.record_size)
@@ -676,8 +695,11 @@ class ElmoCache:
                 entry.access_times = None
         data_file.close()
         atime_file.close()
+        progress_info.update(
+            self.n_records, is_after = False, bytes_so_far = bytes_so_far
+        )
         # print record size stats
-        print('\tembcode\t  GiB\trecords\taverage\tmaximum size')
+        print('\t             embcode\t  GiB\trecords\taverage\tmaximum size')
         for embcode in sorted(list(embcodes_seen)):
             self.print_used_record_size_stats(
                 embcode,
@@ -786,28 +808,73 @@ class ElmoCache:
             self.create_new_disk_files()
             self.sync_to_disk_files()
 
-    def p_progress(self,
-        last_verbose, last_bytes, r_index, record_size,
-        what, is_after = True,
-        bytes_so_far = None
-    ):
-        if is_after:
-            r_index += 1
-        now = time.time()
-        if now > last_verbose + self.verbosity_interval:
-            if bytes_so_far is None:
-                now_bytes = r_index * record_size
+    class ProgressInfo:
+
+        def __init__(
+            self, n_records, record_size, template,
+            verbosity_interval = 1.0,
+            speed_interval_factor = 5,
+            speed_interval = None,
+        ):
+            self.n_records = n_records
+            self.record_size = record_size
+            self.template = template
+            self.verbosity_interval = verbosity_interval
+            if speed_interval:
+                self.speed_interval = speed_interval
             else:
-                now_bytes = bytes_so_far
-            speed = (now_bytes-last_bytes) / (now-last_verbose)
-            print('\t%.1f%% %s, %.1f MiB/s' %(
-                100.0 * r_index / self.n_records,
-                what,
-                speed / 1024.0**2
-            ))
-            sys.stdout.flush()
-            return (now, now_bytes)
-        return (last_verbose, last_bytes)
+                self.speed_interval = speed_interval_factor * verbosity_interval
+            self.last_verbose = None
+            self.recent_updates = []
+            self.start = time.time()
+            self.recent_updates.append((self.start, 0))
+
+        def update(self, r_index, is_after = False, bytes_so_far = None):
+            if is_after:
+                r_index += 1
+            now = time.time()
+            if not self.last_verbose \
+            or now > self.last_verbose + self.verbosity_interval \
+            or r_index == self.n_records:
+                if bytes_so_far is None:
+                    bytes_so_far = r_index * self.record_size
+                if r_index < self.n_records:
+                    while len(self.recent_updates) >= 2 \
+                    and self.recent_updates[0][0] < now - self.speed_interval:
+                        del self.recent_updates[0]
+                    while self.recent_updates \
+                    and self.recent_updates[-1][1] == bytes_so_far:
+                        del self.recent_updates[-1]
+                    self.recent_updates.append((now, bytes_so_far))
+                    last_update, last_bytes = self.recent_updates[0]
+                    duration = now - last_update
+                else:
+                    duration = now - self.start
+                    last_bytes = 0
+                remaining_bytes = self.n_records * self.record_size - bytes_so_far
+                if duration < 0.01:
+                    speed = '??.? MiB/s'
+                    eta = 'no ETA'
+                    bytes_per_second = -1.0
+                    remaining_seconds = -1.0
+                    eta_systime = -1.0
+                else:
+                    bytes_per_second = (bytes_so_far-last_bytes) / duration
+                    speed = '%.1f MiB/s' %(bytes_per_second / 1024.0**2)
+                    if r_index < self.n_records:
+                        remaining_seconds = remaining_bytes / bytes_per_second
+                        eta_systime = now + remaining_seconds
+                        eta = 'ETA ' + time.ctime(eta_systime)
+                    else:
+                        remaining_seconds = 0
+                        eta_systime = now
+                        eta = 'finished ' + time.ctime(now)
+                n_samples = len(self.recent_updates)
+                n_records = self.n_records
+                percentage = 100.0 * r_index / n_records
+                print(self.template %locals())
+                sys.stdout.flush()
+                self.last_verbose = now
 
     def create_new_disk_files(self):
         ''' write cache disk files pre-allocating space
@@ -819,29 +886,32 @@ class ElmoCache:
         sys.stdout.flush()
         self.record_states = array.array('B', self.n_records * [ord('i')])
         self.idx2key_and_part = self.n_records * [None]
+        # (1) config file
         config = open(self.config_filename, 'wb')
         config.write(b'record_size %d\n' %self.record_size)
         config.write(b'vectors_per_record %d\n' %self.vectors_per_record)
         config.close()
+        # (2) data records
         data_file = open(self.data_filename, 'wb')
-        last_verbose = time.time()
-        last_bytes = 0
+        progress_info = ElmoCache.ProgressInfo(
+            self.n_records, self.record_size,
+            '\t%(percentage).1f%% of disk cache data records allocated, %(speed)s, %(eta)s',
+            verbosity_interval = self.verbosity_interval,
+        )
         for r_index in range(self.n_records):
             data_file.write(self.get_data_record(r_index))
-            last_verbose, last_bytes = self.p_progress(
-                last_verbose, last_bytes, r_index, self.record_size,
-                'of elmo disk cache data records allocated',
-            )
+            progress_info.update(r_index, is_after = True)
         data_file.close()
+        # (3) access records
         atime_file = open(self.atime_filename, 'wb')
-        last_verbose = time.time()
-        last_bytes = 0
+        progress_info = ElmoCache.ProgressInfo(
+            self.n_records, self.record_size,
+            '\t%(percentage).1f%% of disk cache access records allocated, %(speed)s, %(eta)s',
+            verbosity_interval = self.verbosity_interval,
+        )
         for r_index in range(self.n_records):
             atime_file.write(self.get_atime_record(0, r_index))
-            last_verbose, last_bytes = self.p_progress(
-                last_verbose, last_bytes, r_index, self.atime_size,
-                'of elmo disk cache access records allocated',
-            )
+            progress_info.update(r_index, is_after = True)
         atime_file.close()
         print('\tdone')
         sys.stdout.flush()

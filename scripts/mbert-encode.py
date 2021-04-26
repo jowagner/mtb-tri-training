@@ -145,8 +145,6 @@ if True:
             opt_use_gpu = True
         elif option == '--debug':
             opt_debug = True
-            opt_max_sequence_length = 10
-            opt_batch_size = 4
         elif option == '--shuffle':
             opt_shuffle = True
         elif option == '--verbose':
@@ -653,7 +651,11 @@ with torch.no_grad():
             log_finished('pooling vectors')
             if opt_debug: print('shape of concatenation:', vectors.shape)
             if opt_debug: print('hdf5_key:', repr(hdf5_key))
-            assert len(parts) == hdf5_key.count('\t') + 1
+            if len(parts) != hdf5_key.count('\t') + 1:
+                print('Error: %d parts but %d tabs in hdf5 key %r of sentence %d' %(
+                    len(parts), hdf5_key.count('\t'), hdf5_key, s_index + 1
+                ))
+                sys.exit(1)
             if opt_use_gpu:
                 # copy the tensor to host memory
                 log_starting('GPU copy')
