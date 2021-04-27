@@ -100,6 +100,8 @@ Options:
                             summary at the end)
 
     --quiet                 Do not print the summary at the end
+                            (The Transformer library may still print
+                            warnings, e.g. about the sequence length.)
 
     --help                  show this message
 
@@ -388,8 +390,15 @@ def get_batches(
                 selected  = s_buffer[:n_selected]
                 remaining = s_buffer[n_selected:]
                 selected.sort()
-                for _ in range(n_batches):
-                    yield encode_batch(selected[:batch_size])
+                for batch_index in range(n_batches):
+                    next_batch = selected[:batch_size]
+                    if opt_debug:
+                         print('batch %d of %d: length %d - %d (inclusive)' %(
+                             batch_index + 1, n_batches,
+                             next_batch[0][0],   # length of shortest sequence in batch
+                             next_batch[-1][0],  # length of longest sequence in batch
+                         ))
+                    yield encode_batch(next_batch)
                     selected = selected[batch_size:]
                 s_buffer = remaining
         while len(s_buffer) >= buffer_size:
