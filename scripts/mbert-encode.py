@@ -354,6 +354,8 @@ def get_batches(
                 part_index += 1
                 sentence = right_half
                 split_point = len(sentence)
+                if split_point:
+                    event_counter['new boundary'] += 1
                 #if opt_debug and sentence:
                 #    print('remaining:', sentence)
             else:
@@ -370,6 +372,9 @@ def get_batches(
                     # (debugging output confirms that [UNK] is protected)
                     sentence[0] = '[UNK]'
                     split_point = len(sentence)
+                    event_counter['token too long'] += 1
+        if opt_debug: print('%d part(s) created for sentence %d' %(part_index, s_index+1))
+        event_counter['sentence split into %d sequences(s)' %part_index] += 1
         if shuffle_buffer:
             random.shuffle(s_buffer)
         if in_order_of_length and len(s_buffer) >= buffer_size:
@@ -388,7 +393,6 @@ def get_batches(
             yield encode_batch(s_buffer[:batch_size])
             s_buffer = s_buffer[batch_size:]
         s_index += 1
-        if opt_debug: print('%d part(s) created for sentence %d' %(part_index, s_index))
     if opt_debug: print('finished reading sentences')
     while s_buffer:
         if opt_debug: print('still %d parts in buffer' %len(s_buffer))
@@ -569,10 +573,11 @@ def average_and_expand(all_layers, n_layers = 4, expand_to = 0):
     log_finished('average_and_expand')
     return retval
 
-if opt_output_layer > -2:
-    print('Layer:', opt_output_layer)
-else:
-    print('Layer: average of last', -opt_output_layer)
+if opt_debug:
+    if opt_output_layer > -2:
+        print('Layer:', opt_output_layer)
+    else:
+        print('Layer: average of last', -opt_output_layer)
 
 data = []
 s2n_parts = {}
