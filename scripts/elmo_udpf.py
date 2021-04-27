@@ -493,7 +493,7 @@ class ElmoCache:
     def print_used_record_size_stats(self, embcode, total_bytes, n_used_records, max_used_size):
         # embcode    GiB    records    average    max_size
         if n_used_records > 0:
-            average_size = 100.0 * total_bytes / float(n_used_records * self.record_size),
+            average_size = 100.0 * total_bytes / float(n_used_records * self.record_size)
         else:
             average_size = -1.0
         print('\t%20s\t%7.2f\t%7d\t%6.2f%%\t%6.2f%%' %(
