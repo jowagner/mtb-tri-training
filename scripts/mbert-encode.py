@@ -21,7 +21,6 @@ import os
 import random
 import sys
 import torch
-from   torch.distributions.binomial import Binomial
 from   transformers import BertTokenizerFast, BertModel
 
 import conllu_dataset
@@ -95,11 +94,12 @@ Options:
 
     --progress              Show progress information every second
 
-    --verbose               print basic info
-                            (Default: only show warnings)
+    --verbose               print basic info and information messages
+                            from PyTorch and Transformers
+                            (Default: only show warnings and print a
+                            summary at the end)
 
-    --quiet                 Do not even print the duration summary at the
-                            end
+    --quiet                 Do not print the summary at the end
 
     --help                  show this message
 
@@ -184,7 +184,7 @@ else:
 
 fout = h5py.File(sys.argv[2], 'w')
 
-if opt_verbose:
+if opt_verbose or opt_debug:
     logging.basicConfig(level=logging.INFO)
 
 if opt_debug:
