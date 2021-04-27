@@ -354,12 +354,21 @@ class ElmoCache:
         now = time.time()
         if now < self.last_sync + self.sync_interval and not force:
             return
-        self.last_sync = now
         keys = self.prune_cache_to_max_load_factor(now)
-        self.p_sync_to_disk_files(
+        is_complete = self.p_sync_to_disk_files(
             keys,
             time_limit = 30.0 if not force else None,
         )
+        now = time.time()
+        if is_complete:
+            self.last_sync = now
+        else:
+            # incomplete sync --> make it so that we only spend a
+            # few seconds on other tasks and then continue syncing
+            self.last_sync = max(  # ensure value is in range
+                self.last_sync,    # [old_last_sync, now]
+                min(now, now + 10.0 - self.sync_interval)
+            )
 
     def p_sync_to_disk_files(self, keys, time_limit = None):
         print('Syncing elmo+mbert cache to disk...')
@@ -462,6 +471,7 @@ class ElmoCache:
             100.0*n_records_atime/self.n_records if self.n_records else nan
         ))
         self.print_cache_stats()
+        return total_dirty_records == n_records_synced  # is sync complete?
 
     def print_cache_stats(self):
         print('\t# npz names:', len(self.npz2ready_count))
