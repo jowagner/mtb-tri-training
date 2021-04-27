@@ -34,10 +34,10 @@ opt_quiet   = False
 opt_use_gpu = False
 opt_max_sequence_length = 512
 opt_input_format = 'auto-detect'
-opt_output_layer = -1
+opt_output_layer = 9
 opt_expand_to    = 0
 opt_batch_size = 96
-opt_pooling = 'first'   # one of first, last, max and average
+opt_pooling = 'average'
 opt_shuffle = False
 opt_help    = False
 
@@ -56,7 +56,7 @@ Options:
                              0 = BERT's embedding layer (context-free)
                              1 = first layer
                             12 = 12th layer, should be identical to -1
-                            (default: -1)
+                            (default: 9)
 
     --expand-to  NUMBER     When averaging over k layers, expand the
                             output dimension to NUMBER, inserting into
@@ -75,7 +75,7 @@ Options:
                             distribution with p = 0.1234 as weights.
                             Tokens are pooled after the layers have been
                             merged if more than one layer is selected.
-                            (default: first)
+                            (default: average)
 
     --batch-size  NUMBER    How many sequences to feed into mBERT in one
                             go
