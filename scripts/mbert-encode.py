@@ -103,6 +103,9 @@ Options:
 
     --help                  show this message
 
+The sequential order of sentences in the hdf5 dictionary may not match the
+input order. The respective dictionary key should be used to retrieve the
+vectors.
 """)
 
 specials_and_replacements = [
