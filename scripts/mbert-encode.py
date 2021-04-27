@@ -269,18 +269,31 @@ def protect_special(sentence):
     global specials_and_replacements
     global opt_debug
     text = ' '.join(sentence)
-    replacement_required = False
+    replacement_may_be_required = False
     for special, _ in specials_and_replacements:
         if special in text:
-            replacement_required = True
+            replacement_may_be_required = True
             break
-    if not replacement_required:
+    for code_point in range(0xFFF0, 0xFFFF + 1):
+        if chr(code_point) in text:
+            replacement_may_be_required = True
+            break
+    if not replacement_may_be_required:
         return sentence
     if opt_debug: print('protecting special token(s)')
     new_sentence = []
     for token in sentence:
         for special, replacement in specials_and_replacements:
             token = token.replace(special, replacement)
+        # BERT ignors Unicode replacement characters but we must
+        # have at least one subword unit for each token
+        contains_valid_char = False
+        for c in token:
+            if ord(c) < 0xFFF0 or ord(c) > 0xFFFF:
+                contains_valid_char = True
+                break
+        if not contains_valid_char:
+            token = '[UNK]'
         new_sentence.append(token)
     return new_sentence
 
