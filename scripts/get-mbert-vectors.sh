@@ -88,7 +88,7 @@ then
         --expand-to ${EXPAND_TO}        \
         --pooling ${POOLING}            \
         ${INFILE}                       \
-        ${TMP_OUTFILE}
+        ${TMP_OUTFILE} | tee ${TMP_OUTFILE}-log.txt
     exit 1
 fi
 
