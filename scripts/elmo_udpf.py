@@ -412,9 +412,7 @@ class ElmoCache:
             if time_limit and now > start_time + time_limit:
                 print('\taborting sync as time limit has been reached')
                 break
-            progress_info.update(
-                n_records_synced, is_after = False,
-            )
+            progress_info.update(n_records_synced)
             entry = self.key2entry[key]
             if entry.access_time_synced and entry.vectors_on_disk \
             or entry.vectors is None:
@@ -448,6 +446,7 @@ class ElmoCache:
             n_records_synced += n_parts
         data_file.close()
         atime_file.close()
+        progress_info.update(n_records_synced, force_output = True)
         duration = time.time() - start_time
         print('\t# duration: %.1f seconds' %duration)
         try:
@@ -839,11 +838,12 @@ class ElmoCache:
             self.start = time.time()
             self.recent_updates.append((self.start, 0))
 
-        def update(self, r_index, is_after = False, bytes_so_far = None):
+        def update(self, r_index, is_after = False, bytes_so_far = None, force_output = False):
             if is_after:
                 r_index += 1
             now = time.time()
             if not self.last_verbose \
+            or force_output \
             or now > self.last_verbose + self.verbosity_interval \
             or r_index == self.n_records:
                 if bytes_so_far is None:
