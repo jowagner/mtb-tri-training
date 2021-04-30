@@ -871,17 +871,28 @@ class ElmoCache:
                 else:
                     bytes_per_second = (bytes_so_far-last_bytes) / duration
                     speed = '%.1f MiB/s' %(bytes_per_second / 1024.0**2)
-                    if r_index < self.n_records:
+                    if r_index < self.n_records and bytes_per_second > 0.0:
                         remaining_seconds = remaining_bytes / bytes_per_second
                         eta_systime = now + remaining_seconds
                         eta = 'ETA ' + time.ctime(eta_systime)
+                    elif r_index < self.n_records:
+                        remaining_seconds = -1.0
+                        eta_systime = -1.0
+                        eta = 'no ETA'
                     else:
                         remaining_seconds = 0
                         eta_systime = now
                         eta = 'finished ' + time.ctime(now)
                 n_samples = len(self.recent_updates)
                 n_records = self.n_records
-                percentage = 100.0 * r_index / n_records
+                if n_records:
+                    percentage = 100.0 * r_index / n_records
+                else:
+                    if r_index != 0:
+                        print('Error: record index %d for a total of %d records' %(
+                            r_index, n_records
+                        ))
+                    percentage = 100.0
                 print(self.template %locals())
                 sys.stdout.flush()
                 self.last_verbose = now
