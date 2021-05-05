@@ -21,19 +21,25 @@ import sys
 import time
 from collections import defaultdict
 
+def get_resource(jobs, job_name):
+    for prefix, resource, _, _, _ in jobs:
+        if job_name.startswith(prefix):
+            return resource
+    # master and cache jobs
+    return None
 
 def main():
     opt_jobs = [
-        # job_name_prefix, script_name, max_waiting, max_running
-        ('udpfr', 'worker-udpf-grove-rtx.job',      0,  2),
-        ('udpft', 'worker-udpf-grove-tesla.job',    0,  2),
-        ('udpfv', 'worker-udpf-grove-titanv.job',   0,  1),
-        ('udpfq', 'worker-udpf-grove-quadro.job',   0,  2),
-        ('e5wo-', 'worker-elmo-hdf5-grove-cpu.job', 0,  4),
-        ('m5wo-', 'worker-mbert-hdf5-grove-cpu.job',    0,  4),
-        ('m5wq-', 'worker-mbert-hdf5-grove-quadro.job', 0,  1),
-        ('m5wr-', 'worker-mbert-hdf5-grove-rtx.job',    0,  1),
-        ('m5wv-', 'worker-mbert-hdf5-grove-titanv.job', 0,  1),
+        # job_name_prefix, resource, script_name, max_waiting, max_running
+        ('udpfr', 'rtx',    'worker-udpf-grove-rtx.job',          0,  2),
+        ('udpft', 'tesla',  'worker-udpf-grove-tesla.job',        0,  2),
+        ('udpfv', 'titanv', 'worker-udpf-grove-titanv.job',       0,  1),
+        ('udpfq', 'quadro', 'worker-udpf-grove-quadro.job',       0,  2),
+        ('e5wo-', 'no-gpu', 'worker-elmo-hdf5-grove-cpu.job',     0,  4),
+        ('m5wo-', 'no-gpu', 'worker-mbert-hdf5-grove-cpu.job',    0,  4),
+        ('m5wq-', 'quadro', 'worker-mbert-hdf5-grove-quadro.job', 0,  1),
+        ('m5wr-', 'rtx',    'worker-mbert-hdf5-grove-rtx.job',    0,  1),
+        ('m5wv-', 'titanv', 'worker-mbert-hdf5-grove-titanv.job', 0,  1),
     ]
     opt_max_submit_per_occasion = 1
     opt_script_dir = '/'.join((os.environ['PRJ_DIR'], 'scripts'))
@@ -79,6 +85,8 @@ def main():
             job_name = fields[2][:-3]  # remove suffix with estimated duration
             job_state = fields[4]
             queue[(job_name, job_state)] += 1
+            resource = get_resource(opt_jobs, job_name)
+            queue[(resource, job_state)] += 1
         print('My jobs at', time.ctime(now))
         for key in sorted(list(queue.keys())):
             print('\t%r with frequency %d' %(key, queue[key]))
@@ -93,24 +101,33 @@ def main():
         # check what to submit
         std_jobs = []
         prio_jobs = []
+        secondary_prio_jobs = []
         for job_item in opt_jobs:
             job_name = job_item[0]
             if job_name.startswith('e5w') and has_tasks['elmo-hdf5'] \
             or job_name.startswith('m5w') and has_tasks['mbert-hdf5']:
-                prio_jobs.append(job_item)
+                resource = job_item[1]
+                if resource == 'no-gpu':
+                    # slow mbert or elmo job --> not preferred
+                    secondary_prio_jobs.append(job_item)
+                else:
+                    prio_jobs.append(job_item)
                 print('Prioritising', job_name)
             else:
                 std_jobs.append(job_item)
         random.shuffle(prio_jobs)
+        random.shuffle(secondary_prio_jobs)
         random.shuffle(std_jobs)
-        opt_jobs = prio_jobs + std_jobs
+        opt_jobs = prio_jobs + secondary_prio_jobs + std_jobs
         n_submitted = 0
-        for job_name, script_name, max_waiting, max_running in opt_jobs:
+        for job_name, resource, script_name, max_waiting, max_running in opt_jobs:
             if job_name.startswith('e5w') and not has_tasks['elmo-hdf5']:
                 continue
             if job_name.startswith('m5w') and not has_tasks['mbert-hdf5']:
                 continue
             if job_name.startswith('udpf') and not has_tasks['udpf']:
+                continue
+            if queue[(resource, 'PD')] > max_waiting:
                 continue
             if queue[(job_name, 'PD')] > max_waiting:
                 continue
