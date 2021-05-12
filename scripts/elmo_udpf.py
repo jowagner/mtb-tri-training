@@ -348,6 +348,8 @@ class ElmoCache:
         self.sync_to_disk_files()
 
     def on_worker_exit(self):
+        if self.memory_only:
+            return
         self.sync_to_disk_files(force = True)
 
     def sync_to_disk_files(self, force = False):
@@ -355,6 +357,8 @@ class ElmoCache:
         if now < self.last_sync + self.sync_interval and not force:
             return
         keys = self.prune_cache_to_max_load_factor(now)
+        if self.memory_only:
+            return
         is_complete = self.p_sync_to_disk_files(
             keys,
             time_limit = 30.0 if not force else None,
@@ -745,16 +749,18 @@ class ElmoCache:
         print('\t# incomplete entries discarded:', len(incomplete))
         sys.stdout.flush()
 
-    def __init__(self):
+    def __init__(self, memory_only = False):
         assert sys.version_info[0] == 3  # code for this class is in python 3
+        self.memory_only = memory_only
         self.npz2ready_count = {}
         self.key2entry = {}
         self.hdf5_tasks = []
         self.hdf5_workdir_usage = {}
-        cache_dir = os.environ['NPZ_CACHE_DIR']
-        self.atime_filename = cache_dir + '/access'
-        self.data_filename  = cache_dir + '/data'
-        self.config_filename  = cache_dir + '/config'
+        if not memory_only:
+            cache_dir = os.environ['NPZ_CACHE_DIR']
+            self.atime_filename = cache_dir + '/access'
+            self.data_filename  = cache_dir + '/data'
+            self.config_filename  = cache_dir + '/config'
         self.atime_size = 48
         self.max_load_factor = 0.95
         self.last_scan = 0.0
@@ -778,7 +784,8 @@ class ElmoCache:
         self.cache_miss = 0
         self.cache_hit  = 0
         # try loading existing cache
-        if os.path.exists(self.atime_filename) \
+        if not memory_only \
+        and os.path.exists(self.atime_filename) \
         and os.path.exists(self.data_filename) \
         and os.path.exists(self.config_filename):
             self.load_from_disk()
@@ -806,7 +813,7 @@ class ElmoCache:
         if n_records != self.n_records:
             self.n_records = n_records
             rewrite_files = True
-        if rewrite_files:
+        if rewrite_files and not memory_only:
             # update disk files
             # (growing or shrinking the cache as needed, keeping
             # as many records as possible)
@@ -1461,7 +1468,13 @@ QUEUENAME:
     if len(sys.argv) > 1 and sys.argv[-1].endswith('npz'):
         queue_name = 'npz'
         del sys.argv[-1]
-        cache = ElmoCache()
+        try:
+            opt_index = sys.argv.index('--memory-only')
+            del sys.argv[opt_index]
+            memory_only = True
+        except ValueError:
+            memory_only = False
+        cache = ElmoCache(memory_only=memory_only)
         common_udpipe_future.main(
             queue_name = queue_name,
             task_processor = NpzTask,
