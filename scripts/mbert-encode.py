@@ -196,8 +196,45 @@ if opt_debug:
     print(time.ctime(time.time()))
     print('Loading model...')
 
-tokenizer = BertTokenizerFast.from_pretrained('bert-base-multilingual-cased')
-model     = BertModel.from_pretrained('bert-base-multilingual-cased')
+attempts_remaning = 8
+sleep_for =  15.0
+tokenizer = None
+while tokenizer is None and attempts_remaning:
+    try:
+        #raise ValueError('Testing')
+        tokenizer = BertTokenizerFast.from_pretrained('bert-base-multilingual-cased')
+    except ValueError:
+        tokenizer = None
+        attempts_remaning -= 1
+        print('Exception while loading tokeniser. Maybe a connection problem.')
+        if attempts_remaning:
+            print('Trying again in %.0f seconds.' %sleep_for)
+            time.sleep(sleep_for)
+            sleep_for *= 2.0
+        else:
+            print('Giving up.')
+if tokenizer is None:
+    sys.exit(1)
+
+attempts_remaning = 8
+sleep_for =  15.0
+model = None
+while model is None and attempts_remaning:
+    try:
+        model = BertModel.from_pretrained('bert-base-multilingual-cased')
+    except ValueError:
+        model = None
+        attempts_remaning -= 1
+        print('Exception while loading model. Maybe a connection problem.')
+        if attempts_remaning:
+            print('Trying again in %.0f seconds.' %sleep_for)
+            time.sleep(sleep_for)
+            sleep_for *= 2.0
+        else:
+            print('Giving up.')
+if model is None:
+    sys.exit(1)
+
 model.eval()  # evaluation mode without dropout
 
 if opt_use_gpu:
