@@ -51,7 +51,17 @@ if [ -n "$MBERT_ENV" ]; then
     source ${MBERT_ENV}/bin/activate
 fi
 
+# ensure output folder exists
+mkdir -p ${OUTPUTDIR}
+
 hostname > ${OUTPUTDIR}/mbert.start
+
+if [ -e "$TRAIN_CONLLU" ]; then
+    echo "Input file is ready" > /dev/null
+else
+    echo "Waiting for input file"
+    sleep 60
+fi
 
 INFILE=$(realpath ${TRAIN_CONLLU})
 
@@ -76,9 +86,10 @@ if ! python scripts/mbert-encode.py \
     --expand-to ${EXPAND_TO}        \
     --pooling ${POOLING}            \
     ${INFILE}                       \
-    ${TMP_OUTFILE}
+    ${TMP_OUTFILE} 2> ${TMP_OUTFILE}.err
 then
     echo "An error occured"
+    cat ${TMP_OUTFILE}.err
     echo "Repeating the run with --debug to produce detailed log"
     python scripts/mbert-encode.py \
         --debug                         \
@@ -90,6 +101,9 @@ then
         ${INFILE}                       \
         ${TMP_OUTFILE} | tee ${TMP_OUTFILE}-log.txt
     exit 1
+else
+    # no error -> clean up
+    rm ${TMP_OUTFILE}.err
 fi
 
 mv ${TMP_OUTFILE} ${OUTPUTDIR}/${HDF5_NAME}
