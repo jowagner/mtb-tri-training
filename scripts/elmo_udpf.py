@@ -358,6 +358,7 @@ class ElmoCache:
             return
         keys = self.prune_cache_to_max_load_factor(now)
         if self.memory_only:
+            self.last_sync = now
             return
         is_complete = self.p_sync_to_disk_files(
             keys,
