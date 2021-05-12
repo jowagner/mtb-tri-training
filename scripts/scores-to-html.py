@@ -20,6 +20,8 @@ import sys
 
 from distribution import Distribution
 
+opt_rounding_denominator = 10
+
 print('<html><body>')
 
 header = sys.stdin.readline().split()
@@ -58,7 +60,7 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
        content.append('no model')
     #elif date >= '2021-01-04':
     #   content.append('newest')
-    elif date >= '2021-04-06':
+    elif date >= '2021-05-11':
        content.append('<span style="%s">new</span>' %tinyfont)
     elif date >= '2005-01-01':
        y,m,d = date.split('-')
@@ -67,7 +69,23 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
            y[2:],
            ((int(m)-1)/3)+1,
        ))
-    content.append('%.1f' %score)
+    if opt_rounding_denominator == 1:
+        content.append('%.0f' %score)
+    elif opt_rounding_denominator == 10:
+        content.append('%.1f' %score)
+    elif opt_rounding_denominator == 100:
+        content.append('%.2f' %score)
+    elif opt_rounding_denominator > 0:
+        r_score = int(0.5+opt_rounding_denominator*score)
+        r_score /= float(opt_rounding_denominator)
+        elif opt_rounding_denominator in (2,5):
+            content.append('%.1f' %r_score)
+        elif opt_rounding_denominator in (4, 20, 25, 50):
+            content.append('%.2f' %r_score)
+        else:
+            content.append('%.3f' %r_score)
+    else:
+        raise ValueError('Donominator for rounding scores cannot be ' + repr(opt_rounding_denominator))
     content = '<br>'.join(content)
     return '&#10;'.join([
         '<div title="Round %d with LAS %s' %(
