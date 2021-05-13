@@ -60,7 +60,7 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
        content.append('no model')
     #elif date >= '2021-01-04':
     #   content.append('newest')
-    elif date >= '2021-05-11':
+    elif date >= '2021-05-13':
        content.append('<span style="%s">new</span>' %tinyfont)
     elif date >= '2005-01-01':
        y,m,d = date.split('-')
@@ -78,7 +78,7 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
     elif opt_rounding_denominator > 0:
         r_score = int(0.5+opt_rounding_denominator*score)
         r_score /= float(opt_rounding_denominator)
-        elif opt_rounding_denominator in (2,5):
+        if opt_rounding_denominator in (2,5):
             content.append('%.1f' %r_score)
         elif opt_rounding_denominator in (4, 20, 25, 50):
             content.append('%.2f' %r_score)
