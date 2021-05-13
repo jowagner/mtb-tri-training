@@ -824,6 +824,9 @@ class ElmoCache:
                 entry.records            = []
             self.create_new_disk_files()
             self.sync_to_disk_files()
+        elif memory_only:
+            self.record_states = array.array('B', self.n_records * [ord('i')])
+            self.idx2key_and_part = self.n_records * [None]
 
     class ProgressInfo:
 
