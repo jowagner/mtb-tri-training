@@ -81,11 +81,10 @@ for parser in parsers:
                 raise ValueError('row %r' %row)
             available_ensembles.append(row)
 
-def get_budget_and_best_score(selection):
+def expand_steps(available_ensembles):
+    retval = []
     predictions_made = set()
-    budget = []
-    best_score = 0.0
-    for row in selection:
+    for row in available_ensembles:
         # [0]=ensemble LAS, [1]=combination code,
         # [2,3,4]=individual learner LAS,
         # [5]=ensemble stddev, [6,7]=ensemble min and max,
@@ -94,12 +93,23 @@ def get_budget_and_best_score(selection):
         for index in (14,15,16):
             prediction = row[index]
             if prediction not in predictions_made:
-                duration = float(row[index-3])
-                budget.append(duration)  # model training time
-                budget.append(30.0)      # estimate for prediction time
+                duration = float(row[index-3])  # model training time
+                duration += 30.0                # estimate for prediction time
+                score    = float(row[index-12])
+                retval.append((duration, score))
                 predictions_made.add(prediction)
-        budget.append(0.3)  # estimate for combiner and eval runs (10x parallel)
+        duration = 0.3      # estimate for combiner and eval runs (10x parallel)
         score = float(row[0])
+        retval.append((duration, score))
+    return retval
+
+available_models = expand_steps(available_ensembles)
+
+def get_budget_and_best_score(selection):
+    budget = []
+    best_score = 0.0
+    for duration, score in selection:
+        budget.append(duration)
         if score > best_score:
             best_score = score
     # add numbers in order of size to reduce numeric errors and to
@@ -112,12 +122,14 @@ def get_budget_and_best_score(selection):
     total /= (24*3600)
     return (total, best_score)
 
-total_budget, highest_score = get_budget_and_best_score(available_ensembles)
+total_budget, highest_score = get_budget_and_best_score(available_models)
 
 smallest_budget = total_budget
 lowest_score = highest_score
+start_index = 0
 for row in available_ensembles:
-    budget, score = get_budget_and_best_score([row])
+    selection = expand_steps([row])
+    budget, score = get_budget_and_best_score(selection)
     if budget < smallest_budget:
         smallest_budget = budget
     if score < lowest_score:
@@ -196,13 +208,13 @@ def satisfied_with_samples(ceiling2scores, target_n):
         return True
     return False
 
-n_ensembles = len(available_ensembles)
+n_models = len(available_models)
 
 # main loop
 while not satisfied_with_samples(ceiling2scores, number_of_samples):
     random.shuffle(available_ensembles)
-    selection = available_ensembles[:]  # clone
-    assert len(selection) == n_ensembles
+    selection = expand_steps(available_ensembles)   # clone and expand
+    assert len(selection) == n_models
     for ceiling in reversed(bin_ceilings):
         if len(ceiling2scores[ceiling]) >= number_of_samples:
             # collected enough samples for this ceiling
