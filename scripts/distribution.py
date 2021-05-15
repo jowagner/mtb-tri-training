@@ -13,7 +13,7 @@ import sys
 
 class Distribution:
 
-    def __init__(self, language, parser, sample, smooth = True, with_info = False):
+    def __init__(self, language, parser, sample, smooth = True, with_info = False, quiet = False):
         self.smooth = smooth
         filename = None
         if language is None:
@@ -48,6 +48,7 @@ class Distribution:
             self.info = []
             info = self.info
         if not filename:
+            if quiet: return
             sys.stderr.write('Warning: no baseline distribution for %s.\n' %code)
         else:
             f = open('%s/%s' %(os.environ['TT_DISTRIBUTIONS_DIR'], filename), 'rb')
