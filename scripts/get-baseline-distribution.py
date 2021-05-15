@@ -23,7 +23,7 @@ import time
 
 '''
 usage:
-ls */prediction-00-[123]*-dev-*u */model-00-1-*/xx*ud-dev*u */model-00*/stdout.txt | ./get-baseline-distribution.py
+ls */prediction-00-[123]*-dev-*.conllu* */model-00-1-*/xx*ud-dev*u */model-00*/stdout.txt | ./get-baseline-distribution.py
 or
 find | ./get-baseline-distribution.py
 (temporary files will be created in /dev/shm)
@@ -36,18 +36,28 @@ opt_average = True
 opt_test = False       # set to True to also create LAS distributions for test sets
 opt_debug_level = 2    # 0 = quiet to 5 = all detail
 opt_distribution = None
+opt_dry_run = False    # only list distribitions, do not run the combiner or evaluation
 opt_partial_distribution = None    # set to 1 to opt_parts (inclusive) to select a part
 opt_parts = 9
 opt_seed = 100
+opt_languages = None  # no restriction on the language
+opt_parsers   = None  # no restriction on the parser
 
 while len(sys.argv) > 1 and sys.argv[1].startswith('--'):
     option = sys.argv[1]
     del sys.argv[1]
     if option == '--distribution':
         opt_distribution = int(sys.argv[1])
+        if opt_distribution < 0:
+            # a way to keep this deactivated while using the option
+            opt_distribution = None
         del sys.argv[1]
     elif option == '--part':
         opt_partial_distribution = int(sys.argv[1])
+        assert opt_partial_distribution != 0  # 1 = first part
+        if opt_partial_distribution < 0:
+            # a way to keep parts deactivated while using --part
+            opt_partial_distribution = None
         del sys.argv[1]
     elif option == '--parts':
         opt_parts = int(sys.argv[1])
@@ -68,6 +78,14 @@ while len(sys.argv) > 1 and sys.argv[1].startswith('--'):
         opt_average = False
     elif option == '--include-test':
         opt_test = True
+    elif option == '--languages':
+        opt_languages = sys.argv[1]
+        del sys.argv[1]
+    elif option == '--parsers':
+        opt_parsers = sys.argv[1]
+        del sys.argv[1]
+    elif option in ('--dry-run', '--list-distributions'):
+        opt_dry_run = True
     elif option == '--quiet':
         opt_debug_level = 0
     elif option == '--verbose':
@@ -76,6 +94,22 @@ while len(sys.argv) > 1 and sys.argv[1].startswith('--'):
         opt_debug_level = 5
     else:
         raise ValueError('unknown option')
+
+if opt_debug_level >= 5:
+    print('tmp_dir:', tmp_dir)
+    print('opt_max_buckets:', opt_max_buckets)
+    print('opt_combiner_repetitions:', opt_combiner_repetitions)
+    print('opt_average:', opt_average)
+    print('opt_test:', opt_test)
+    print('opt_debug_level:', opt_debug_level)
+    print('opt_distribution:', opt_distribution)
+    print('opt_dry_run:', opt_dry_run)
+    print('opt_partial_distribution:', opt_partial_distribution)
+    print('opt_parts:', opt_parts)
+    print('opt_seed:', opt_seed)
+    print('opt_languages:', opt_languages)
+    print('opt_parsers:', opt_parsers)
+
 
 key2filenames = {}
 
@@ -93,6 +127,10 @@ while True:
     fields = line.split('/')
     filename = fields[-1]
     folder = fields[-2]
+    if folder.startswith('model-') and '-incomplete-' in folder:
+        continue
+    if folder.endswith('-workdir'):
+        continue
     if filename == 'stdout.txt' and folder.startswith('model-00-'):
         if opt_debug_level > 4:
             print('Using file %s as seed file' %line)
@@ -100,7 +138,7 @@ while True:
         learner = folder.split('-')[2]
         seeds[(exp_code, learner)] = line
         continue
-    if not filename.endswith('.conllu'):
+    if not (filename.endswith('.conllu') or filename.endswith('.conllu.bz2')):
         continue
     if folder.startswith('model-00-1') \
     and not filename.endswith('-ud-train.conllu'):
@@ -146,6 +184,14 @@ while True:
     language = exp_code[0]
     parser   = exp_code[1]
     sample   = exp_code[3]
+    if opt_languages and language not in opt_languages:
+        if opt_debug_level > 4:
+            print('Ignoring language %s (line %s)' %(language, line))
+        continue
+    if opt_parsers   and parser   not in opt_parsers:
+        if opt_debug_level > 4:
+            print('Ignoring parser %s (line %s)' %(parser, line))
+        continue
     try:
         learners = int(exp_code[-2])
     except:
@@ -194,7 +240,9 @@ def get_seed(filename):
 
 class LazyReadSeeds:
     def __init__(self, d):
-        self.d = d
+        self.d = {}
+        for k in d:
+            self.d[k] = d[k]
     def __getitem__(self, key):
         seed = self.d[key]
         if seed.endswith('.txt'):
@@ -204,6 +252,44 @@ class LazyReadSeeds:
     def keys(self):
         return self.d.keys()
 
+
+def get_duration(filename):
+    assert filename.endswith('stdout.txt')
+    folder = filename[:-10]
+    try:
+        start_t = os.path.getmtime(folder + 'training.start')
+        #start_s = '%.1f' %start_t
+    except:
+        start_t = None
+        #start_s = 'unknown'
+    try:
+        end_t = os.path.getmtime(folder + 'training.end')
+        #end_s = '%.1f' %end_t
+    except:
+        end_t = None
+        #end_s = 'unknown'
+    if start_t and end_t:
+        duration = '%.3f' %(end_t - start_t)
+    else:
+        duration = 'unknown'
+    #return '%s %s %s' %(start_s, end_s, duration)
+    return duration
+
+class LazyReadDurations:
+    def __init__(self, d):
+        self.d = {}
+        for k in d:
+            self.d[k] = d[k]
+    def __getitem__(self, key):
+        duration = self.d[key]
+        if duration.endswith('.txt'):
+            duration = get_duration(duration)
+            self.d[key] = duration
+        return duration
+    def keys(self):
+        return self.d.keys()
+
+tr_durations = LazyReadDurations(seeds)
 seeds = LazyReadSeeds(seeds)
 
 if opt_debug_level > 2:
@@ -304,11 +390,16 @@ def get_score(prediction_path, gold_path, tmp_dir = '/tmp', tmp_prefix = 'u'):
 
 distr_counter = 0
 n_distr = len(key2filenames)
+if opt_debug_level >= 5:
+    print('Found', n_distr, 'distribution(s)')
+
 for key in sorted(list(key2filenames.keys())):
     distr_counter = distr_counter + 1
     if opt_distribution and opt_distribution != distr_counter:
         continue
     print('\n\n== Distribution %d of %d: %r ==\n' %(distr_counter, n_distr, key,))
+    if opt_dry_run:
+        continue
     language, parser, sample, learners, test_tbid, test_type = key
     learner2predictions = key2filenames[key]
     assert len(learner2predictions) == learners
@@ -341,7 +432,8 @@ for key in sorted(list(key2filenames.keys())):
                        distr_counter, learner,
                 ))
                 seed  = seeds[(exp_code, learner)]
-                candidates.append((score, seed, exp_code, path))
+                tr_duration = tr_durations[(exp_code, learner)]
+                candidates.append((score, seed, exp_code, path, tr_duration))
             candidates.sort()
             # find best split: must have sufficient items on each side and
             # minimise seed overlap (break ties by preferring balanced splits)
@@ -353,7 +445,7 @@ for key in sorted(list(key2filenames.keys())):
                 print('%d:' %i)
                 for item in bucket:
                     assert item == candidates[j]
-                    print('\t%.3f %9s %s %s' %(candidates[j]))
+                    print('\t%.3f %9s %s %s %s' %(candidates[j]))
                     j = j + 1
         learner_buckets.append(buckets)
     # enumerate all combinations of buckets, one from each learner
@@ -438,14 +530,16 @@ for key in sorted(list(key2filenames.keys())):
             info.append('%03x' %bucket_comb_index)
             if not opt_average:
                 info.append('%d' %s_index)
-            for learner_score, _, _, _ in predictions:
+            for learner_score, _, _, _, _ in predictions:
                 info.append('%.2f' %learner_score)
             info.append('%.3f' %std_dev)
             info.append('%.2f' %min_score)
             info.append('%.2f' %max_score)
-            for _, seed, _, _ in predictions:
+            for _, seed, _, _, _ in predictions:
                 info.append(seed)
-            for _, _, _, path in predictions:
+            for _, _, _, _, tr_duration in predictions:
+                info.append(tr_duration)
+            for _, _, _, path, _ in predictions:
                 info.append(path)
             distr_scores.append((score, '\t'.join(info)))
         bucket_comb_index = bucket_comb_index + 1
