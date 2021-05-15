@@ -196,10 +196,13 @@ def satisfied_with_samples(ceiling2scores, target_n):
         return True
     return False
 
+n_ensembles = len(available_ensembles)
+
 # main loop
 while not satisfied_with_samples(ceiling2scores, number_of_samples):
     random.shuffle(available_ensembles)
     selection = available_ensembles[:]  # clone
+    assert len(selection) == n_ensembles
     for ceiling in reversed(bin_ceilings):
         if len(ceiling2scores[ceiling]) >= number_of_samples:
             # collected enough samples for this ceiling
@@ -207,7 +210,10 @@ while not satisfied_with_samples(ceiling2scores, number_of_samples):
         # check that ceiling is feasible with current shuffle
         min_budget, _ = get_budget_and_best_score([selection[0]])
         if min_budget > ceiling:
-            break
+            # not a single model finishes within the budget
+            # --> score is 0
+            ceiling2scores[ceiling].append(0.0)
+            continue
         n_selected = len(selection)
         if get_budget_and_best_score(selection)[0] > ceiling:
             # budget of current selection is too high
