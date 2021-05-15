@@ -102,7 +102,7 @@ case "${SETTING}" in
     export NPZ_CACHE_SIZE=12GiB
     export UUPARSER_DIR=${HOME}/tri-training/uuparser/barchybrid
     export UUPARSER_ENV=${HOME}/tri-training/uuparser/venv-uuparser
-    export TT_DISTRIBUTIONS_DIR=${SCRATCH}/tri-training/workdirs
+    export TT_DISTRIBUTIONS_DIR=${SCRATCH}/tri-training/workdirs/distributions
     export TT_TASK_DIR=${HOME}/tri-training/tasks
     export TT_TASK_EPOCH=1577836800
     export TT_TASK_PATIENCE=144000
