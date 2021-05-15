@@ -1,7 +1,16 @@
 #!/bin/bash
-  
-D=$1
-P=$2
+
+#SBATCH -p compute     # which partition to run on
+#SBATCH -J tt-distr   # name for the job
+#SBATCH --mem=4000
+#SBATCH --cpus-per-task=2
+#SBATCH --ntasks=1
+#SBATCH -N 1-1
+
+PARSERS=i
+LANGUAGES=huv
+#D=-1
+#P=-1  # use sbatch --export=P=1,D=42 to P=9,D=43 to run the 9 parts of distributions 42 and 43
 
 # not using /dev/shm due to systemd "RemoveIPC" issue
 # https://askubuntu.com/questions/884127/16-04-lts-and-dev-shm-files-disappearing
@@ -26,13 +35,15 @@ source $HOME/tri-training/mtb-tri-training/config/locations.sh
 
 cd $HOME/tri-training/mtb-tri-training/workdirs
 
-echo $(hostname) $(date) >> distr-${D}-${P}.start
+echo $(hostname) $(date) >> distr-${LANGUAGES}-${PARSERS}-${D}-${P}.start
 
-find | $HOME/tri-training/mtb-tri-training/scripts/get-baseline-distribution.py --distribution $D --part $P --tmp-dir $T \
-    2> distr-${D}-${P}-stderr.txt  \
-    >  distr-${D}-${P}-stdout.txt
+## add --dry-run and set D=P=-1 to get a list of distribution
 
-touch distr-${D}-${P}.end
+find | $HOME/tri-training/mtb-tri-training/scripts/get-baseline-distribution.py --distribution $D --part $P --tmp-dir $T --buckets 16 --parsers ${PARSERS} --languages ${LANGUAGES} \
+    2> distr-${LANGUAGES}-${PARSERS}-${D}-${P}-stderr.txt  \
+    >  distr-${LANGUAGES}-${PARSERS}-${D}-${P}-stdout.txt
+
+touch distr-${LANGUAGES}-${PARSERS}-${D}-${P}.end
 
 rm -rf $T
 
