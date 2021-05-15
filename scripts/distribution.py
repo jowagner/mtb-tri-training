@@ -13,7 +13,7 @@ import sys
 
 class Distribution:
 
-    def __init__(self, language, parser, sample, smooth = True):
+    def __init__(self, language, parser, sample, smooth = True, with_info = False):
         self.smooth = smooth
         filename = None
         if language is None:
@@ -44,6 +44,9 @@ class Distribution:
             break
         self.scores = []
         scores = self.scores
+        if with_info:
+            self.info = []
+            info = self.info
         if not filename:
             sys.stderr.write('Warning: no baseline distribution for %s.\n' %code)
         else:
@@ -53,6 +56,8 @@ class Distribution:
                 if not line:
                     break
                 scores.append(float(line.split()[0]))
+                if with_info:
+                    info.append(line.rstrip().split('\t'))
             f.close()
         if self.scores:
             self.average = sum(scores) / float(len(scores))
@@ -82,14 +87,26 @@ class Distribution:
     def colour(self, score):
         if not self.scores:
             return 'ffffff'
-        if self.smooth:
-            indices = range(101)
-        else:
-            indices = [50,]
+        steps = 100
+        assert (steps % 2) == 0
+        if self.smooth in (True, 'at boundary', 1):
+            # smooth colours when very close to boundary between two colours
+            indices = range(steps+1)
+            radius1 = 0.00115 / float(steps/2)
+            radius2 = 0.00055 / float(steps/2)
+        elif self.smooth in (False, 'none', None, 0):
+            # do not blend colours
+            indices = [steps//2,]
+            radius1 = 0.0
+            radius2 = 0.0
+        elif self.smooth in ('extra smooth', 2):
+            # very smooth blends (not matching legend)
+            indices = range(steps+1)
+            radius1 = 0.30050 / float(steps/2)
+            radius2 = 0.05450 / float(steps/2)
         colours = []
         for i in indices:
-            for f in (0.000023, 0.000011):
-            #for f in (0.006010, 0.001090):   # for smooth blends (not matching legend)
+            for f in (radius1, radius2):
                 offset = f * (i - 50)
                 colours.append(self.p_colour(score+offset))
         components = []
