@@ -30,7 +30,6 @@ random.seed(int(hashlib.sha256(sys.argv[4]).hexdigest(), 16))
 l2text = {
     'e': 'English',
     'h': 'Hungarian',
-    't': 'English-LinEs',
     'u': 'Uyghur',
     'v': 'Vietnamese',
 }
@@ -40,10 +39,6 @@ p2text = {
     'h': '+elmo',
     'i': 'udpf+fasttext+mBERT',
 }
-v2text = {
-    '-': 'no, using copy of seed sample',
-    'o': 'yes, labelled data oversampled to size of unlabelled data',
-}
 s2text = {
     '-': 'bootstrap samples of labelled data (100% of size of data)',
     'p': 'bootstrap samples of labelled data (300% of size of data)',
@@ -51,27 +46,24 @@ s2text = {
     'w': 'permutations of labelled data, i.e. shuffling the data',
     'x': '250% of labelled data, i.e. concatenation of 2 1/2 copies',
 }
-d2text = {
-    '-': 'use all (current and all previous data)',
-    'v': 'vanilla approach (only using current iteration\'s data)',
-    'y': 'last 5 iterations',
-    'o': 'decaying with factor 0.71',
-    'z': 'decaying with factor 0.50',
-    'a': 'use all, using all labelled data',
-    'u': 'vanilla, using all labelled data',
-    'r': 'decaying with factor 0.50, using all labelled data',
-}
 
-print('Language:', l2text[language])
+if language in ('*', 'all'):
+    languages = sorted(list(l2text.keys()))
+    print('All languanges selected:', languages)
+else:
+    print('Language:', l2text[language])
+    languages = [language]
 
 parsers = list(p2text.keys())
 
-if language != 'e':
-    parsers = 'fgh'  # at the moment, mBERT only ready for English
-
 available_ensembles = []
 
+parsers_and_languages = []
 for parser in parsers:
+    for language in languages:
+        parsers_and_languages.append((parser, language))
+
+for parser, language in parsers_and_languages:
     for sample in s2text.keys():
         distribution = Distribution(
             language, parser, sample, with_info = True, quiet = True
@@ -79,39 +71,76 @@ for parser in parsers:
         for row in distribution.info:
             if len(row) != 17:
                 raise ValueError('row %r' %row)
-            available_ensembles.append(row)
+            available_ensembles.append((language, row))
 
-def expand_steps(available_ensembles):
+def expand_steps(available_ensembles, languages):
     retval = []
+    # re-organise languages in separate streams
+    lang2available_ensembles = {}
+    for language in languages:
+        lang2available_ensembles[language] = []
+    for language, row in available_ensembles:
+        lang2available_ensembles[language].append(row)
     predictions_made = set()
-    for row in available_ensembles:
+    row_index = 0
+    learner_indices = [14, 15, 16]
+    while True:
+        found_data_at_index = False
         # [0]=ensemble LAS, [1]=combination code,
         # [2,3,4]=individual learner LAS,
         # [5]=ensemble stddev, [6,7]=ensemble min and max,
         # [8,9,10]=seeds, [11,12,13]=duration model training,
         # [14,15,16]=prediction files (connlu or connlu.bz2)
-        for index in (14,15,16):
-            prediction = row[index]
-            if prediction not in predictions_made:
-                duration = float(row[index-3])  # model training time
-                duration += 30.0                # estimate for prediction time
-                score    = float(row[index-12])
-                retval.append((duration, score))
-                predictions_made.add(prediction)
-        duration = 0.3      # estimate for combiner and eval runs (10x parallel)
-        score = float(row[0])
-        retval.append((duration, score))
+        random.shuffle(learner_indices)
+        # add individual learners at this row index
+        for index in learner_indices:
+            random.shuffle(languages)
+            for language in languages:
+                available_ensembles = lang2available_ensembles[language]
+                if row_index >= len(available_ensembles):
+                    continue
+                found_data_at_index = True
+                row = available_ensembles[row_index]
+                prediction = row[index]
+                if prediction not in predictions_made:
+                    duration = float(row[index-3])  # model training time
+                    duration += 30.0                # estimate for prediction time
+                    score    = float(row[index-12]) # individual score
+                    retval.append((language, duration, score))
+                    predictions_made.add(prediction)
+        if not found_data_at_index:
+            break
+        # add ensemble(s) at this row index
+        random.shuffle(languages)
+        for language in languages:
+            available_ensembles = lang2available_ensembles[language]
+            if row_index >= len(available_ensembles):
+                continue
+            row = available_ensembles[row_index]
+            duration = 0.3      # estimate for combiner and eval runs (10x parallel)
+            score = float(row[0])
+            retval.append((language, duration, score))
+        row_index += 1
     return retval
 
-available_models = expand_steps(available_ensembles)
+available_models = expand_steps(available_ensembles, languages)
 
-def get_budget_and_best_score(selection):
+def get_budget_and_best_score(selection, languages):
     budget = []
-    best_score = 0.0
-    for duration, score in selection:
+    best_score = {}
+    for language in languages:
+        best_score[language] = 0.0
+    for language, duration, score in selection:
         budget.append(duration)
-        if score > best_score:
-            best_score = score
+        if score > best_score[language]:
+            best_score[language] = score
+    if len(languages) == 1:
+        best_score = best_score[languages[0]]
+    else:
+        total = 0.0
+        for language in best_score:
+            total += best_score[language]
+        best_score = total / float(len(best_score))
     # add numbers in order of size to reduce numeric errors and to
     # stabalise the total for the same set presented in different orders
     budget.sort()
@@ -122,14 +151,14 @@ def get_budget_and_best_score(selection):
     total /= (24*3600)
     return (total, best_score)
 
-total_budget, highest_score = get_budget_and_best_score(available_models)
+total_budget, highest_score = get_budget_and_best_score(available_models, languages)
 
 smallest_budget = total_budget
 lowest_score = highest_score
 start_index = 0
 for row in available_ensembles:
-    selection = expand_steps([row])
-    budget, score = get_budget_and_best_score(selection)
+    selection = expand_steps([row], languages)
+    budget, score = get_budget_and_best_score(selection, languages)
     if budget < smallest_budget:
         smallest_budget = budget
     if score < lowest_score:
@@ -213,21 +242,21 @@ n_models = len(available_models)
 # main loop
 while not satisfied_with_samples(ceiling2scores, number_of_samples):
     random.shuffle(available_ensembles)
-    selection = expand_steps(available_ensembles)   # clone and expand
+    selection = expand_steps(available_ensembles, languages)   # clone and expand
     assert len(selection) == n_models
     for ceiling in reversed(bin_ceilings):
         if len(ceiling2scores[ceiling]) >= number_of_samples:
             # collected enough samples for this ceiling
             continue
         # check that ceiling is feasible with current shuffle
-        min_budget, _ = get_budget_and_best_score([selection[0]])
+        min_budget, _ = get_budget_and_best_score([selection[0]], languages)
         if min_budget > ceiling:
             # not a single model finishes within the budget
             # --> score is 0
             ceiling2scores[ceiling].append(0.0)
             continue
         n_selected = len(selection)
-        if get_budget_and_best_score(selection)[0] > ceiling:
+        if get_budget_and_best_score(selection, languages)[0] > ceiling:
             # budget of current selection is too high
             # --> perform a binary search for the highest value of
             #     n_selected such that budget fits into ceiling
@@ -235,7 +264,7 @@ while not satisfied_with_samples(ceiling2scores, number_of_samples):
             while n_selected - lower > 1:
                 m_selected = (lower+n_selected)//2
                 candidate = selection[:m_selected]
-                budget, score = get_budget_and_best_score(candidate)
+                budget, score = get_budget_and_best_score(candidate, languages)
                 if budget <= ceiling:
                     lower = m_selected
                 else:
@@ -243,7 +272,7 @@ while not satisfied_with_samples(ceiling2scores, number_of_samples):
             n_selected = lower
             selection = selection[:n_selected]
         assert n_selected > 0
-        budget, score = get_budget_and_best_score(selection)
+        budget, score = get_budget_and_best_score(selection, languages)
         assert budget <= ceiling
         ceiling2scores[ceiling].append(score)
 
