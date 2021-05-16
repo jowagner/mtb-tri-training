@@ -20,7 +20,9 @@ import sys
 
 from distribution import Distribution
 
-opt_rounding_denominator = 10
+new_from_date            = '2021-05-16'
+colour_smoothing         = 1    # 0 = no blends, 1 = boundary blends as in legend, 2 = extra smooth (does not match legend)
+opt_rounding_denominator = 10   # e.g. use 5 to round to multiples of 0.2
 
 print('<html><body>')
 
@@ -54,13 +56,14 @@ def unpack_score(score):
     return float(score), date, int(tokens), int(sentences)
 
 def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
+    global new_from_date
     content = []
     tinyfont = '-webkit-text-size-adjust: none; font-size: 0.6em'
     if date == '????-??-??':
        content.append('no model')
     #elif date >= '2021-01-04':
     #   content.append('newest')
-    elif date >= '2021-05-13':
+    elif date >= new_from_date:
        content.append('<span style="%s">new</span>' %tinyfont)
     elif date >= '2005-01-01':
        y,m,d = date.split('-')
@@ -187,7 +190,7 @@ legend = []
 legend.append('<table>')
 legend.append('<tr><td><b>black bold = above or matching best baseline for this language and parser</b></td></tr>')
 legend.append('<tr><td><b><font color="red">red bold = below this seed and method\'s baseline</font></b></td></tr>')
-distribution = Distribution(None, None, None, True)
+distribution = Distribution(None, None, None, colour_smoothing)
 for score, text in [
     ( -1.0, '<font color="red">background black: below worst baseline</font>'),
     (  0.0, 'blend'),
@@ -473,7 +476,7 @@ for row in rows:
     if (last_language, last_parser, last_sample) != (language, parser, sample):
         print('<h4>Using %s for round 0 models</h4>' %s2text[sample])
         print('<table cellpadding="4" border="1">')
-        distribution = Distribution(language, parser, sample)
+        distribution = Distribution(language, parser, sample, colour_smoothing)
         last_augsize = None
     if last_augsize is not None and last_augsize != augsize:
         print('<tr><td></td></tr>')
