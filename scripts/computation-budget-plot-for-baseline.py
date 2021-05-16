@@ -223,27 +223,47 @@ def print_budget_details_row(languages, index, language, duration, score, best_s
     row.append('%7.2f' %best_score)
     print('\t'.join(row))
 
-def get_budget_and_best_score(selection, languages, print_details = False):
+def get_budget_and_best_score(selection, languages, cache = None, print_details = False):
+    start = 0
+    cached_budget = 0.0
+    if cache is not None:
+        n_rows = len(selection)
+        if n_rows in cache:
+            return cache[n_rows][:2]
+        for key in cache:
+            if key <= n_rows and key > start:
+                start = key
+        if start and not print_details:
+            cached_budget, cached_score, cached_scores = cache[start]
     budget = []
-    best_score = {}
+    lang2best_score = {}
     for language in languages:
-        best_score[language] = 0.0
+        lang2best_score[language] = 0.0
     if print_details:
         print_budget_details_header(languages)
     index = 0
-    for language, duration, score in selection:
+    for language, duration, score in selection[start:]:
         budget.append(duration)
-        if score > best_score[language]:
-            best_score[language] = score
+        if score > lang2best_score[language]:
+            lang2best_score[language] = score
         if print_details:
             print_budget_details_row(
-                languages, index, language, duration, score, best_score, budget
+                languages, index, language, duration, score,
+                lang2best_score, budget
             )
         index += 1
-    best_score = get_average_best_score(best_score, languages)
+    if start > 0:
+        for language in cached_scores:
+            score = cached_scores[language]
+            if score > lang2best_score[language]:
+                lang2best_score[language] = score
+    best_score = get_average_best_score(lang2best_score, languages)
     budget = stable_sum(budget)
     # convert seconds to days
     budget /= (24*3600)
+    budget += cached_budget
+    if cache is not None:
+        cache[n_rows] = (budget, best_score, lang2best_score)
     return (budget, best_score)
 
 # get total budget and show an example schedule (if requested with --show-schedule)
@@ -346,6 +366,7 @@ n_models = len(available_models)
 while not satisfied_with_samples(ceiling2scores, number_of_samples):
     random.shuffle(available_ensembles)
     selection = expand_steps(available_ensembles, languages)   # clone and expand
+    cache = {}
     assert len(selection) == n_models
     for ceiling in reversed(bin_ceilings):
         if len(ceiling2scores[ceiling]) >= number_of_samples:
@@ -359,7 +380,7 @@ while not satisfied_with_samples(ceiling2scores, number_of_samples):
             ceiling2scores[ceiling].append(0.0)
             continue
         n_selected = len(selection)
-        if get_budget_and_best_score(selection, languages)[0] > ceiling:
+        if get_budget_and_best_score(selection, languages, cache)[0] > ceiling:
             # budget of current selection is too high
             # --> perform a binary search for the highest number of
             #     models that can be selected such that budget fits
@@ -368,7 +389,7 @@ while not satisfied_with_samples(ceiling2scores, number_of_samples):
             while n_selected - lower > 1:
                 m_selected = (lower+n_selected)//2
                 candidate = selection[:m_selected]
-                budget, score = get_budget_and_best_score(candidate, languages)
+                budget, score = get_budget_and_best_score(candidate, languages, cache)
                 if budget <= ceiling:
                     lower = m_selected
                 else:
@@ -376,7 +397,7 @@ while not satisfied_with_samples(ceiling2scores, number_of_samples):
             n_selected = lower
             selection = selection[:n_selected]
         assert n_selected > 0
-        budget, score = get_budget_and_best_score(selection, languages)
+        budget, score = get_budget_and_best_score(selection, languages, cache)
         assert budget <= ceiling
         ceiling2scores[ceiling].append(score)
 
