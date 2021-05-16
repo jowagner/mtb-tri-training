@@ -81,6 +81,11 @@ def expand_steps(available_ensembles, languages):
         lang2available_ensembles[language] = []
     for language, row in available_ensembles:
         lang2available_ensembles[language].append(row)
+    ## debugging output
+    #for language in lang2available_ensembles:
+    #    print('%d available ensembles for %s' %(
+    #        len(lang2available_ensembles[language]), l2text[language]
+    #    ))
     predictions_made = set()
     row_index = 0
     learner_indices = [14, 15, 16]
@@ -123,17 +128,28 @@ def expand_steps(available_ensembles, languages):
         row_index += 1
     return retval
 
-available_models = expand_steps(available_ensembles, languages)
-
-def get_budget_and_best_score(selection, languages):
-    budget = []
-    best_score = {}
+def print_budget_details_header(languages):
+    global l2text
+    header = 'index language duration score budget days'.split()
     for language in languages:
-        best_score[language] = 0.0
-    for language, duration, score in selection:
-        budget.append(duration)
-        if score > best_score[language]:
-            best_score[language] = score
+        header.append(l2text[language])
+    if len(languages) > 1:
+        header.append('Average LAS')
+    print('\t'.join(header))
+
+def stable_sum(numbers):
+    # add numbers in order of size to reduce numeric errors and to
+    # stabalise the total for the same set presented in different orders
+    if not numbers:
+        return 0.0
+    numbers.sort()
+    assert numbers[0] >= 0.0   # implementation below not suitable for negative numbers
+    total = 0.0
+    for duration in numbers:
+        total += duration
+    return total
+
+def get_average_best_score(best_score, languages):
     if len(languages) == 1:
         best_score = best_score[languages[0]]
     else:
@@ -141,17 +157,54 @@ def get_budget_and_best_score(selection, languages):
         for language in best_score:
             total += best_score[language]
         best_score = total / float(len(best_score))
-    # add numbers in order of size to reduce numeric errors and to
-    # stabalise the total for the same set presented in different orders
-    budget.sort()
-    total = 0.0
-    for duration in budget:
-        total += duration
-    # convert seconds to days
-    total /= (24*3600)
-    return (total, best_score)
+    return best_score
 
-total_budget, highest_score = get_budget_and_best_score(available_models, languages)
+def print_budget_details_row(languages, index, language, duration, score, best_score, budget):
+    row = []
+    row.append('%d\t%s\t%15.1f\t%7.2f' %(index, language, duration, score))
+    budget = stable_sum(budget)
+    days = budget / (24*3600.0)
+    row.append('%15.1f\t%15.5f' %(budget, days))
+    for column in languages:
+        if column == language:
+            row.append('%7.2f' %score)
+        else:
+            row.append('')
+    best_score = get_average_best_score(best_score, languages)
+    row.append('%7.2f' %best_score)
+    print('\t'.join(row))
+
+def get_budget_and_best_score(selection, languages, print_details = False):
+    budget = []
+    best_score = {}
+    for language in languages:
+        best_score[language] = 0.0
+    if print_details:
+        print_budget_details_header(languages)
+    index = 0
+    for language, duration, score in selection:
+        budget.append(duration)
+        if score > best_score[language]:
+            best_score[language] = score
+        if print_details:
+            print_budget_details_row(
+                languages, index, language, duration, score, best_score, budget
+            )
+        index += 1
+    best_score = get_average_best_score(best_score, languages)
+    budget = stable_sum(budget)
+    # convert seconds to days
+    budget /= (24*3600)
+    return (budget, best_score)
+
+# get total budget and show an example schedule
+
+print('Example schedule for the full budget:')
+random.shuffle(available_ensembles)  # for a realistic example
+available_models = expand_steps(available_ensembles, languages)
+total_budget, highest_score = get_budget_and_best_score(
+    available_models, languages, print_details = True
+)
 
 smallest_budget = total_budget
 lowest_score = highest_score
@@ -258,8 +311,9 @@ while not satisfied_with_samples(ceiling2scores, number_of_samples):
         n_selected = len(selection)
         if get_budget_and_best_score(selection, languages)[0] > ceiling:
             # budget of current selection is too high
-            # --> perform a binary search for the highest value of
-            #     n_selected such that budget fits into ceiling
+            # --> perform a binary search for the highest number of
+            #     models that can be selected such that budget fits
+            #     into ceiling
             lower = 1
             while n_selected - lower > 1:
                 m_selected = (lower+n_selected)//2
