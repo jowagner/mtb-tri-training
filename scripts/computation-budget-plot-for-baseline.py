@@ -22,6 +22,12 @@ from distribution import Distribution
 
 start_t = time.time()
 
+if sys.argv[1] == '--show-schedule':
+    opt_show_schedule = True
+    del sys.argv[1]
+else:
+    opt_show_schedule = False
+
 language = sys.argv[1]
 number_of_bins = int(sys.argv[2])
 number_of_samples = int(sys.argv[3])
@@ -73,6 +79,44 @@ for parser, language in parsers_and_languages:
                 raise ValueError('row %r' %row)
             available_ensembles.append((language, row))
 
+def add_ensemble_to_budget(budget, row, language):
+    duration = 0.3      # estimate for combiner and eval runs (10x parallel)
+    score = float(row[0])
+    budget.append((language, duration, score))
+
+def bring_eligble_ensembles_forward(
+    start, language, completed_ensembles, available_ensembles, budget,
+    predictions_made, candidate_rows, new_prediction
+):
+    for row_index in candidate_rows[new_prediction]:
+        if row_index < start \
+        or (language, row_index) in completed_ensembles:
+            continue
+        row = available_ensembles[row_index]
+        # are all neccessary predictions ready?
+        ready = True
+        for index in [14, 15, 16]:
+             prediction = row[index]
+             if not prediction in predictions_made:
+                 ready = False
+                 break
+        if ready:
+            # all predictions are ready
+            add_ensemble_to_budget(budget, row, language)
+            completed_ensembles.add((language, row_index))
+
+def get_candidate_rows(lang2available_ensembles):
+    retval = {}
+    for language in lang2available_ensembles:
+        available_ensembles = lang2available_ensembles[language]
+        for row_index, row in enumerate(available_ensembles):
+            for index in [14, 15, 16]:
+                prediction = row[index]
+                if prediction not in retval:
+                    retval[prediction] = []
+                retval[prediction].append(row_index)
+    return retval
+
 def expand_steps(available_ensembles, languages):
     retval = []
     # re-organise languages in separate streams
@@ -81,14 +125,11 @@ def expand_steps(available_ensembles, languages):
         lang2available_ensembles[language] = []
     for language, row in available_ensembles:
         lang2available_ensembles[language].append(row)
-    ## debugging output
-    #for language in lang2available_ensembles:
-    #    print('%d available ensembles for %s' %(
-    #        len(lang2available_ensembles[language]), l2text[language]
-    #    ))
     predictions_made = set()
     row_index = 0
     learner_indices = [14, 15, 16]
+    completed_ensembles = set()
+    candidate_rows = get_candidate_rows(lang2available_ensembles)
     while True:
         found_data_at_index = False
         # [0]=ensemble LAS, [1]=combination code,
@@ -113,18 +154,26 @@ def expand_steps(available_ensembles, languages):
                     score    = float(row[index-12]) # individual score
                     retval.append((language, duration, score))
                     predictions_made.add(prediction)
+                    bring_eligble_ensembles_forward(
+                        row_index+1, language, completed_ensembles,
+                        available_ensembles, retval, predictions_made,
+                        candidate_rows, prediction
+                    )
         if not found_data_at_index:
             break
         # add ensemble(s) at this row index
         random.shuffle(languages)
         for language in languages:
+            if (language, row_index) in completed_ensembles:
+                # this ensemble has been completed earlier
+                continue
             available_ensembles = lang2available_ensembles[language]
             if row_index >= len(available_ensembles):
                 continue
             row = available_ensembles[row_index]
-            duration = 0.3      # estimate for combiner and eval runs (10x parallel)
-            score = float(row[0])
-            retval.append((language, duration, score))
+            add_ensemble_to_budget(retval, row, language)
+            # no need to record this ensemble in `completed_ensembles`
+            # as we never consider this key again
         row_index += 1
     return retval
 
@@ -197,13 +246,14 @@ def get_budget_and_best_score(selection, languages, print_details = False):
     budget /= (24*3600)
     return (budget, best_score)
 
-# get total budget and show an example schedule
+# get total budget and show an example schedule (if requested with --show-schedule)
 
-print('Example schedule for the full budget:')
+if opt_show_schedule:
+    print('Example schedule for the full budget:')
 random.shuffle(available_ensembles)  # for a realistic example
 available_models = expand_steps(available_ensembles, languages)
 total_budget, highest_score = get_budget_and_best_score(
-    available_models, languages, print_details = True
+    available_models, languages, print_details = opt_show_schedule
 )
 
 smallest_budget = total_budget
