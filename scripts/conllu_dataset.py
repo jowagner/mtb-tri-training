@@ -201,6 +201,9 @@ def evaluate(prediction_path, gold_path, outname = None, reuse_eval_txt = False,
             sys.stderr.flush()
             sys.stdout.flush()
         subprocess.call(command)
+    return get_score_from_file(outname)
+
+def get_score_from_file(outname):
     if not os.path.exists(outname):
         return (0.0, 'N/A', None)
     retval = (0.0, 'N/A', outname)
