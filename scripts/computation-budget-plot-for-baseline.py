@@ -80,7 +80,7 @@ for parser, language in parsers_and_languages:
             available_ensembles.append((language, row))
 
 def add_ensemble_to_budget(budget, row, language):
-    duration = 0.3      # estimate for combiner and eval runs (10x parallel)
+    duration = 21*0.3      # estimate for combiner and eval runs (10x parallel)
     score = float(row[0])
     budget.append((language, duration, score))
 
