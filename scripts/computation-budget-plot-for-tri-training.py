@@ -40,6 +40,7 @@ language = sys.argv[1]
 number_of_bins = int(sys.argv[2])
 number_of_samples = int(sys.argv[3])
 random.seed(int(hashlib.sha256(sys.argv[4]).hexdigest(), 16))
+opt_augexp = sys.argv[5]
 
 l2text = {
     'e': 'English',
@@ -81,6 +82,8 @@ def get_training_duration(path):
         end_t = None
     if start_t and end_t:
         return end_t - start_t
+    else:
+        print('Warning: Could not get duration of', path)
     return None
 
 def get_number_of_tokens(path):
@@ -114,11 +117,26 @@ def iteration_to_int(iteration):
         iteration = iteration[1:]
     return int(iteration)
 
+def fix_data_bugs(data):
+    move = []
+    for key in data:
+        if len(key) == 2  \
+        and key[1].startswith('nt-duration-')  \
+        and '.' in key[1]:
+            new_key = (key[0], key[1].split('.')[0])
+            move.append((key, new_key))
+    for key, new_key in move:
+        data[new_key] = data[key]
+        del data[key]
+    return data
+
 def get_run_data(run_dir, parser):
     cache_filename = '%s/run-info-cache.pickle' %run_dir
     if os.path.exists(cache_filename):
         with open(cache_filename, 'r') as f:
             data = pickle.load(f)
+            data = fix_data_bugs(data)
+        data['run_dir'] = run_dir
         return data
     data = {}
     for entry in os.listdir(run_dir):
@@ -126,7 +144,7 @@ def get_run_data(run_dir, parser):
         or '-incomplete-' in entry:
             continue
         path = '/'.join([run_dir, entry])
-        fields = entry.split('-')
+        fields = entry.replace('.', '-').split('-')
         if entry.startswith('model-'):
             iteration    = iteration_to_int(fields[1])
             learner_rank = fields[2]
@@ -151,11 +169,12 @@ def get_run_data(run_dir, parser):
             duration  = estimate_prediction_duration(path, parser)
             if duration:
                 if '-dev-' in entry:
-                    data[(iteration, 'pr-duration-'+learner_rank)] = duration 
-                elif '-subset-part-001-' in entry:
+                    data[(iteration, 'pr-duration-'+learner_rank)] = duration
+                elif '-subset-part-001-' in entry \
+                or ('-subset-' in entry and not '-part-' in entry):
                     data[(iteration, 'sp-duration-'+learner_rank)] = duration
                 else:
-                     raise NotImplementedError
+                     raise ValueError('unexpected file %r in %r' %(entry, run_dir))
         elif entry.startswith('prediction-') \
         and entry.endswith('.eval.txt'):
             if '-test-' in entry or not '-dev-' in entry:
@@ -177,6 +196,7 @@ def get_run_data(run_dir, parser):
                 data[(iteration, 'nt-duration-'+learner_rank)] = duration
     with open(cache_filename, 'w') as f:
         pickle.dump(data, f)
+    data['run_dir'] = run_dir
     return data
 
 def get_iteration(data, parser, iteration):
@@ -202,14 +222,16 @@ def get_iteration(data, parser, iteration):
     return list_of_tables
 
 def get_run(run_dir, parser):
+    print('run_dir', run_dir)
     data = get_run_data(run_dir, parser)
     run = []
     t = 0
     while True:
-        try:
-            iteration = get_iteration(data, parser, t)
-        except KeyError:
-            break
+        iteration = get_iteration(data, parser, t)
+        #try:
+        #    iteration = get_iteration(data, parser, t)
+        #except KeyError:
+        #    break
         run.append(iteration)
         t += 1
     return run
@@ -224,12 +246,14 @@ for entry in os.listdir(input_dir):
     parser   = entry[1]
     sampling = entry[3]
     augexp   = entry[7]
+    if augexp != opt_augexp:
+        continue
     if language not in languages:
         continue
     if parser not in parsers:
         continue
-    if augexp not in '68A':
-        continue
+    #if augexp not in '68A':
+    #    continue
     candidates.append((
         '/'.join([input_dir, entry]),
         parser,
@@ -415,9 +439,19 @@ def get_budget_and_best_score(selection, languages, cache = None, print_details 
         cache[n_rows] = (budget, best_score, lang2best_score)
     return (budget, best_score)
 
+def print_run(run, prefix = ''):
+     for t, iteration in enumerate(run):
+         print('%st=%d' %(prefix, t))
+         for table in iteration:
+             print('%s\t%r' %(prefix, table))
+
 # get total budget and show an example schedule (if requested with --show-schedule)
 
 if opt_show_schedule:
+    print('Runs:')
+    for r_index, run in available_ensembles:
+        print('[%d]' %r_index)
+        print_run(run, '\t')
     print('Example schedule for the full budget:')
 random.shuffle(available_ensembles)  # for a realistic example
 available_models = expand_steps(available_ensembles, languages)
@@ -425,12 +459,24 @@ total_budget, highest_score = get_budget_and_best_score(
     available_models, languages, print_details = opt_show_schedule
 )
 
+assert total_budget > 0
+
 smallest_budget = total_budget
 lowest_score = highest_score
 start_index = 0
 for row in available_ensembles:
     selection = expand_steps([row], languages)
     budget, score = get_budget_and_best_score(selection, languages)
+    if not score or not budget:
+         print('Run with zero budget or score:')
+         print('budget', budget)
+         print('score', score)
+         print('run:', row)
+         print_run(row)
+         print('expanded to:')
+         for i, row in enumerate(selection):
+             print('[%d]\t%r' %(i, row))
+         continue
     if budget < smallest_budget:
         smallest_budget = budget
     if score < lowest_score:
