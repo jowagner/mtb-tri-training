@@ -13,6 +13,7 @@
 
 import sys
 
+# usage: $0 list of input files > output
 # note: input files should have been generated with independent seeds
 
 def seek_to_data(f):
@@ -30,12 +31,13 @@ def seek_to_data(f):
             assert fields[4] == 'avg'
             assert fields[5] == 'max'
             break
+    return line
 
 files = []
 for filename in sys.argv[1:]:
     f = open(filename, 'r')
-    seek_to_data(f)
-    files.append(f)
+    if seek_to_data(f):
+        files.append(f)
 
 assert len(files) >= 2
 
@@ -49,7 +51,7 @@ while True:
         for f in remaining_files:
             line = f.readline()
             if not line.startswith('Duration'):
-                sys.stderr.write('Training data in some files')
+                sys.stderr.write('Trailing data in some files')
                 break
         break
     fields  = line.split()
@@ -71,4 +73,4 @@ while True:
         avg_score += n * float(fields[4])
         max_score = max(max_score, float(fields[5]))
     avg_score /= float(total_n)
-    print('%s\t%s\t%d\t%7.2f\t%7.2f\t%7.2f' %(index, ceiling, total_n, min_score, avg_score, max_score))
+    print('%s\t%s\t%d\t%7.4f\t%7.4f\t%7.4f' %(index, ceiling, total_n, min_score, avg_score, max_score))
