@@ -607,7 +607,7 @@ for index in range(number_of_bins):
         min_score = min(scores)
         avg_score = sum(scores)/float(n)
         max_score = max(scores)
-        print('%d\t%15.5f\t%d\t%7.2f\t%7.2f\t%7.2f' %(index, ceiling, n, min_score, avg_score, max_score))
+        print('%d\t%15.5f\t%d\t%7.4f\t%7.4f\t%7.4f' %(index, ceiling, n, min_score, avg_score, max_score))
     else:
         print('%d\t%15.5f\t0' %(index, ceiling))
 
