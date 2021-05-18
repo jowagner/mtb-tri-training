@@ -66,7 +66,9 @@ while True:
         line = f.readline()
         fields = line.split()
         assert index   == fields[0]
-        assert ceiling == fields[1]
+        c_ratio = float(ceiling) / float(fields[1])
+        if c_ratio < 0.9 or c_ratio > 1.1:
+            raise ValueError('ceiling mismatch: %s vs %s' %(ceiling, fields[1]))
         n = int(fields[2])
         total_n += n
         min_score = min(min_score, float(fields[3]))
