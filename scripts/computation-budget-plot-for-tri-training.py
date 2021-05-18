@@ -17,6 +17,7 @@
 from __future__ import print_function
 
 import hashlib
+import itertools
 import os
 import pickle
 import random
@@ -25,6 +26,7 @@ import time
 
 import basic_dataset
 import conllu_dataset
+import utilities
 
 start_t = time.time()
 
@@ -39,7 +41,7 @@ else:
 language = sys.argv[1]
 number_of_bins = int(sys.argv[2])
 number_of_samples = int(sys.argv[3])
-random.seed(int(hashlib.sha256(sys.argv[4]).hexdigest(), 16))
+random.seed(int(hashlib.sha256(utilities.bstring(sys.argv[4])).hexdigest(), 16))
 opt_augexp = sys.argv[5]
 
 l2text = {
@@ -86,7 +88,32 @@ def get_training_duration(path):
         print('Warning: Could not get duration of', path)
     return None
 
-def get_number_of_tokens(path):
+filesize2tokens = {}
+def get_number_of_tokens(path, language):
+    global filesize2tokens
+    filesize = os.path.getsize(path)
+    if filesize == 0:
+        return 0
+    best_candidate = (2.0, None)
+    for seen_language, seen_size in filesize2tokens:
+        if seen_language != language:
+            continue
+        if filesize >= seen_size:
+            ratio = float(filesize) / float(seen_size)
+        else:
+            ratio = float(seen_size) / float(filesize)
+        candidate = (ratio, seen_size)
+        if candidate < best_candidate:
+            best_candidate = candidate
+    best_size = best_candidate[1]
+    if best_size:
+        best_n_tokens = filesize2tokens[(language, best_size)]
+        # extrapolate number of tokens
+        n_tokens = best_n_tokens * filesize // best_size
+        #print('n_tokens estimated as previous n_tokens %d * filesize %d / previous filesize %d = %d' %(
+        #    best_n_tokens, filesize, best_size, n_tokens
+        #))
+        return n_tokens
     dataset = basic_dataset.load_or_map_from_filename(
         conllu_dataset.new_empty_set(),
         path
@@ -94,10 +121,11 @@ def get_number_of_tokens(path):
     n_tokens = 0
     for sentence in dataset:
         n_tokens += len(sentence)
+    filesize2tokens[(language, filesize)] = n_tokens
     return n_tokens
 
-def estimate_ext_embedding_duration(path, parser):
-    n_tokens = get_number_of_tokens(path)
+def estimate_ext_embedding_duration(path, parser, language):
+    n_tokens = get_number_of_tokens(path, language)
     duration = 0.0
     if parser == 'i':  # mBERT
         duration = 50.0 * n_tokens / 15000.0
@@ -107,8 +135,8 @@ def estimate_ext_embedding_duration(path, parser):
         duration += 10.0  # constant loading time for fasttext
     return duration
 
-def estimate_prediction_duration(path, parser):
-    duration = estimate_ext_embedding_duration(path, parser)
+def estimate_prediction_duration(path, parser, language):
+    duration = estimate_ext_embedding_duration(path, parser, language)
     duration += 30.0   # estimate for running the parser (mostly model loading)
     return duration
 
@@ -130,10 +158,10 @@ def fix_data_bugs(data):
         del data[key]
     return data
 
-def get_run_data(run_dir, parser):
+def get_run_data(run_dir, parser, language):
     cache_filename = '%s/run-info-cache.pickle' %run_dir
     if os.path.exists(cache_filename):
-        with open(cache_filename, 'r') as f:
+        with open(cache_filename, 'rb') as f:
             data = pickle.load(f)
             data = fix_data_bugs(data)
         data['run_dir'] = run_dir
@@ -155,7 +183,7 @@ def get_run_data(run_dir, parser):
         and '.conllu' in entry:
             iteration    = iteration_to_int(fields[3])
             learner_rank = fields[4]
-            duration = estimate_ext_embedding_duration(path, parser)
+            duration = estimate_ext_embedding_duration(path, parser, language)
             if duration:
                 data[(iteration, 'nt-duration-'+learner_rank)] = duration
         elif entry.startswith('prediction-') \
@@ -166,7 +194,7 @@ def get_run_data(run_dir, parser):
             if learner_rank == 'E':
                 continue
             iteration = iteration_to_int(fields[1])
-            duration  = estimate_prediction_duration(path, parser)
+            duration  = estimate_prediction_duration(path, parser, language)
             if duration:
                 if '-dev-' in entry:
                     data[(iteration, 'pr-duration-'+learner_rank)] = duration
@@ -182,6 +210,7 @@ def get_run_data(run_dir, parser):
             score = conllu_dataset.get_score_from_file(path)[0]
             s_time = os.path.getmtime(path)
             score = (s_time, score)
+            iteration = iteration_to_int(fields[1])
             learner_rank = fields[2]
             key = (iteration, 'score-'+learner_rank)
             if key in data and data[key] > score:  # use the newest file
@@ -191,10 +220,10 @@ def get_run_data(run_dir, parser):
         and '.conllu' in entry:
             iteration    = 0
             learner_rank = fields[2]
-            duration = estimate_ext_embedding_duration(path, parser)
+            duration = estimate_ext_embedding_duration(path, parser, language)
             if duration:
                 data[(iteration, 'nt-duration-'+learner_rank)] = duration
-    with open(cache_filename, 'w') as f:
+    with open(cache_filename, 'wb') as f:
         pickle.dump(data, f)
     data['run_dir'] = run_dir
     return data
@@ -210,28 +239,39 @@ def get_iteration(data, parser, iteration):
     table = []
     for learner in '123':
         d = 0.0
-        d += data[(iteration, 'nt-duration-'+learner)]  # embeddings for new training data
+        # embeddings for new training data
+        seed_key = (iteration, 'nt-duration-'+learner)
+        if iteration == 0 and seed_key not in data:
+            # seed sets of older runs have been deleted
+            # let's assume it took 10 minutes
+            d += 600         # TODO: get better estimate
+        else:
+            d += data[(iteration, 'nt-duration-'+learner)]  # embeddings for new training data
         d += data[(iteration, 'tr-duration-'+learner)]  # training the model
         d += data[(iteration, 'pr-duration-'+learner)]  # predict and eval
-        _, score = data[(iteration, 'score-'+learner)]
-        table.append((d, score))
+        score_key = (iteration, 'score-'+learner)
+        if score_key in data:
+            _, score = data[(iteration, 'score-'+learner)]
+            table.append((d, score))
+        else:
+            table.append((d, 0.0))
     list_of_tables.append(table)
     # ensemble
     _, score = data[(iteration, 'score-E')]
     list_of_tables.append([(21*0.3, score)])
     return list_of_tables
 
-def get_run(run_dir, parser):
+def get_run(run_dir, parser, language):
     print('run_dir', run_dir)
-    data = get_run_data(run_dir, parser)
+    data = get_run_data(run_dir, parser, language)
     run = []
     t = 0
     while True:
-        iteration = get_iteration(data, parser, t)
-        #try:
-        #    iteration = get_iteration(data, parser, t)
-        #except KeyError:
-        #    break
+        #iteration = get_iteration(data, parser, t)
+        try:
+            iteration = get_iteration(data, parser, t)
+        except KeyError:
+            break
         run.append(iteration)
         t += 1
     return run
@@ -256,19 +296,19 @@ for entry in os.listdir(input_dir):
     #    continue
     candidates.append((
         '/'.join([input_dir, entry]),
-        parser,
+        parser, language,
     ))
 
 n_candidates = len(candidates)
 last_verbose = 0.0
 for c_index, candidate in enumerate(candidates):
-    candidate_folder, parser = candidate
+    candidate_folder, parser, language = candidate
     now = time.time()
     if now > last_verbose + 1.0:
         percentage = 100.0 * c_index / float(n_candidates)
         print('%.1f%% done' %percentage)
         last_verbose = now
-    run = get_run(candidate_folder, parser)
+    run = get_run(candidate_folder, parser, language)
     if run:
         available_runs.append((language, run))
 print('Finished')
@@ -440,6 +480,8 @@ def get_budget_and_best_score(selection, languages, cache = None, print_details 
     return (budget, best_score)
 
 def print_run(run, prefix = ''):
+     print('%s run:' %(l2text[run[0]]))
+     run = run[1]
      for t, iteration in enumerate(run):
          print('%st=%d' %(prefix, t))
          for table in iteration:
@@ -449,7 +491,7 @@ def print_run(run, prefix = ''):
 
 if opt_show_schedule:
     print('Runs:')
-    for r_index, run in available_ensembles:
+    for r_index, run in enumerate(available_ensembles):
         print('[%d]' %r_index)
         print_run(run, '\t')
     print('Example schedule for the full budget:')
