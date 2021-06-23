@@ -71,7 +71,12 @@ def main():
             continue
         # get queue state
         command = ['squeue', '--noheader', '--user=' + opt_username]
-        output = subprocess.check_output(command) # an exception is raised if the command fails
+        try:
+            output = subprocess.check_output(command) # an exception is raised if the command fails
+        except subprocess.CalledProcessError:
+            print('Error checking job queue, trying again in a minute')
+            earliest_next_submit = time.time() + 60.0
+            continue
         queue = defaultdict(lambda: 0)
         for row in output.split('\n'):
             row.rstrip()
@@ -136,7 +141,12 @@ def main():
             # submit job
             sys.stdout.flush()   # make sure command output appears after our last output
             command = ['sbatch', '/'.join((opt_script_dir, script_name))]
-            subprocess.call(command)
+            try:
+                subprocess.call(command)
+            except subprocess.CalledProcessError:
+                print('Error submitting job, trying again in a minute')
+                earliest_next_submit = time.time() + 60.0
+                break
             print('Submitted %s (%s)' %(job_name, script_name))
             # move forward time for next job submission
             now = time.time()
