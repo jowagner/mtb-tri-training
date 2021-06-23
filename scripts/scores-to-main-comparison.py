@@ -15,7 +15,7 @@ import sys
 
 from distribution import Distribution
 
-target_parsers = 'fh'
+target_parsers = 'i'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
 target_samples = 'x'
@@ -85,7 +85,7 @@ while True:
     or augsize not in '68A'    \
     or sample not in target_samples  \
     or agreement != '-'  \
-    or decay not in '-z':
+    or decay not in '-ovz':
         continue
     languages.add(language)
     parsers.add(parser)
