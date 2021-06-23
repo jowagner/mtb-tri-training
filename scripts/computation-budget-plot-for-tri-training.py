@@ -42,7 +42,7 @@ language = sys.argv[1]
 number_of_bins = int(sys.argv[2])
 number_of_samples = int(sys.argv[3])
 random.seed(int(hashlib.sha256(utilities.bstring(sys.argv[4])).hexdigest(), 16))
-opt_augexp = sys.argv[5]
+#opt_augexp = sys.argv[5]
 
 l2text = {
     'e': 'English',
@@ -72,6 +72,7 @@ else:
     languages = [language]
 
 parsers = list(p2text.keys())
+sampling_methods = list(s2text.keys())
 
 def get_training_duration(path):
     try:
@@ -83,6 +84,9 @@ def get_training_duration(path):
     except:
         end_t = None
     if start_t and end_t:
+        if start_t > end_t:
+            print('Warning: training start after end for', path)
+            return None
         return end_t - start_t
     else:
         print('Warning: Could not get duration of', path)
@@ -126,6 +130,7 @@ def get_number_of_tokens(path, language):
 
 def estimate_ext_embedding_duration(path, parser, language):
     n_tokens = get_number_of_tokens(path, language)
+    assert n_tokens >= 0
     duration = 0.0
     if parser == 'i':  # mBERT
         duration = 50.0 * n_tokens / 15000.0
@@ -147,15 +152,23 @@ def iteration_to_int(iteration):
 
 def fix_data_bugs(data):
     move = []
+    delete = []
     for key in data:
+        if len(key) >= 2  \
+        and '-duration-' in key[1]  \
+        and data[key] <= 0.0:
+            delete.append(key)
         if len(key) == 2  \
         and key[1].startswith('nt-duration-')  \
         and '.' in key[1]:
             new_key = (key[0], key[1].split('.')[0])
             move.append((key, new_key))
-    for key, new_key in move:
-        data[new_key] = data[key]
+    for key in delete:
         del data[key]
+    for key, new_key in move:
+        if key in data:
+            data[new_key] = data[key]
+            del data[key]
     return data
 
 def get_run_data(run_dir, parser, language):
@@ -180,14 +193,16 @@ def get_run_data(run_dir, parser, language):
             if duration:
                 data[(iteration, 'tr-duration-'+learner_rank)] = duration
         elif entry.startswith('new-training-set-') \
-        and '.conllu' in entry:
+        and '.conllu' in entry \
+        and '-stderr.txt' not in entry:
             iteration    = iteration_to_int(fields[3])
             learner_rank = fields[4]
             duration = estimate_ext_embedding_duration(path, parser, language)
             if duration:
                 data[(iteration, 'nt-duration-'+learner_rank)] = duration
         elif entry.startswith('prediction-') \
-        and '.conllu' in entry:
+        and '.conllu' in entry \
+        and '-stderr.txt' not in entry:
             if '-test-' in entry:
                 continue
             learner_rank = fields[2]
@@ -201,6 +216,8 @@ def get_run_data(run_dir, parser, language):
                 elif '-subset-part-001-' in entry \
                 or ('-subset-' in entry and not '-part-' in entry):
                     data[(iteration, 'sp-duration-'+learner_rank)] = duration
+                elif '-subset-part-00' in entry:
+                    print('Warning: ignoring file', entry)
                 else:
                      raise ValueError('unexpected file %r in %r' %(entry, run_dir))
         elif entry.startswith('prediction-') \
@@ -261,10 +278,10 @@ def get_iteration(data, parser, iteration):
     list_of_tables.append([(21*0.3, score)])
     return list_of_tables
 
-def get_run(run_dir, parser, language):
+def get_run(run_dir, parser, language, exp_dir):
     print('run_dir', run_dir)
     data = get_run_data(run_dir, parser, language)
-    run = []
+    iterations = []
     t = 0
     while True:
         #iteration = get_iteration(data, parser, t)
@@ -272,9 +289,9 @@ def get_run(run_dir, parser, language):
             iteration = get_iteration(data, parser, t)
         except KeyError:
             break
-        run.append(iteration)
+        iterations.append(iteration)
         t += 1
-    return run
+    return (language, exp_dir, iterations)
 
 print('Scanning folders:')
 available_runs = []
@@ -286,35 +303,37 @@ for entry in os.listdir(input_dir):
     parser   = entry[1]
     sampling = entry[3]
     augexp   = entry[7]
-    if augexp != opt_augexp:
-        continue
+    #if entry[5] != 'z':
+    #    continue
+    #if augexp != opt_augexp:
+    #    continue
     if language not in languages:
         continue
     if parser not in parsers:
+        continue
+    if sampling not in sampling_methods:
         continue
     #if augexp not in '68A':
     #    continue
     candidates.append((
         '/'.join([input_dir, entry]),
-        parser, language,
+        parser, language, entry,
     ))
 
 n_candidates = len(candidates)
 last_verbose = 0.0
 for c_index, candidate in enumerate(candidates):
-    candidate_folder, parser, language = candidate
+    candidate_folder, parser, language, exp_code = candidate
     now = time.time()
     if now > last_verbose + 1.0:
         percentage = 100.0 * c_index / float(n_candidates)
         print('%.1f%% done' %percentage)
         last_verbose = now
-    run = get_run(candidate_folder, parser, language)
-    if run:
-        available_runs.append((language, run))
+    run = get_run(candidate_folder, parser, language, exp_code)
+    if run \
+    and len(run[2]) > 1:    # discard runs with T=0
+        available_runs.append(run)
 print('Finished')
-
-# rename to keep name from other script below
-available_ensembles = available_runs
 
 def add_ensemble_to_budget(budget, row, language):
     duration = 0.3      # estimate for combiner and eval runs (10x parallel)
@@ -322,14 +341,14 @@ def add_ensemble_to_budget(budget, row, language):
     budget.append((language, duration, score))
 
 def bring_eligble_ensembles_forward(
-    start, language, completed_ensembles, available_ensembles, budget,
+    start, language, completed_ensembles, available_runs, budget,
     predictions_made, candidate_rows, new_prediction
 ):
     for row_index in candidate_rows[new_prediction]:
         if row_index < start \
         or (language, row_index) in completed_ensembles:
             continue
-        row = available_ensembles[row_index]
+        row = available_runs[row_index]
         # are all neccessary predictions ready?
         ready = True
         for index in [14, 15, 16]:
@@ -342,48 +361,39 @@ def bring_eligble_ensembles_forward(
             add_ensemble_to_budget(budget, row, language)
             completed_ensembles.add((language, row_index))
 
-def get_candidate_rows(lang2available_ensembles):
-    retval = {}
-    for language in lang2available_ensembles:
-        available_ensembles = lang2available_ensembles[language]
-        for row_index, row in enumerate(available_ensembles):
-            for index in [14, 15, 16]:
-                prediction = row[index]
-                if prediction not in retval:
-                    retval[prediction] = []
-                retval[prediction].append(row_index)
-    return retval
-
-def enumerate_rows(run, language):
-    for iteration in run:
-        for table in iteration:
+def enumerate_rows(run):
+    language, exp_dir, iterations = run
+    for t, iteration in enumerate(iterations):
+        for t_index, table in enumerate(iteration):
             if len(table) > 1:
                 random.shuffle(table)
+            info = '%s %02d table %d' %(exp_dir, t, t_index)
             for (duration, score) in table:
-                yield (language, duration, score)
+                yield (language, duration, score, info)
 
-def expand_steps(available_ensembles, languages):
+def expand_steps(available_runs, languages):
     retval = []
     # re-organise languages in separate streams
-    lang2available_ensembles = {}
+    lang2available_runs = {}
     for language in languages:
-        lang2available_ensembles[language] = []
-    for language, row in available_ensembles:
-        lang2available_ensembles[language].append(row)
+        lang2available_runs[language] = []
+    for run in available_runs:
+        language = run[0]
+        lang2available_runs[language].append(run)
     predictions_made = set()
     run_index = 0
     while True:
         random.shuffle(languages)
         parallel_runs = []
         for language in languages:
-            available_ensembles = lang2available_ensembles[language]
-            if run_index >= len(available_ensembles):
+            available_runs = lang2available_runs[language]
+            if run_index >= len(available_runs):
                 continue
-            run = available_ensembles[run_index]
-            parallel_runs.append(enumerate_rows(run, language))
+            run = available_runs[run_index]
+            parallel_runs.append(enumerate_rows(run))
         if not parallel_runs:
             break
-        for rows in itertools.zip_longest(parallel_runs):
+        for rows in itertools.zip_longest(*parallel_runs):
             for row in rows:
                 if row is not None:
                     retval.append(row)
@@ -421,7 +431,7 @@ def get_average_best_score(best_score, languages):
         best_score = total / float(len(best_score))
     return best_score
 
-def print_budget_details_row(languages, index, language, duration, score, best_score, budget):
+def print_budget_details_row(languages, index, language, duration, score, best_score, budget, info):
     row = []
     row.append('%d\t%s\t%15.1f\t%7.2f' %(index, language, duration, score))
     budget = stable_sum(budget)
@@ -434,19 +444,20 @@ def print_budget_details_row(languages, index, language, duration, score, best_s
             row.append('')
     best_score = get_average_best_score(best_score, languages)
     row.append('%7.2f' %best_score)
+    row.append(info)
     print('\t'.join(row))
 
 def get_budget_and_best_score(selection, languages, cache = None, print_details = False):
     start = 0
     cached_budget = 0.0
-    if cache is not None:
+    if cache is not None and not print_details:
         n_rows = len(selection)
         if n_rows in cache:
             return cache[n_rows][:2]
         for key in cache:
             if key <= n_rows and key > start:
                 start = key
-        if start and not print_details:
+        if start:
             cached_budget, cached_score, cached_scores = cache[start]
     budget = []
     lang2best_score = {}
@@ -455,14 +466,17 @@ def get_budget_and_best_score(selection, languages, cache = None, print_details 
     if print_details:
         print_budget_details_header(languages)
     index = 0
-    for language, duration, score in selection[start:]:
+    for language, duration, score, info in selection[start:]:
+        if duration < 0.0:
+            print('Ignoring row with negative duration %r for %r' %(duration, info))
+            continue
         budget.append(duration)
         if score > lang2best_score[language]:
             lang2best_score[language] = score
         if print_details:
             print_budget_details_row(
                 languages, index, language, duration, score,
-                lang2best_score, budget
+                lang2best_score, budget, info
             )
         index += 1
     if start > 0:
@@ -480,9 +494,9 @@ def get_budget_and_best_score(selection, languages, cache = None, print_details 
     return (budget, best_score)
 
 def print_run(run, prefix = ''):
-     print('%s run:' %(l2text[run[0]]))
-     run = run[1]
-     for t, iteration in enumerate(run):
+     print('%s run %s:' %(l2text[run[0]], run[1]))
+     iterations = run[2]
+     for t, iteration in enumerate(iterations):
          print('%st=%d' %(prefix, t))
          for table in iteration:
              print('%s\t%r' %(prefix, table))
@@ -491,12 +505,12 @@ def print_run(run, prefix = ''):
 
 if opt_show_schedule:
     print('Runs:')
-    for r_index, run in enumerate(available_ensembles):
+    for r_index, run in enumerate(available_runs):
         print('[%d]' %r_index)
         print_run(run, '\t')
     print('Example schedule for the full budget:')
-random.shuffle(available_ensembles)  # for a realistic example
-available_models = expand_steps(available_ensembles, languages)
+random.shuffle(available_runs)  # for a realistic example
+available_models = expand_steps(available_runs, languages)
 total_budget, highest_score = get_budget_and_best_score(
     available_models, languages, print_details = opt_show_schedule
 )
@@ -506,7 +520,7 @@ assert total_budget > 0
 smallest_budget = total_budget
 lowest_score = highest_score
 start_index = 0
-for row in available_ensembles:
+for row in available_runs:
     selection = expand_steps([row], languages)
     budget, score = get_budget_and_best_score(selection, languages)
     if not score or not budget:
@@ -601,8 +615,8 @@ n_models = len(available_models)
 
 # main loop
 while not satisfied_with_samples(ceiling2scores, number_of_samples):
-    random.shuffle(available_ensembles)
-    selection = expand_steps(available_ensembles, languages)   # clone and expand
+    random.shuffle(available_runs)
+    selection = expand_steps(available_runs, languages)   # clone and expand
     cache = {}
     assert len(selection) == n_models
     for ceiling in reversed(bin_ceilings):
