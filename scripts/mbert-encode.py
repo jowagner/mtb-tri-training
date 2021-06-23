@@ -203,7 +203,7 @@ while tokenizer is None and attempts_remaning:
     try:
         #raise ValueError('Testing')
         tokenizer = BertTokenizerFast.from_pretrained('bert-base-multilingual-cased')
-    except ValueError:
+    except:  # observed: ValueError and requests.exceptions.HTTPError
         tokenizer = None
         attempts_remaning -= 1
         print('Exception while loading tokeniser. Maybe a connection problem.')
@@ -222,7 +222,7 @@ model = None
 while model is None and attempts_remaning:
     try:
         model = BertModel.from_pretrained('bert-base-multilingual-cased')
-    except ValueError:
+    except:  # observed: ValueError and requests.exceptions.HTTPError
         model = None
         attempts_remaning -= 1
         print('Exception while loading model. Maybe a connection problem.')
