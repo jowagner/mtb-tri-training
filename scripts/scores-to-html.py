@@ -17,12 +17,30 @@ from collections import defaultdict
 import os
 import string
 import sys
+import time
 
 from distribution import Distribution
 
-new_from_date            = '2021-05-16'
-colour_smoothing         = 1    # 0 = no blends, 1 = boundary blends as in legend, 2 = extra smooth (does not match legend)
+colour_smoothing         = 2    # 0 = no blends, 1 = boundary blends as in legend, 2 = extra smooth (does not match legend)
 opt_rounding_denominator = 10   # e.g. use 5 to round to multiples of 0.2
+
+new_from_date = time.strftime('%Y-%m-%d', time.localtime(time.time()-12*3600))
+#new_from_date = '2021-06-11'
+
+map_vd = {
+    'a': '-',
+    'f': 'y',
+    'r': 'z',
+    's': 'o',
+    'u': 'v',
+}
+map_vs = {
+    '-': 'm',
+    'w': 'n',
+    'x': 'o',
+    't': 'q',
+    'p': 'r',
+}
 
 print('<html><body>')
 
@@ -102,6 +120,7 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
     ])
 
 rows = []
+
 while True:
     line = sys.stdin.readline()
     if not line:
@@ -118,7 +137,11 @@ while True:
     if parser == 't':
         parser = 'f'
     method   = row[method_column]
-    sample   = method[1]
+    oversampling, sample, agreement, decay = method
+    assert sample != 'v'
+    if decay in 'afrsu':
+        sample = map_vs[sample]
+        decay  = map_vd[decay]
     key = (language, parser, sample)
     baselinescore, _, _, _ = unpack_score(row[baseline_column])
     try:
@@ -168,6 +191,12 @@ s2text = {
     't': '300% of labelled data',
     'w': 'permutations of labelled data',
     'x': '250% of labelled data',
+    'p': '300% bootstrap sample of labelled data',
+    'm': 'bootstrap samples of labelled data, full labelled data after initial models',
+    'n': '300% of labelled data, vanilla, full labelled data after initial models',
+    'o': 'permutations of labelled data, full labelled data after initial models',
+    'q': '250% of labelled data, full labelled data after initial models',
+    'r': '300% bootstrap sample of labelled data, full labelled data after initial models',
 }
 d2text = {
     '-': 'use all',
@@ -219,6 +248,8 @@ for score, text in [
     legend.append('<tr><td bgcolor="#%s">%s</td></tr>' %(distribution.colour(score), text))
 legend.append('</table>')
 legend.append('<tr><td>(For scores at interval boundaries, the neighbouring colours are blended as shown above.)</td></tr>')
+if colour_smoothing >= 2:
+    legend.append('<tr><td>Colour smoothing is active: Soft blends are applied across wider ranges of scores and may deviate from above legend.</td></tr>')
 legend = '\n'.join(legend)
 
 print(legend)
@@ -474,7 +505,7 @@ for row in rows:
     if (last_language, last_parser) != (language, parser):
         print('<h3>Parser: %s</h3>' %p2text[parser])
     if (last_language, last_parser, last_sample) != (language, parser, sample):
-        print('<h4>Using %s for round 0 models</h4>' %s2text[sample])
+        print('<h4>Using %s</h4>' %s2text[sample])
         print('<table cellpadding="4" border="1">')
         distribution = Distribution(language, parser, sample, colour_smoothing)
         last_augsize = None
