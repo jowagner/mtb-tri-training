@@ -14,7 +14,7 @@ import sys
 from distribution import Distribution
 
 target_parsers = 'fh'
-target_samples = '-wx'
+target_samples = '-mowx'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
 pooling = 'average-of-best-5'
@@ -23,6 +23,21 @@ if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
 
 assert len(target_samples) >= 2
+
+map_vd = {
+    'a': '-',
+    'f': 'y',
+    'r': 'z',
+    's': 'o',
+    'u': 'v',
+}
+map_vs = {
+    '-': 'm',
+    'w': 'n',
+    'x': 'o',
+    't': 'q',
+    'p': 'r',
+}
 
 header = sys.stdin.readline().split()
 
@@ -72,6 +87,12 @@ while True:
         continue
     method   = row[method_column]
     oversampling, sample, agreement, decay = method
+    assert sample != 'v'
+    if decay in 'afrsu':
+        sample = map_vs[sample]
+        decay  = map_vd[decay]
+
+
     try:
         augsize = row[aug_column]
     except:
