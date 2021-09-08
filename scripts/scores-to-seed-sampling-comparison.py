@@ -14,10 +14,10 @@ import sys
 from distribution import Distribution
 
 target_parsers = 'fh'
-target_samples = '-mowx'
+target_samples = '-mwx'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
-pooling = 'average-of-best-5'
+pooling = 'average' # -of-best-5'
 
 if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
@@ -91,8 +91,6 @@ while True:
     if decay in 'afrsu':
         sample = map_vs[sample]
         decay  = map_vd[decay]
-
-
     try:
         augsize = row[aug_column]
     except:
@@ -124,6 +122,7 @@ while True:
     setting.append((-n_rounds, run, experiment_code, row))
 
 summary = []
+totals = len(target_samples) * [0.0]
 for lang_index, language in enumerate(sorted(list(languages))):
     sys.stderr.write('\n\n== Language %s ==\n\n' %language)
     eligible_setting_keys = None
@@ -269,6 +268,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
                 sys.stderr.write('\t%s best score for %s: %.9f (%d scores)\n\n' %(pooling.title(), sample, score, len(best_scores)))
             if sample in target_samples:
                 assert len(best_scores) > 0
+                totals[len(characteristic)] += score
                 characteristic.append(score)
             x_base = x_base + max_rounds + 2
         out.close()
@@ -290,6 +290,9 @@ for lang_index, language in enumerate(sorted(list(languages))):
         summary.append(' & '.join(summary_row))
         is_first_parser = False
 
+n = len(summary)
+sys.stderr.write('summary rows: %d\n' %n)
+
 header = []
 header.append('\\textbf{Language}')
 header.append('\\textbf{Parser}')
@@ -302,4 +305,10 @@ out.write(' & '.join(header))
 out.write('\\\\\n\\hline\n')
 for row in summary:
     out.write(row+' \\\\\n')
+row = ['\\multicolumn{2}{l}{Average}']
+for total in totals:
+    row.append('%.2f' %(total/n))
+out.write(' & '.join(row))
+out.write('\\\\\n\\hline\n')
+
 out.close()
