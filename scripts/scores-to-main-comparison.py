@@ -15,7 +15,7 @@ import sys
 
 from distribution import Distribution
 
-target_parsers = 'i'
+target_parsers = 'fhi'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
 target_samples = 'x'
@@ -91,6 +91,9 @@ while True:
     parsers.add(parser)
     graph_key = (language, parser)
     setting_key = (sample, oversampling, agreement, decay, augsize)
+    if decay == 'o':
+        # treat d=0.71 as d=1
+        setting_key = (sample, oversampling, agreement, '-', augsize)
     if not graph_key in graphs:
         graphs[graph_key] = {}
     graph = graphs[graph_key]
@@ -280,7 +283,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
                 lps2distr[(language, parser, sample)] = distr
         out_a = open('distr-baseline-tt-sim-%s-%s-all.txt' %(language, parser), 'w')
         out_b = open('distr-baseline-tt-sim-%s-%s-best-of-12.txt' %(language, parser), 'w')
-        for _ in range(250000):
+        for _ in range(2500000):
             best_score = None
             for pick, sample in picks:
                 distr = lps2distr[(language, parser, sample)]
