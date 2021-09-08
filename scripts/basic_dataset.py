@@ -234,6 +234,7 @@ class SentenceFilter:
         min_percentage_labelled = None,
         max_percentage_unlabelled = None,
         min_length = None, max_length = None,
+        min_chars = None,  max_chars = None,
         skip_prob = 0.0, rng = None,
     ):
         self.target_columns = target_columns
@@ -243,6 +244,8 @@ class SentenceFilter:
         self.max_percentage = max_percentage_unlabelled
         self.min_length     = min_length
         self.max_length     = max_length
+        self.min_chars      = min_chars
+        self.max_chars      = max_chars
         self.skip_prob      = skip_prob
         self.rng            = rng
 
@@ -255,6 +258,16 @@ class SentenceFilter:
             return True
         if self.max_length and num_items > self.max_length:
             return True
+        if self.min_chars or self.max_chars:
+            n_chars = 0
+            for row in sentence:
+                # TODO: here we assume conllu format
+                #       --> a general interface is needed
+                n_chars += len(row[1])
+            if self.min_chars and n_chars < self.min_chars:
+                return True
+            if self.max_chars and n_chars > self.max_chars:
+                return True
         for tc_index, column in enumerate(self.target_columns):
             num_labelled = 0
             for item_index in range(num_items):

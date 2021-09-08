@@ -25,15 +25,23 @@ Processes conllu data from stdin to stdout, removing all comments.
 
 Options:
 
-    --min-length  NUMBER    Only copy sentences with at least NUMBER tokens
-                            (not containing tokens with an index containing
-                            '.' or '-')
+    --min-length  NUMBER    Only copy sentences with at least NUMBER tokens,
+                            not counting tokens with an index containing
+                            '.' or '-'.
                             (Default: 5)
 
-    --max-length  NUMBER    Only copy sentences with at most NUMBER tokens
-                            (not containing tokens with an index containing
-                            '.' or '-')
+    --max-length  NUMBER    Only copy sentences with at most NUMBER tokens,
+                            not counting tokens with an index containing
+                            '.' or '-'.
                             (Default: 40)
+
+    --min-chars  NUMBER     Only copy sentences with at least NUMBER characters,
+                            not counting whitespace.
+                            (Default: 1)
+
+    --max-chars  NUMBER     Only copy sentences with at most NUMBER characters,
+                            not counting whitespace.
+                            (Default: 25000)
 
     --keep-comments         Don't remove comments.
                             (Default: lines starting with '#' will not be
@@ -61,6 +69,8 @@ def main():
     opt_debug   = False
     opt_min_length = 5
     opt_max_length = 40
+    opt_min_chars = 1
+    opt_max_chars = 25000
     opt_keep_comments = False
     opt_skip = 0.0
     opt_init_seed = '42'
@@ -78,6 +88,12 @@ def main():
             del sys.argv[1]
         elif option == '--max-length':
             opt_max_length = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--min-chars':
+            opt_min_chars = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '--max-chars':
+            opt_max_chars = int(sys.argv[1])
             del sys.argv[1]
         elif option == '--keep-comments':
             opt_keep_comments = False
@@ -118,6 +134,8 @@ def main():
         [],                              # no specific target columns
         min_length = opt_min_length,
         max_length = opt_max_length,
+        min_chars  = opt_min_chars,
+        max_chars  = opt_max_chars,
         skip_prob  = opt_skip,
         rng        = random,
     )
