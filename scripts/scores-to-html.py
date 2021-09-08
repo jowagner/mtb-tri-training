@@ -27,6 +27,8 @@ opt_rounding_denominator = 10   # e.g. use 5 to round to multiples of 0.2
 new_from_date = time.strftime('%Y-%m-%d', time.localtime(time.time()-12*3600))
 #new_from_date = '2021-06-11'
 
+colour_udpf_oversampling = False
+
 map_vd = {
     'a': '-',
     'f': 'y',
@@ -79,8 +81,6 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
     tinyfont = '-webkit-text-size-adjust: none; font-size: 0.6em'
     if date == '????-??-??':
        content.append('no model')
-    #elif date >= '2021-01-04':
-    #   content.append('newest')
     elif date >= new_from_date:
        content.append('<span style="%s">new</span>' %tinyfont)
     elif date >= '2005-01-01':
@@ -106,7 +106,7 @@ def get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score):
         else:
             content.append('%.3f' %r_score)
     else:
-        raise ValueError('Donominator for rounding scores cannot be ' + repr(opt_rounding_denominator))
+        raise ValueError('Denominator for rounding scores cannot be ' + repr(opt_rounding_denominator))
     content = '<br>'.join(content)
     return '&#10;'.join([
         '<div title="Round %d with LAS %s' %(
@@ -176,6 +176,12 @@ l2text = {
     'u': 'Uyghur',
     'v': 'Vietnamese',
 }
+l2size = {
+    'e': 1226,
+    'h': 910,
+    'u': 1656,
+    'v': 1400,
+}
 p2text = {
     'f': 'udpipe-future',
     'g': '+fasttext',
@@ -188,14 +194,14 @@ v2text = {
 }
 s2text = {
     '-': 'bootstrap samples of labelled data',
-    't': '300% of labelled data',
+    'm': 'bootstrap samples of labelled data, full labelled data after initial models ("vanilla tri-training for d=0")',
     'w': 'permutations of labelled data',
+    'n': 'permutations of labelled data, full labelled data after initial models',
     'x': '250% of labelled data',
-    'p': '300% bootstrap sample of labelled data',
-    'm': 'bootstrap samples of labelled data, full labelled data after initial models',
-    'n': '300% of labelled data, vanilla, full labelled data after initial models',
-    'o': 'permutations of labelled data, full labelled data after initial models',
-    'q': '250% of labelled data, full labelled data after initial models',
+    'o': '250% of labelled data, full labelled data after initial models',
+    't': '300% of labelled data (3 copies)',
+    'q': '300% of labelled data (3 copies), full labelled data after initial models',
+    'p': '300% bootstrap sample of labelled data',  # with replacement
     'r': '300% bootstrap sample of labelled data, full labelled data after initial models',
 }
 d2text = {
@@ -453,6 +459,26 @@ def print_n_round_overall():
     print_n_round_overall_by_parser()
     print_n_round_overall_by_sample()
 
+def get_cell_colour(colour_udpf_oversampling, language, sample, n_sentences, distribution):
+    global l2size
+    if colour_udpf_oversampling and language in l2size:
+        u_size = l2size[language]
+        if sample in 'xo':
+            u_size *= 2.5
+        elif sample in 'tqpr':
+            u_size *= 3.0
+        elif sample not in '-wmn':
+            raise ValueError('unknown sample %r' %sample)
+        if u_size + n_sentences / 3 >= 9600:
+            colour = 'ffff80'
+        else:
+            colour = 'ffffff'
+    elif distribution is not None:
+        colour = distribution.colour(score)
+    else:
+        colour = None
+    return colour
+
 best_score = None
 for row in rows:
     parser, sample = row[parser_column].split()
@@ -531,10 +557,11 @@ for row in rows:
     text = row[baseline_column]
     score, date, n_tokens, n_sentences = unpack_score(text)
     tt_round = 0
-    if distribution is None:
+    colour = get_cell_colour(colour_udpf_oversampling, language, sample, n_sentences, distribution)
+    if colour is None:
         tdcode = '<td align="right">'
     else:
-        tdcode = '<td bgcolor="#%s" align="right">' %distribution.colour(score)
+        tdcode = '<td bgcolor="#%s" align="right">' %colour
     sccode = get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score)
     if score == bestbaselinescore:
         print('%s<b>%s</b></td>' %(tdcode, sccode))
@@ -553,10 +580,11 @@ for row in rows:
     for text in row[baseline_column+1:]:
         tt_round += 1
         score, date, n_tokens, n_sentences = unpack_score(text)
-        if distribution is None:
+        colour = get_cell_colour(colour_udpf_oversampling, language, sample, n_sentences, distribution)
+        if colour is None:
             tdcode = '<td align="right">'
         else:
-            tdcode = '<td bgcolor="#%s" align="right">' %distribution.colour(score)
+            tdcode = '<td bgcolor="#%s" align="right">' %colour
         sccode = get_annotation_div(tt_round, text, date, n_tokens, n_sentences, score)
         if score >= bestbaselinescore:
             print('%s<b>%s</b></td>' %(tdcode, sccode))
