@@ -288,7 +288,11 @@ def load_conllu(file):
     return ud
 
 # Evaluate the gold and system treebanks (loaded using load_conllu).
-def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
+def evaluate(
+    gold_ud, system_ud,
+    include_sentence_level_info = False,
+    include_token_level_info    = False,
+):
     class Score:
         def __init__(self, gold_total, system_total, correct, aligned_total=None):
             self.correct = correct
@@ -327,7 +331,11 @@ def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
 
         return Score(len(gold_spans), len(system_spans), correct)
 
-    def alignment_score(alignment, key_fn=None, filter_fn=None):
+    def alignment_score(
+        alignment, key_fn=None, filter_fn=None,
+        append_token_info = False,
+        token_info = None
+    ):
         if filter_fn is not None:
             gold = sum(1 for gold in alignment.gold_words if filter_fn(gold))
             system = sum(1 for system in alignment.system_words if filter_fn(system))
@@ -346,11 +354,18 @@ def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
         def gold_aligned_system(word):
             return alignment.matched_words_map.get(word, "NotAligned") if word is not None else None
         correct = 0
+        incorrect = 0
         for words in alignment.matched_words:
             if filter_fn is None or filter_fn(words.gold_word):
                 if key_fn(words.gold_word, gold_aligned_gold) == key_fn(words.system_word, gold_aligned_system):
                     correct += 1
-
+                    if append_token_info:
+                        token_info.append('C')
+                elif append_token_info:
+                    incorrect += 1
+                    token_info.append('I')
+        if append_token_info and gold != correct + incorrect:
+            raise ValueError('Token-level evaluation only supported for predictions that match the gold tokenisation')
         return Score(gold, system, correct, aligned)
 
     def beyond_end(words, i, multiword_span_end):
@@ -457,7 +472,7 @@ def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
     num_sent_gold   = len(gold_ud.sentences)
     num_sent_system = len(system_ud.sentences)
     if include_sentence_level_info and num_sent_gold != num_sent_system:
-        sys.stderr.write('Number of predicted sentences does not match gold.\n')
+        raise ValueError('Sentence-level evaluation only supported for predictions that match the gold sentence boundaries')
     def get_words_for_sentence(ud_words, ud_sentence):
         retval = []
         for word in ud_words:
@@ -492,6 +507,12 @@ def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
     alignment = align_words(gold_ud.words, system_ud.words)
 
     # Compute the F1-scores
+    token_info = []
+    las_scores = alignment_score(
+        alignment, lambda w, ga: (ga(w.parent), w.columns[DEPREL]),
+        append_token_info = include_token_level_info,
+        token_info = token_info,
+    )
     return {
         "Tokens": spans_score(gold_ud.tokens, system_ud.tokens),
         "Sentences": spans_score(gold_ud.sentences, system_ud.sentences),
@@ -502,7 +523,7 @@ def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
         "AllTags": alignment_score(alignment, lambda w, _: (w.columns[UPOS], w.columns[XPOS], w.columns[FEATS])),
         "Lemmas": alignment_score(alignment, lambda w, ga: w.columns[LEMMA] if ga(w).columns[LEMMA] != "_" else "_"),
         "UAS": alignment_score(alignment, lambda w, ga: ga(w.parent)),
-        "LAS": alignment_score(alignment, lambda w, ga: (ga(w.parent), w.columns[DEPREL])),
+        "LAS": las_scores,
         "CLAS": alignment_score(alignment, lambda w, ga: (ga(w.parent), w.columns[DEPREL]),
                                 filter_fn=lambda w: w.is_content_deprel),
         "MLAS": alignment_score(alignment, lambda w, ga: (ga(w.parent), w.columns[DEPREL], w.columns[UPOS], w.columns[FEATS],
@@ -513,6 +534,7 @@ def evaluate(gold_ud, system_ud, include_sentence_level_info = False):
                                                           w.columns[LEMMA] if ga(w).columns[LEMMA] != "_" else "_"),
                                 filter_fn=lambda w: w.is_content_deprel),
         "PerSentenceLAS": sentence_scores,
+        "PerTokenCorrectness": token_info,
     }
 
 
@@ -539,7 +561,7 @@ def evaluate_wrapper(args):
     # Load CoNLL-U files
     gold_ud = load_conllu_file(args.gold_file)
     system_ud = load_conllu_file(args.system_file)
-    return evaluate(gold_ud, system_ud, args.sentences)
+    return evaluate(gold_ud, system_ud, args.sentences, args.tokens)
 
 def main():
     # Parse arguments
@@ -552,6 +574,8 @@ def main():
                         help="Write to file instead of stdout.")
     parser.add_argument("--sentences", "-s", default=False, action="store_true",
                         help="Show sentence-level LAS scores.")
+    parser.add_argument("--tokens", "-t", default=False, action="store_true",
+                        help="Show token-level correctness instead of overall scores")
     parser.add_argument("--verbose", "-v", default=False, action="store_true",
                         help="Print all metrics.")
     parser.add_argument("--counts", "-c", default=False, action="store_true",
@@ -567,7 +591,10 @@ def main():
     evaluation = evaluate_wrapper(args)
 
     # Print the evaluation
-    if not args.verbose and not args.counts:
+    if args.tokens:
+        for correctness in evaluation['PerTokenCorrectness']:
+            print(correctness)
+    elif not args.verbose and not args.counts:
         print("LAS F1 Score: {:.9f}".format(100 * evaluation["LAS"].f1))
         print("MLAS Score: {:.9f}".format(100 * evaluation["MLAS"].f1))
         print("BLEX Score: {:.9f}".format(100 * evaluation["BLEX"].f1))
