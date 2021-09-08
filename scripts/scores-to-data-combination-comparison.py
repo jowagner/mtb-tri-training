@@ -14,7 +14,7 @@ import sys
 from distribution import Distribution
 
 target_parsers = 'fh'
-target_decays  = 'vz-'
+target_decays  = 'vzo-'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
 decay2d = {
@@ -24,10 +24,43 @@ decay2d = {
     'v': 0.0,
 }
 
+tmp = []
+for decay in target_decays:
+    tmp.append((decay2d[decay], decay))
+tmp.sort()
+latex_columns = map(lambda x: x[1], tmp)
+
 if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
 
 assert len(target_decays) >= 2
+
+map_vd = {
+    'a': '-',
+    'f': 'y',
+    'r': 'z',
+    's': 'o',
+    'u': 'v',
+}
+map_vs = {
+    '-': 'm',
+    'w': 'n',
+    'x': 'o',
+    't': 'q',
+    'p': 'r',
+}
+
+l2text = {
+    'e': 'English',
+    'h': 'Hungarian',
+    'u': 'Uyghur',
+    'v': 'Vietnamese',
+}
+
+p2text = {
+    'f': 'udpf',
+    'h': 'elmo',
+}
 
 header = sys.stdin.readline().split()
 
@@ -78,6 +111,10 @@ while True:
         continue
     method   = row[method_column]
     oversampling, sample, agreement, decay = method
+    oversampling, r_sample, agreement, r_decay = method
+    if decay in 'afrsu':
+        sample = map_vs[sample]
+        decay  = map_vd[decay]
     try:
         augsize = row[aug_column]
     except:
@@ -102,8 +139,8 @@ while True:
         graph[setting_key] = []
     setting = graph[setting_key]
     experiment_code = '%s%s%s%s%s%s%d%s' %(
-        language, parser, oversampling, sample,
-        agreement, decay,
+        language, parser, oversampling, r_sample,
+        agreement, r_decay,
         2 + int(run),
         augsize
     )
@@ -183,7 +220,6 @@ for lang_index, language in enumerate(sorted(list(languages))):
         sys.stderr.write('\nParser %s:\n' %parser)
         x_base = 1.0
         characteristic = []
-        columns = set()
         for decay in sorted(list(decay_types)):
             graph_key = (language, parser, decay)
             if not graph_key in graphs:
@@ -228,20 +264,22 @@ for lang_index, language in enumerate(sorted(list(languages))):
             if decay in target_decays:
                 assert len(best_scores) > 0
                 average_score = sum(best_scores) / float(len(best_scores))
-                d = decay2d[decay]
-                characteristic.append((d, average_score))
-                columns.add((d, decay))
+                column_rank = latex_columns.index(decay)
+                characteristic.append((column_rank, average_score))
             x_base = x_base + max_rounds + 2
         out.close()
         assert len(characteristic) >= 2
         summary_row = []
         if is_first_parser:
-            summary_row.append('\\multirow{2}{*}{%s}' %language)
+            cell_text = '\\multirow{2}{*}{%s}' %(l2text[language])
+            summary_row.append('%-28s' %cell_text)
         else:
-            summary_row.append('                  ')
-        summary_row.append(parser)
-        best_score = max(map(lambda x: x[1], characteristic))
-        for d, score in sorted(characteristic):
+            summary_row.append(28*' ')
+        summary_row.append('\\textbf{%s}' %(p2text[parser]))
+        characteristic.sort()
+        characteristic = map(lambda x: x[1], characteristic)
+        best_score = max(characteristic)
+        for score in characteristic:
             if score == best_score:
                 summary_row.append('\\textbf{%.1f}' %score)
             else:
@@ -254,8 +292,9 @@ for lang_index, language in enumerate(sorted(list(languages))):
 header = []
 header.append('\\textbf{Language}')
 header.append('\\textbf{Parser}')
-for d, decay in sorted(list(columns)):
-    header.append('\\textbf{$d=%.1f}' %d)
+for decay in latex_columns:
+    d = decay2d[decay]
+    header.append('\\textbf{$d=%.1f$}' %d)
 if len(target_decays) == 2:
     header.append('\\textbf{$\Delta$}')
 out = open('summary.tex', 'wb')
