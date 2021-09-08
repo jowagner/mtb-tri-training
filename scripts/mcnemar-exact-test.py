@@ -73,14 +73,29 @@ if b < c:
 epv = 0
 i = b
 n = b+c
-f = 0.5 ** (n-1)
 while i <= n:
     epv += binomial(n, i)
     i += 1
 
 print('exact p-value as fraction = %d / %d' %(epv, 2**(n-1)))
 
-epv = f * float(epv)
+is_reduced = False
+while True:
+    overflow = False
+    try:
+        epv_as_float = float(epv)
+    except OverflowError:
+        overflow = True
+    f = 0.5 ** (n-1)
+    if f > 0.0 and not overflow:
+        if is_reduced:
+            print('reduced fraction to %d / %d for conversion to float' %(epv, 2**(n-1)))
+        epv = f * epv_as_float
+        break
+    else:
+        n -= 1
+        epv = epv >> 1
+        is_reduced = True
 
 print('exact p-value    =', epv)
 print('exact p-value    = %.9f (rounded to 9 digits)' %epv)
