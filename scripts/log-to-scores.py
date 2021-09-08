@@ -15,12 +15,22 @@ Usage: grep -HE "(Score|Iteration|Subtotal|[mM]odel path)" */stdout.txt | ./log-
 or   : grep -HE "(Score|Iteration|Subtotal|[mM]odel path)" */stdout.txt | ./log-to-scores.py --update scores.tsv
 """
 
-def get_date(path):
-    if os.path.exists(path):
-        mtime = os.path.getmtime(path)
-        mtime_struct = time.localtime(mtime)
-        y_m_d = mtime_struct[:3]
-        return '%04d-%02d-%02d' %y_m_d
+def t_to_date(t):
+    mtime_struct = time.localtime(t)
+    y_m_d = mtime_struct[:3]
+    return '%04d-%02d-%02d' %y_m_d
+
+def get_model_date(path):
+    s_path = '/'.join((path, 'training.start'))
+    if os.path.exists(s_path):
+        start_t = os.path.getmtime(s_path)
+        for filename in ['training.end', 'checkpoint', 'log']:
+            candidate = '/'.join((path, filename))
+            if os.path.exists(candidate):
+                end_t = os.path.getmtime(candidate)
+                if end_t > start_t and (end_t-start_t) < 172800.0:
+                    return t_to_date(end_t)
+        return t_to_date(start_t)
     else:
         return '????-??-??'
 
@@ -134,11 +144,11 @@ while True:
             score_index += 1
     elif 'Model path:' in line:
         model_dir = fields[-1]
-        date = get_date(model_dir + '/training.end')
+        date = get_model_date(model_dir)
         learner_model_time.append(date)
     elif 'Adjusting model path to existing model' in line:
         model_dir = fields[-1].strip("'")
-        date = get_date(model_dir + '/training.end')
+        date = get_model_date(model_dir)
         learner_model_time[-1] = date
 
 key_and_rounds_header = '\t'.join([
