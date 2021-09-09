@@ -47,6 +47,12 @@ print('confusion table:', a, b, c, d)
 
 print('X2 =', (b-c)**2 / float(b+c))
 
+acc1 = (a+c) / float(a+b+c+d)
+acc2 = (a+b) / float(a+b+c+d)
+print('accuracy1 = %.9f' %acc1)
+print('accuracy2 = %.9f' %acc2)
+
+
 # https://gist.github.com/rougier/ebe734dcc6f4ff450abf
 # with suggestions from
 # https://gist.github.com/keithbriggs
@@ -74,10 +80,17 @@ epv = 0
 i = b
 n = b+c
 while i <= n:
-    epv += binomial(n, i)
+    new_term = binomial(n, i)
+    if 2*i == n:
+        # correction for b == c
+        new_term = new_term // 2
+    epv += new_term
     i += 1
 
 print('exact p-value as fraction = %d / %d' %(epv, 2**(n-1)))
+
+if epv > 2**(n-1):
+    print('warning: fraction is greater 1')
 
 is_reduced = False
 while True:
@@ -86,7 +99,7 @@ while True:
         epv_as_float = float(epv)
     except OverflowError:
         overflow = True
-    f = 0.5 ** (n-1)
+    f = 0.5 ** (n-1)     # -1 for the factor 2 outside the sum
     if f > 0.0 and not overflow:
         if is_reduced:
             print('reduced fraction to %d / %d for conversion to float' %(epv, 2**(n-1)))
@@ -100,6 +113,11 @@ while True:
 print('exact p-value    =', epv)
 print('exact p-value    = %.9f (rounded to 9 digits)' %epv)
 print('exact p-value    = %.6f (rounded to 6 digits)' %epv)
+
+
+# comment out the following line to compare above p-value to
+# p-value obained with randomisation test
+sys.exit(0)
 
 # now perform a randomisation test
 reps = 2500000
@@ -127,7 +145,7 @@ while remaining:
             else:
                 raise ValueError
     s_delta = abs(b - c)
-    if s_delta >= delta: # or (s_delta == delta and random.random() < 0.5):
+    if s_delta >= delta:
         p += 1
     remaining -= 1
     done += 1
