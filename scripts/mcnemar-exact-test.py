@@ -49,8 +49,8 @@ print('X2 =', (b-c)**2 / float(b+c))
 
 acc1 = (a+c) / float(a+b+c+d)
 acc2 = (a+b) / float(a+b+c+d)
-print('accuracy1 = %.9f' %acc1)
-print('accuracy2 = %.9f' %acc2)
+print('accuracy1 = %.9f %%' %(100.0*acc1))
+print('accuracy2 = %.9f %%' %(100.0*acc2))
 
 
 # https://gist.github.com/rougier/ebe734dcc6f4ff450abf
