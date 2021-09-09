@@ -15,17 +15,21 @@ import sys
 
 from distribution import Distribution
 
-target_parsers = 'fhi'
+target_parsers = 'fghi'
 target_min_rounds = 4   # do not include a run if it has fewer rounds
 
 target_samples = 'x'
 
 bin_width = 0.2
 
+baseline_distr_samples = 2500000   # reduce to small number when not iterested in baseline distribution or debugging
+
 if len(target_parsers) < 2:
     target_parsers = target_parsers + target_parsers[0]
 
 header = sys.stdin.readline().split()
+
+max_runs_per_setting = 5
 
 baseline_column = header.index('0')
 language_column = header.index('Language')
@@ -167,26 +171,51 @@ for lang_index, language in enumerate(sorted(list(languages))):
     if not eligible_setting_keys:
         continue
     sys.stderr.write('Usable settings:\n')
+    out = open('settings_%s.tsv' %language, 'wb')
+    header = 'SettingKey Index Parser ExpCode UseRounds TotalRounds Run'.split()
+    out.write('\t'.join(header))
+    out.write('\n')
     sk2min_rounds = {}
     for setting_key in sorted(list(eligible_setting_keys)):
         min_rounds = []
-        for run_index in (0,1):
+        for run_index in range(max_runs_per_setting):
             rounds = []
             for parser in target_parsers:
                 if True:
                     graph_key = (language, parser)
                     setting = graphs[graph_key][setting_key]
-                    if not run_index:
-                        setting.sort()
-                    if len(setting) > run_index:
+                    if not run_index:   # first time:
+                        setting.sort()  # order by n_rounds (descending)
+                    try:
                         neg_n_rounds, run, exp_code, row = setting[run_index]
                         rounds.append(-neg_n_rounds)
+                    except IndexError:
+                        pass
             if len(rounds) == len(target_parsers):
                 assert len(min_rounds) == run_index 
                 min_rounds.append(min(rounds))
+                for parser in target_parsers:
+                    graph_key = (language, parser)
+                    setting = graphs[graph_key][setting_key]
+                    neg_n_rounds, run, exp_code, row = setting[run_index]
+                    row = []
+                    row.append(' '.join((setting_key)))
+                    row.append('%d' %run_index)
+                    row.append(parser)
+                    row.append(exp_code)
+                    row.append('%d' %(min(rounds)))
+                    row.append('%d' %(-neg_n_rounds))
+                    row.append(run)
+                    out.write('\t'.join(row))
+                    out.write('\n')
+            else:
+                # no run at this run_index for at least one parser
+                # --> no point in trying next run_index
+                break
         #setting = ( # (-int(n_rounds), run, experiment_code, row)
         sys.stderr.write('\t__%s%s%s%s_%s\t%r\n' %(tuple(setting_key) + (min_rounds,)))
         sk2min_rounds[setting_key] = min_rounds
+    out.close()
     is_first_parser = True
     for parser in target_parsers:
         # get list of columns for header
@@ -223,6 +252,10 @@ for lang_index, language in enumerate(sorted(list(languages))):
         bin2freq = defaultdict(lambda: 0)
         picks = []
         if True:
+            bmout = open('best_model_%s_%s.tsv' %(language, parser), 'wb')
+            header = 'SettingKey Index Parser ExpCode BaselineLAS BestRound BestLAS'.split()
+            bmout.write('\t'.join(header))
+            bmout.write('\n')
             graph_key = (language, parser)
             graph = graphs[graph_key]
             max_rounds = 0
@@ -233,12 +266,19 @@ for lang_index, language in enumerate(sorted(list(languages))):
                 sample  = setting_key[0]
                 min_rounds = sk2min_rounds[setting_key]
                 for run_index, rounds in enumerate(min_rounds):
+                    bmrow = []
+                    bmrow.append(' '.join(setting_key))
+                    bmrow.append('%d' %run_index)
+                    bmrow.append(parser)
                     if rounds > max_rounds:
                         max_rounds = rounds
                     if len(setting) > run_index:
                         neg_n_rounds, run, exp_code, row = setting[run_index]
+                        bmrow.append(exp_code)
+                        bmrow.append('%.9f' %(unpack_score(row[baseline_column])[0]))
                         column = exp_codes.index(exp_code)
                         best_score = 0.0
+                        best_round = -1
                         scores_tested = 0
                         for t, info in enumerate(row[baseline_column:]):
                             if t > rounds:
@@ -247,11 +287,17 @@ for lang_index, language in enumerate(sorted(list(languages))):
                             x = x_base + t
                             if score > best_score:
                                 best_score = score
+                                best_round = t
                             scores_tested = scores_tested + 1
+                        bmrow.append('%02d' %best_round)
+                        bmrow.append('%.9f' %best_score)
                         best_scores.append(best_score)
                         details.append((setting_key, run_index, rounds, max_rounds, run, exp_code, row))
                         sys.stderr.write('\t__%s%s%s%s_%s\t*\t%d\t%.9f\t(best of %d scores)\n' %(tuple(setting_key) + (run_index, best_score, scores_tested)))
                         picks.append((scores_tested, sample))
+                    bmout.write('\t'.join(bmrow))
+                    bmout.write('\n')
+            bmout.close()
             if best_scores:
                 average_score = sum(best_scores) / float(len(best_scores))
                 sys.stderr.write('\taverage best score: %.9f (average of %d scores)\n' %(average_score, len(best_scores)))
@@ -283,7 +329,7 @@ for lang_index, language in enumerate(sorted(list(languages))):
                 lps2distr[(language, parser, sample)] = distr
         out_a = open('distr-baseline-tt-sim-%s-%s-all.txt' %(language, parser), 'w')
         out_b = open('distr-baseline-tt-sim-%s-%s-best-of-12.txt' %(language, parser), 'w')
-        for _ in range(2500000):
+        for _ in range(baseline_distr_samples):
             best_score = None
             for pick, sample in picks:
                 distr = lps2distr[(language, parser, sample)]
