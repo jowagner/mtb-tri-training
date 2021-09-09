@@ -1,10 +1,31 @@
-# Multi-treebank Tri-training
+# Tri-training for Dependency Parsers
 
-Tri-training dependency parsers with multi-treebank models
+This repository contains an implementation of tri-training and glue code
+run the experiments of the paper
+
+Joachim Wagner and Jennifer Foster (to appear):
+Revisiting Tri-training of Dependency Parsers.
+In Proceedings of The 2021 Conference on Empirical Methods
+in Natural Language Processing (EMNLP 2021),
+7th to 11th November 2021,
+Online and in the Barceló Bávaro Convention Centre, Punta Cana, Dominican Republic.
+Association for Computational Linguistics
 
 Features:
-* Sentences and tokens can be selected independently.
-* Missing heads and labels for tokens are replaced by random heads and labels.
+* Supports different ways to sample the seed data
+* Combine automatically labelled data from different iterations
+* Parse a new sample of the unlabelled data in each iteration
+* Wrapper modules for [UDPipe-Future](https://github.com/CoNLL-UD-2018/UDPipe-Future) with external FastText, ELMo and Multilingual BERT word embeddings
+* Use [linear tree combiner](https://github.com/jowagner/ud-combination) as the ensemble and average evaluation scores over multiple runs of the non-deterministic combiner
+
+Untested features:
+* Modular to support other tasks than UD dependency parsing
+* Parse as much unlabelled data as needed to reach a target size of teaching material
+* Training with more than 3 learners
+* Allow (small) disagreements between teachers
+* Require disagreement of the learner
+* Sentences and tokens can be selected independently
+* Missing heads and labels for tokens are replaced by random heads and labels
 
 # Installation
 
