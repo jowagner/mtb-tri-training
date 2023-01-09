@@ -1,15 +1,18 @@
 # Tri-training for Dependency Parsers
 
 This repository contains an implementation of tri-training and glue code
+to
 run the experiments of the paper
 
-Joachim Wagner and Jennifer Foster (to appear):
-Revisiting Tri-training of Dependency Parsers.
-In Proceedings of The 2021 Conference on Empirical Methods
-in Natural Language Processing (EMNLP 2021),
+Joachim Wagner and Jennifer Foster (2021):
+[Revisiting Tri-training of Dependency Parsers](https://aclanthology.org/2021.emnlp-main.745/).
+In *Proceedings of The 2021 Conference on Empirical Methods
+in Natural Language Processing (EMNLP 2021)*,
+pages 9457-9473,
 7th to 11th November 2021,
 Online and in the Barceló Bávaro Convention Centre, Punta Cana, Dominican Republic.
-Association for Computational Linguistics
+Association for Computational Linguistics.
+DOI 10.18653/v1/2021.emnlp-main.745
 
 Features:
 * Supports different ways to sample the seed data
